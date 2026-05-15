@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import (
     Field,
@@ -25,7 +25,7 @@ from pydantic import (
     computed_field,
     field_validator,
 )
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -95,7 +95,9 @@ class Settings(BaseSettings):
         None,
         description="ID канала для алертов (например, -100xxxxxxxxxx). None — алерты выключены.",
     )
-    admin_user_ids: list[int] = Field(
+    # ``NoDecode`` нужен, чтобы env-источник передал сырую строку нашему
+    # ``mode='before'`` валидатору, а не пытался сам JSON-парсить "" в list[int].
+    admin_user_ids: Annotated[list[int], NoDecode] = Field(
         default_factory=list,
         description="CSV-список Telegram ID администраторов. Пример: 12345,67890",
     )

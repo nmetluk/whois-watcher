@@ -7,14 +7,14 @@ from __future__ import annotations
 
 LOCALE: dict[str, str] = {
     # ------------------------------------------------------------------
-    # /start, /help
+    # /start, /help, /cancel
     # ------------------------------------------------------------------
     "start.greeting": (
         "👋 Hi! I track your domains and remind you about registration expiry.\n"
         "\n"
         "🔧 What I can do:\n"
-        "/whois <domain> — check WHOIS\n"
-        "/add <domain> — add to tracking\n"
+        "/whois &lt;domain&gt; — check WHOIS\n"
+        "/add &lt;domain&gt; — add to tracking\n"
         "/list — your domains\n"
         "/csv — export to CSV\n"
         "/download — bulk import\n"
@@ -25,7 +25,32 @@ LOCALE: dict[str, str] = {
         "\n"
         "🆓 The service is completely free."
     ),
-    "help.title": "📖 Help",
+    "help.body": (
+        "📖 <b>Help</b>\n"
+        "\n"
+        "<b>Domain lookup</b>\n"
+        "/whois &lt;domain&gt; — show WHOIS\n"
+        "/check &lt;domain&gt; — force refresh (once per day)\n"
+        "\n"
+        "<b>Tracking</b>\n"
+        "/add &lt;domain&gt; — add a domain\n"
+        "/rmv &lt;domain&gt; — remove a domain\n"
+        "/list — your list with pagination and filters\n"
+        "/notify &lt;domain&gt; — enable notifications\n"
+        "/unnotify &lt;domain&gt; — disable notifications\n"
+        "\n"
+        "<b>Import / export</b>\n"
+        "/csv — export your list as CSV\n"
+        "/download — bulk import from TXT/CSV\n"
+        "\n"
+        "<b>Other</b>\n"
+        "/settings — timezone, reminder time, language\n"
+        "/stats — portfolio statistics\n"
+        "/cancel — cancel current action\n"
+        "/delete_me — delete all data\n"
+        "\n"
+        "💡 Just send a domain — I'll show WHOIS without a command."
+    ),
     "cancel.done": "Cancelled.",
     "cancel.nothing": "Nothing to cancel.",
     # ------------------------------------------------------------------
@@ -40,30 +65,76 @@ LOCALE: dict[str, str] = {
     "button.raw": "📄 Raw response",
     "button.notify_on": "🔔 Turn back on",
     "button.cancel": "❌ Cancel",
+    "button.back": "◀️ Back",
     "button.privacy": "📜 Privacy policy",
     "button.github": "💻 GitHub",
+    "button.list_prev": "◀️ Prev",
+    "button.list_next": "Next ▶️",
+    "button.list_filter": "🔍 Filter",
+    "button.list_csv": "📥 CSV",
+    "button.filter_all": "All",
+    "button.filter_expiring": "Expiring (<30 days)",
+    "button.filter_no_data": "No data",
+    "button.filter_muted": "Muted",
+    "button.settings_timezone": "🌍 Timezone",
+    "button.settings_time": "🕘 Time",
+    "button.settings_days": "🔔 Reminder days",
+    "button.settings_language": "🌐 Language",
+    "button.tz_custom": "✏️ Enter manually",
+    "button.days_standard": "Standard (30, 7, 1)",
+    "button.days_often": "Often (60, 30, 14, 7, 3, 1)",
+    "button.days_last": "Only one day before (1)",
+    "button.days_custom": "✏️ Custom",
+    "button.lang_ru": "🇷🇺 Русский",
+    "button.lang_en": "🇬🇧 English",
+    "button.confirm_yes": "✅ Yes",
+    "button.confirm_no": "❌ Cancel",
+    "button.delete": "🗑 Delete",
+    "button.notify_settings": "⚙️ Notification settings",
+    "button.download_add": "✅ Add {count}",
+    "button.download_show_invalid": "📄 Show invalid",
     # ------------------------------------------------------------------
     # Errors
     # ------------------------------------------------------------------
     "errors.no_domain": "❌ Specify a domain. Example: /whois example.com",
     "errors.no_domain_with_list": (
-        "❌ Specify a domain. Example: /unnotify example.com\n" "To list your domains: /list"
+        "❌ Specify a domain. Example: /unnotify example.com\nTo list your domains: /list"
     ),
     "errors.invalid_domain": "❌ Doesn't look like a domain. Example: example.com",
     "errors.not_in_list": "❌ This domain is not being tracked",
     "errors.limit_reached": (
-        "❌ Reached the limit of {limit} domains. " "Remove unused ones via /rmv or /list."
+        "❌ Reached the limit of {limit} domains. Remove unused ones via /rmv or /list."
     ),
-    "errors.rate_limit": "❌ Too many requests. Try again in {minutes} minutes.",
+    "errors.rate_limit": "❌ Too many requests. Try again in {seconds} sec.",
     "errors.rate_limit_add": (
-        "❌ Too many requests. Try again in {minutes} minutes " "or use /download."
+        "❌ Too many requests. Try again in {minutes} minutes or use /download."
     ),
     "errors.force_refresh_cooldown": (
         "⏱ This domain can be manually refreshed once every {hours} hours. "
         "Automatic checks run on schedule."
     ),
     "errors.whois_unavailable": "❌ Could not fetch data. Try again later.",
-    "errors.whois_stale": ("⚠️ Data may be stale (last updated {days} day(s) ago)"),
+    "errors.whois_stale": "⚠️ Data may be stale (last updated {days} day(s) ago)",
+    "errors.invalid_timezone": "❌ Couldn't recognize the timezone. Example: Europe/Moscow",
+    "errors.invalid_notify_days": (
+        "❌ Couldn't parse. Enter days separated by space or comma, e.g.: 30 7 1"
+    ),
+    "errors.blocked": "❌ Access to the bot is restricted.",
+    # ------------------------------------------------------------------
+    # Stubs (stages 3-4)
+    # ------------------------------------------------------------------
+    "stubs.coming_soon": (
+        "🛠 The {command} command is temporarily unavailable.\n"
+        "WHOIS functionality is coming in the next bot updates."
+    ),
+    "stubs.coming_soon_download": (
+        "🛠 Bulk import is temporarily unavailable.\n"
+        "It will be available once WHOIS logic is wired in."
+    ),
+    "stubs.coming_soon_text": (
+        "💡 Looks like a domain, but WHOIS logic isn't wired in yet.\n"
+        "Use /help to see available commands."
+    ),
     # ------------------------------------------------------------------
     # /add
     # ------------------------------------------------------------------
@@ -94,7 +165,7 @@ LOCALE: dict[str, str] = {
     # /notify, /unnotify
     # ------------------------------------------------------------------
     "commands.notify.success": (
-        "🔔 Notifications for {domain} enabled\n" "I'll remind you {notify_days} before expiry."
+        "🔔 Notifications for {domain} enabled\nI'll remind you {notify_days} before expiry."
     ),
     "commands.unnotify.success": (
         "🔕 Notifications for {domain} disabled\n"
@@ -123,9 +194,7 @@ LOCALE: dict[str, str] = {
     # ------------------------------------------------------------------
     # /whois — free domain
     # ------------------------------------------------------------------
-    "commands.whois.free": (
-        "🌐 {domain} — not registered\n" "\n" "The domain is available for registration."
-    ),
+    "commands.whois.free": "🌐 {domain} — not registered\n\nThe domain is available for registration.",
     # ------------------------------------------------------------------
     # /stats
     # ------------------------------------------------------------------
@@ -155,6 +224,24 @@ LOCALE: dict[str, str] = {
         "🔔 Reminder days: {notify_days}\n"
         "🌐 Language: {language}"
     ),
+    "commands.settings.choose_timezone": "Pick a timezone or enter one manually:",
+    "commands.settings.tz_prompt_manual": (
+        "Enter an IANA timezone name (e.g. Europe/Moscow). Or /cancel to abort."
+    ),
+    "commands.settings.tz_saved": "✅ Timezone saved: {timezone}",
+    "commands.settings.choose_time": "Pick the hour to send reminders at:",
+    "commands.settings.time_saved": "✅ Reminder time: {hour:02d}:00",
+    "commands.settings.choose_days": (
+        "How many days before expiry to remind? Pick a preset or enter your own:"
+    ),
+    "commands.settings.days_prompt_custom": (
+        "Enter days separated by space or comma, e.g.: 60 30 14 7 3 1\nOr /cancel to abort."
+    ),
+    "commands.settings.days_saved": "✅ Reminder days: {notify_days}",
+    "commands.settings.choose_language": "Pick a language:",
+    "commands.settings.language_saved": "✅ Language saved: {language}",
+    "commands.settings.lang_ru_name": "Русский",
+    "commands.settings.lang_en_name": "English",
     # ------------------------------------------------------------------
     # /download
     # ------------------------------------------------------------------

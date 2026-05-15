@@ -11,6 +11,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from src.config.settings import get_settings
+from src.db.models import Base
 
 config = context.config
 
@@ -20,8 +21,9 @@ if config.config_file_name is not None:
 settings = get_settings()
 config.set_main_option("sqlalchemy.url", settings.postgres_dsn_sync)
 
-# target_metadata будет заменён на MetaData моделей на Этапе 1.
-target_metadata = None
+# Метаданные моделей — Alembic сравнивает с актуальной схемой БД
+# и подсказывает миграции при autogenerate.
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:

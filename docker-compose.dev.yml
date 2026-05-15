@@ -1,0 +1,51 @@
+name: whois-watcher
+
+# Override-файл для разработки.
+# Использование:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Или с профилем:
+#   docker compose --profile dev up
+
+services:
+  postgres:
+    ports:
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
+
+  redis:
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+
+  bot:
+    build:
+      target: runner
+    environment:
+      ENVIRONMENT: development
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ./src:/app/src
+      - ./migrations:/app/migrations
+      - ./alembic.ini:/app/alembic.ini:ro
+      - ./scripts:/app/scripts
+      - ./tests:/app/tests
+    command: ["python", "-m", "src.main"]
+
+  worker:
+    environment:
+      ENVIRONMENT: development
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ./src:/app/src
+      - ./migrations:/app/migrations
+      - ./alembic.ini:/app/alembic.ini:ro
+    command: ["python", "-m", "src.worker"]
+
+  scheduler:
+    environment:
+      ENVIRONMENT: development
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ./src:/app/src
+      - ./migrations:/app/migrations
+      - ./alembic.ini:/app/alembic.ini:ro
+    command: ["python", "-m", "src.worker", "--scheduler"]

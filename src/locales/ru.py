@@ -115,6 +115,7 @@ LOCALE: dict[str, str] = {
         "Авто-проверка идёт по расписанию."
     ),
     "errors.whois_unavailable": "❌ Не удалось получить данные. Попробуйте позже.",
+    "errors.whois_failed": "❌ Не удалось проверить {domain}: {reason}",
     "errors.whois_stale": "⚠️ Данные могут быть устаревшими (последнее обновление {days} дн. назад)",
     "errors.invalid_timezone": "❌ Не распознал часовой пояс. Пример: Europe/Moscow",
     "errors.invalid_notify_days": (
@@ -191,9 +192,25 @@ LOCALE: dict[str, str] = {
         "Спасибо, что пользовались ботом!"
     ),
     # ------------------------------------------------------------------
-    # /whois — свободный домен
+    # /whois — карточка домена
     # ------------------------------------------------------------------
+    "commands.whois.section_expiry": "📅 Срок действия",
+    "commands.whois.line_registered": "Зарегистрирован: {date}",
+    "commands.whois.line_expires": "Истекает: {date} ({days_until})",
+    "commands.whois.line_updated": "Обновлён: {date}",
+    "commands.whois.line_registrar": "🏢 Регистратор: {registrar}",
+    "commands.whois.section_status": "🔧 Статусы:",
+    "commands.whois.section_ns": "🌍 NS-серверы:",
+    "commands.whois.source_just_now": "ℹ️ Данные получены: только что",
+    "commands.whois.source_cached": "ℹ️ Данные из кэша, обновлены {ago}",
     "commands.whois.free": "🌐 {domain} — не зарегистрирован\n\nДомен свободен для регистрации.",
+    # ------------------------------------------------------------------
+    # /list — строка
+    # ------------------------------------------------------------------
+    "commands.list.row_known": "{emoji} {domain} — {days_until} ({date}){muted}",
+    "commands.list.row_unknown": "{emoji} {domain} — нет данных{muted}",
+    "commands.list.muted_suffix": " 🔕",
+    "commands.list.unknown_value": "—",
     # ------------------------------------------------------------------
     # /stats
     # ------------------------------------------------------------------

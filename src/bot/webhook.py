@@ -9,9 +9,9 @@ aiogram 3.x. Преимущества перед самописным эндпо
 
 Lifecycle:
 
-- ``on_startup``: ``bot.set_webhook`` (drop_pending=True) + установка
-  команд бота в меню Telegram (RU/EN)
-- ``on_shutdown``: ``bot.delete_webhook`` + закрытие сессий БД/Redis
+- ``on_startup``: ``bot.set_webhook`` (drop_pending=True) + установка команд
+  бота + создание ArqRedis-пула для постановки задач из хэндлеров
+- ``on_shutdown``: ``bot.delete_webhook`` + закрытие сессий БД/Redis/ArqRedis
 """
 
 from __future__ import annotations
@@ -22,18 +22,20 @@ from aiogram import Bot, Dispatcher
 from aiogram.types import BotCommandScopeDefault
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
+from arq import create_pool
 from redis.asyncio import Redis
 
 from src.bot.commands import COMMANDS_EN, COMMANDS_RU
 from src.config.settings import Settings
 from src.db.session import dispose_engine
+from src.tasks.arq_config import get_redis_settings
 
 logger = logging.getLogger(__name__)
 
 
 async def _health(request: web.Request) -> web.Response:
     """``GET /health`` — readiness/liveness probe."""
-    del request  # параметр обязателен сигнатурой aiohttp, но не используется
+    del request
     return web.json_response({"status": "ok"})
 
 
@@ -48,18 +50,20 @@ def create_app(
     app = web.Application()
     app.router.add_get("/health", _health)
 
-    # Регистрируем webhook-хендлер aiogram.
     SimpleRequestHandler(
         dispatcher=dp,
         bot=bot,
         secret_token=settings.webhook_secret.get_secret_value(),
     ).register(app, path=settings.webhook_path)
 
-    # ``setup_application`` подвешивает к aiohttp lifecycle-хуки aiogram:
-    # graceful shutdown сессий Bot и т. п.
     setup_application(app, dp, bot=bot)
 
     async def _on_startup(_app: web.Application) -> None:
+        # ArqRedis-пул создаётся здесь (нужен event loop). Кладём в DI-контейнер
+        # Dispatcher'а — хэндлерам доступен как параметр ``arq_redis``.
+        arq_redis = await create_pool(get_redis_settings())
+        dp["arq_redis"] = arq_redis
+
         webhook_url = settings.webhook_url
         await bot.set_webhook(
             url=webhook_url,
@@ -83,6 +87,9 @@ def create_app(
             await bot.delete_webhook(drop_pending_updates=False)
         except Exception:
             logger.exception("Failed to delete webhook on shutdown")
+        arq_redis = dp.get("arq_redis")
+        if arq_redis is not None:
+            await arq_redis.close()
         await redis.close()
         await dispose_engine()
         logger.info("Bot stopped gracefully")

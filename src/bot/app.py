@@ -13,6 +13,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
+from arq import ArqRedis
 from redis.asyncio import Redis
 
 from src.bot.handlers import ROUTERS
@@ -36,12 +37,15 @@ def create_dispatcher(
     settings: Settings,
     limits: Limits,
     redis: Redis[str],
+    arq_redis: ArqRedis | None = None,
 ) -> Dispatcher:
     """Собирает Dispatcher: MemoryStorage + middleware + роутеры.
 
-    Зависимости (``settings``, ``limits``, ``redis``) кладутся в
-    ``workflow_data`` — будут доступны хэндлерам через одноимённые
-    параметры.
+    Зависимости (``settings``, ``limits``, ``redis``, ``arq_redis``) кладутся
+    в ``workflow_data`` — будут доступны хэндлерам через одноимённые параметры.
+
+    ``arq_redis`` опционален: в проде это пул ARQ для постановки задач, в
+    тестах сборки Dispatcher достаточно None — задачи всё равно не дёргаем.
     """
     dp = Dispatcher(storage=MemoryStorage())
 
@@ -50,6 +54,7 @@ def create_dispatcher(
     dp["settings"] = settings
     dp["limits"] = limits
     dp["redis"] = redis
+    dp["arq_redis"] = arq_redis
 
     # Порядок middleware (см. docs/architecture.md → "Бот"):
     # 1. регистрация пользователя — должна быть первой, остальные читают user

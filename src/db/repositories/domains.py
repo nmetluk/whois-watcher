@@ -128,6 +128,81 @@ class DomainRepository(BaseRepository):
         # outerjoin делает WhoisCache опциональным на рантайме, но стабы об этом не знают
         return [(row[0], row[1]) for row in result.all()]
 
+    async def list_with_whois_filtered(
+        self,
+        user_id: int,
+        *,
+        filter_type: str = "all",
+        limit: int = 50,
+        offset: int = 0,
+        now: datetime | None = None,
+    ) -> tuple[list[tuple[UserDomain, WhoisCache | None]], int]:
+        """Версия ``list_with_whois`` с фильтрами (для ``/list``).
+
+        ``filter_type``:
+
+        - ``"all"``       — все домены пользователя
+        - ``"expiring"``  — ``expires_at`` в окне ближайших 30 дней
+        - ``"no_data"``   — ``whois_cache.expires_at IS NULL`` (или нет записи)
+        - ``"muted"``     — все 4 ``notify_*`` флага выключены
+
+        Возвращает ``(rows, total)`` — страница и общее количество под фильтром.
+        """
+        moment = now if now is not None else datetime.now(tz=UTC)
+        in_30 = moment + timedelta(days=30)
+
+        base = (
+            select(UserDomain, WhoisCache)
+            .outerjoin(WhoisCache, WhoisCache.domain == UserDomain.domain)
+            .where(UserDomain.user_id == user_id)
+        )
+        if filter_type == "expiring":
+            base = base.where(
+                WhoisCache.expires_at.is_not(None),
+                WhoisCache.expires_at <= in_30,
+            )
+        elif filter_type == "no_data":
+            base = base.where(WhoisCache.expires_at.is_(None))
+        elif filter_type == "muted":
+            base = base.where(
+                UserDomain.notify_expiry.is_(False),
+                UserDomain.notify_ns_change.is_(False),
+                UserDomain.notify_registrar_change.is_(False),
+                UserDomain.notify_status_change.is_(False),
+            )
+        # else: filter_type=="all" — никаких дополнительных WHERE.
+
+        # Считаем total отдельным запросом — пагинированный COUNT.
+        count_stmt = select(func.count()).select_from(base.subquery())
+        total_result = await self.session.execute(count_stmt)
+        total = int(total_result.scalar_one())
+
+        page_stmt = (
+            base.order_by(
+                WhoisCache.expires_at.asc().nulls_last(),
+                UserDomain.added_at.desc(),
+            )
+            .limit(limit)
+            .offset(offset)
+        )
+        result = await self.session.execute(page_stmt)
+        rows: list[tuple[UserDomain, WhoisCache | None]] = [
+            (row[0], row[1]) for row in result.all()
+        ]
+        return rows, total
+
+    async def get_subscribers_for_domain(self, domain: str) -> Sequence[UserDomain]:
+        """Все ``user_domains``-записи для домена (для followup'ов воркера).
+
+        Воркер ``check_domain`` после обновления кэша зовёт этот метод и шлёт
+        ``send_change_notice`` подписчикам. Метод НЕ фильтрует по флагам
+        уведомлений — это забота вызывающей стороны (разные типы изменений
+        смотрят разные флаги).
+        """
+        stmt = select(UserDomain).where(UserDomain.domain == domain)
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
     async def toggle_notifications(
         self,
         user_id: int,

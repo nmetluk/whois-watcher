@@ -114,6 +114,7 @@ LOCALE: dict[str, str] = {
         "Automatic checks run on schedule."
     ),
     "errors.whois_unavailable": "❌ Could not fetch data. Try again later.",
+    "errors.whois_failed": "❌ Could not check {domain}: {reason}",
     "errors.whois_stale": "⚠️ Data may be stale (last updated {days} day(s) ago)",
     "errors.invalid_timezone": "❌ Couldn't recognize the timezone. Example: Europe/Moscow",
     "errors.invalid_notify_days": (
@@ -192,9 +193,25 @@ LOCALE: dict[str, str] = {
         "Thanks for using the bot!"
     ),
     # ------------------------------------------------------------------
-    # /whois — free domain
+    # /whois — domain card
     # ------------------------------------------------------------------
+    "commands.whois.section_expiry": "📅 Expiry",
+    "commands.whois.line_registered": "Registered: {date}",
+    "commands.whois.line_expires": "Expires: {date} ({days_until})",
+    "commands.whois.line_updated": "Updated: {date}",
+    "commands.whois.line_registrar": "🏢 Registrar: {registrar}",
+    "commands.whois.section_status": "🔧 Statuses:",
+    "commands.whois.section_ns": "🌍 Nameservers:",
+    "commands.whois.source_just_now": "ℹ️ Fetched: just now",
+    "commands.whois.source_cached": "ℹ️ From cache, updated {ago}",
     "commands.whois.free": "🌐 {domain} — not registered\n\nThe domain is available for registration.",
+    # ------------------------------------------------------------------
+    # /list — row template
+    # ------------------------------------------------------------------
+    "commands.list.row_known": "{emoji} {domain} — {days_until} ({date}){muted}",
+    "commands.list.row_unknown": "{emoji} {domain} — no data{muted}",
+    "commands.list.muted_suffix": " 🔕",
+    "commands.list.unknown_value": "—",
     # ------------------------------------------------------------------
     # /stats
     # ------------------------------------------------------------------

@@ -20,6 +20,19 @@ class UserRepository(BaseRepository):
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_by_ids(self, user_ids: Sequence[int]) -> Sequence[User]:
+        """Пакетная выборка пользователей по нашему ``users.id``.
+
+        Используется задачами воркера (``check_domain`` followup): на входе —
+        ``user_id`` подписчиков, нужно достать ``telegram_id`` и ``language``
+        для рассылки. Пустой список — пустой результат, не SQL-запрос.
+        """
+        if not user_ids:
+            return []
+        stmt = select(User).where(User.id.in_(list(user_ids)))
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
     async def create(
         self,
         telegram_id: int,

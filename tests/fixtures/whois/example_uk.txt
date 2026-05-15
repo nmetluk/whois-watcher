@@ -1,0 +1,23 @@
+    Domain name:
+        example.co.uk
+
+    Registrant:
+        Internet Assigned Numbers Authority
+
+    Registrar:
+        Nominet UK
+
+    Relevant dates:
+        Registered on: before-Aug-1996
+        Expiry date: 06-Dec-2026
+        Last updated: 18-Aug-2024
+
+    Registration status:
+        Registered until expiry date.
+
+    Name servers:
+        a.iana-servers.net
+        b.iana-servers.net
+
+    DNSSEC:
+        Signed

@@ -1,0 +1,18 @@
+% By submitting a query to RIPN's Whois Service
+% you agree to abide by the following terms of use:
+% http://www.ripn.net/about/servpol.html#3.2 (in Russian)
+% http://www.ripn.net/about/en/servpol.html#3.2 (in English).
+
+domain:        EXAMPLE.RU
+nserver:       ns1.example.ru. 192.0.2.1
+nserver:       ns2.example.ru. 192.0.2.2
+state:         REGISTERED, DELEGATED, VERIFIED
+person:        Private Person
+registrar:     RU-CENTER-RU
+admin-contact: https://www.nic.ru/whois
+created:       2003-06-12T16:13:18Z
+paid-till:     2027-06-13T21:00:00Z
+free-date:     2027-07-14
+source:        TCI
+
+Last updated on 2026-05-15T10:30:15Z

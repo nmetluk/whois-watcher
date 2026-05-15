@@ -1,0 +1,15 @@
+% By submitting a query to RIPN's Whois Service you agree to abide by the following terms of use.
+
+domain:        XN--E1AFMKFD.XN--P1AI
+nserver:       ns1.example.com.
+nserver:       ns2.example.com.
+state:         REGISTERED, DELEGATED, VERIFIED
+org:           OOO "Example"
+registrar:     RU-CENTER-RU
+admin-contact: https://www.nic.ru/whois
+created:       2018-11-05T10:00:00Z
+paid-till:     2027-11-05T21:00:00Z
+free-date:     2027-12-06
+source:        TCI
+
+Last updated on 2026-05-15T11:15:30Z

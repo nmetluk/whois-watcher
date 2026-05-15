@@ -1,0 +1,15 @@
+Domain Name: example.io
+Registry Domain ID: D503300000040234567-LRMS
+Registrar WHOIS Server: whois.nic.io
+Registrar URL: https://nic.io
+Updated Date: 2025-02-11T13:22:08Z
+Creation Date: 2014-07-21T15:30:00Z
+Registry Expiry Date: 2027-07-21T15:30:00Z
+Registrar: Identity Digital
+Registrar IANA ID: 9999
+Domain Status: clientTransferProhibited https://icann.org/epp#clientTransferProhibited
+Name Server: ns1.example.io
+Name Server: ns2.example.io
+DNSSEC: unsigned
+URL of the ICANN Whois Inaccuracy Complaint Form: https://www.icann.org/wicf/
+>>> Last update of WHOIS database: 2026-05-15T11:00:00Z <<<

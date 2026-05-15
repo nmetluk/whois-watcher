@@ -62,11 +62,7 @@ class UserRepository(BaseRepository):
 
     async def touch_last_active(self, user_id: int) -> None:
         """Обновляет ``last_active_at = now()`` для пользователя."""
-        stmt = (
-            update(User)
-            .where(User.id == user_id)
-            .values(last_active_at=text("now()"))
-        )
+        stmt = update(User).where(User.id == user_id).values(last_active_at=text("now()"))
         await self.session.execute(stmt)
 
     async def delete(self, user_id: int) -> None:

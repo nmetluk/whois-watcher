@@ -40,9 +40,7 @@ class TestT:
         result = t("errors.no_domain", "fr")  # такого языка нет
         assert result == LOCALES[DEFAULT_LANG]["errors.no_domain"]
 
-    def test_missing_key_returns_key_and_warns(
-        self, caplog: logging.LogCaptureFixture
-    ) -> None:
+    def test_missing_key_returns_key_and_warns(self, caplog: logging.LogCaptureFixture) -> None:
         with caplog.at_level(logging.WARNING, logger="src.locales"):
             result = t("nonexistent.key.path", "ru")
         assert result == "nonexistent.key.path"

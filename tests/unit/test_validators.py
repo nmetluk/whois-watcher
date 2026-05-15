@@ -33,17 +33,17 @@ class TestIsValidDomain:
         [
             "",
             "   ",
-            "localhost",                    # без точки
-            "example",                      # без TLD
-            "-example.com",                 # дефис в начале
-            "example-.com",                 # дефис в конце label
-            "exa mple.com",                 # пробел
-            "user@example.com",             # email
-            "192.168.0.1",                  # IPv4
-            "2001:db8::1",                  # IPv6
-            "example.123",                  # TLD из цифр
-            ".example.com",                 # пустой первый label
-            "a" * 64 + ".com",              # label > 63
+            "localhost",  # без точки
+            "example",  # без TLD
+            "-example.com",  # дефис в начале
+            "example-.com",  # дефис в конце label
+            "exa mple.com",  # пробел
+            "user@example.com",  # email
+            "192.168.0.1",  # IPv4
+            "2001:db8::1",  # IPv6
+            "example.123",  # TLD из цифр
+            ".example.com",  # пустой первый label
+            "a" * 64 + ".com",  # label > 63
         ],
     )
     def test_invalid(self, domain: str) -> None:
@@ -66,9 +66,7 @@ class TestExtractDomainFromText:
         assert extract_domain_from_text("https://example.com/page") == "example.com"
 
     def test_inside_sentence(self) -> None:
-        result = extract_domain_from_text(
-            "Привет, проверь example.com для меня"
-        )
+        result = extract_domain_from_text("Привет, проверь example.com для меня")
         assert result == "example.com"
 
     def test_idn_extracted_as_punycode(self) -> None:
@@ -101,9 +99,9 @@ class TestLooksLikeJustDomain:
         [
             "",
             "   ",
-            "example.com is great",     # есть пробелы
-            "https://example.com",      # с протоколом — не "голый" домен
-            "проверь example.com",      # фраза
+            "example.com is great",  # есть пробелы
+            "https://example.com",  # с протоколом — не "голый" домен
+            "проверь example.com",  # фраза
             "не домен",
         ],
     )

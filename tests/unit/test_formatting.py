@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -18,7 +18,6 @@ from src.utils.formatting import (
     get_expiry_emoji,
 )
 
-UTC = timezone.utc
 NOW = datetime(2026, 5, 15, 12, 0, 0, tzinfo=UTC)
 
 
@@ -57,19 +56,19 @@ class TestFormatDaysUntilRu:
     )
     def test_plural(self, days_offset: int, expected_text_substring: str) -> None:
         target = NOW + timedelta(days=days_offset, hours=1)
-        days, text = format_days_until(target, lang="ru")
+        days, text = format_days_until(target, lang="ru", now=NOW)
         # из-за hours=1 ровно days_offset дней
         assert days == days_offset
         assert text == expected_text_substring
 
     def test_today(self) -> None:
         target = NOW + timedelta(hours=3)
-        _, text = format_days_until(target, lang="ru")
+        _, text = format_days_until(target, lang="ru", now=NOW)
         assert text == "сегодня"
 
     def test_past_ru(self) -> None:
         target = NOW - timedelta(days=3)
-        days, text = format_days_until(target, lang="ru")
+        days, text = format_days_until(target, lang="ru", now=NOW)
         assert days == -3
         assert "истёк" in text and "3 дня" in text
 
@@ -85,12 +84,12 @@ class TestFormatDaysUntilEn:
     )
     def test_plural(self, days_offset: int, expected: str) -> None:
         target = NOW + timedelta(days=days_offset, hours=1)
-        _, text = format_days_until(target, lang="en")
+        _, text = format_days_until(target, lang="en", now=NOW)
         assert text == expected
 
     def test_past_en(self) -> None:
         target = NOW - timedelta(days=1)
-        _, text = format_days_until(target, lang="en")
+        _, text = format_days_until(target, lang="en", now=NOW)
         assert text == "expired 1 day ago"
 
 

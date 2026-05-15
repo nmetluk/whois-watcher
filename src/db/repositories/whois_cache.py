@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import delete, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.engine import CursorResult
 
 from src.db.models import UserDomain, WhoisCache
 from src.db.repositories.base import BaseRepository
@@ -48,7 +49,7 @@ class WhoisCacheRepository(BaseRepository):
         # Перечитываем после upsert, чтобы получить заполненные дефолты и тип-конвертацию.
         await self.session.flush()
         refreshed = await self.session.get(WhoisCache, domain)
-        assert refreshed is not None  # noqa: S101 — invariant: только что вставили
+        assert refreshed is not None  # invariant: только что вставили
         return refreshed
 
     async def get_due_for_check(self, *, limit: int) -> Sequence[WhoisCache]:
@@ -75,7 +76,7 @@ class WhoisCacheRepository(BaseRepository):
         """
         subq = select(UserDomain.domain).distinct().scalar_subquery()
         stmt = delete(WhoisCache).where(WhoisCache.domain.not_in(subq))
-        result = await self.session.execute(stmt)
+        result = cast(CursorResult[Any], await self.session.execute(stmt))
         return result.rowcount or 0
 
     async def update_fail(

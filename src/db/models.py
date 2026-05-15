@@ -59,9 +59,7 @@ class User(Base):
         nullable=False,
         server_default="{30,7,1}",
     )
-    notify_at_hour: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default="9"
-    )
+    notify_at_hour: Mapped[int] = mapped_column(Integer, nullable=False, server_default="9")
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -69,9 +67,7 @@ class User(Base):
     last_active_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
-    is_blocked: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default="false"
-    )
+    is_blocked: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
 
     domains: Mapped[list[UserDomain]] = relationship(
         "UserDomain",
@@ -107,15 +103,9 @@ class UserDomain(Base):
     domain: Mapped[str] = mapped_column(Text, nullable=False)
 
     # NULL = берём notify_days из users
-    notify_days: Mapped[list[int] | None] = mapped_column(
-        ARRAY(Integer), nullable=True
-    )
-    notify_expiry: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default="true"
-    )
-    notify_ns_change: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default="false"
-    )
+    notify_days: Mapped[list[int] | None] = mapped_column(ARRAY(Integer), nullable=True)
+    notify_expiry: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    notify_ns_change: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     notify_registrar_change: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="true"
     )
@@ -177,9 +167,7 @@ class WhoisCache(Base):
     last_successful_fetch_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    next_check_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    next_check_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     fail_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)

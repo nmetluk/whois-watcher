@@ -47,28 +47,23 @@ LOCALE: dict[str, str] = {
     # ------------------------------------------------------------------
     "errors.no_domain": "❌ Specify a domain. Example: /whois example.com",
     "errors.no_domain_with_list": (
-        "❌ Specify a domain. Example: /unnotify example.com\n"
-        "To list your domains: /list"
+        "❌ Specify a domain. Example: /unnotify example.com\n" "To list your domains: /list"
     ),
     "errors.invalid_domain": "❌ Doesn't look like a domain. Example: example.com",
     "errors.not_in_list": "❌ This domain is not being tracked",
     "errors.limit_reached": (
-        "❌ Reached the limit of {limit} domains. "
-        "Remove unused ones via /rmv or /list."
+        "❌ Reached the limit of {limit} domains. " "Remove unused ones via /rmv or /list."
     ),
     "errors.rate_limit": "❌ Too many requests. Try again in {minutes} minutes.",
     "errors.rate_limit_add": (
-        "❌ Too many requests. Try again in {minutes} minutes "
-        "or use /download."
+        "❌ Too many requests. Try again in {minutes} minutes " "or use /download."
     ),
     "errors.force_refresh_cooldown": (
         "⏱ This domain can be manually refreshed once every {hours} hours. "
         "Automatic checks run on schedule."
     ),
     "errors.whois_unavailable": "❌ Could not fetch data. Try again later.",
-    "errors.whois_stale": (
-        "⚠️ Data may be stale (last updated {days} day(s) ago)"
-    ),
+    "errors.whois_stale": ("⚠️ Data may be stale (last updated {days} day(s) ago)"),
     # ------------------------------------------------------------------
     # /add
     # ------------------------------------------------------------------
@@ -99,8 +94,7 @@ LOCALE: dict[str, str] = {
     # /notify, /unnotify
     # ------------------------------------------------------------------
     "commands.notify.success": (
-        "🔔 Notifications for {domain} enabled\n"
-        "I'll remind you {notify_days} before expiry."
+        "🔔 Notifications for {domain} enabled\n" "I'll remind you {notify_days} before expiry."
     ),
     "commands.unnotify.success": (
         "🔕 Notifications for {domain} disabled\n"
@@ -130,9 +124,7 @@ LOCALE: dict[str, str] = {
     # /whois — free domain
     # ------------------------------------------------------------------
     "commands.whois.free": (
-        "🌐 {domain} — not registered\n"
-        "\n"
-        "The domain is available for registration."
+        "🌐 {domain} — not registered\n" "\n" "The domain is available for registration."
     ),
     # ------------------------------------------------------------------
     # /stats

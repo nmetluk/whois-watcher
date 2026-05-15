@@ -62,7 +62,7 @@ class Settings(BaseSettings):
         description="Секрет для X-Telegram-Bot-Api-Secret-Token.",
     )
     webhook_host: str = Field(
-        "0.0.0.0",  # noqa: S104 — слушаем все интерфейсы внутри docker-сети
+        "0.0.0.0",  # слушаем все интерфейсы внутри docker-сети
         description="Хост, на котором слушает внутренний webhook-сервер.",
     )
     webhook_port: int = Field(
@@ -173,4 +173,5 @@ def get_settings() -> Settings:
     Кешируется на уровне процесса. Для тестов можно вызвать
     ``get_settings.cache_clear()``.
     """
-    return Settings()  # type: ignore[call-arg] — обязательные поля берутся из env
+    # обязательные поля берутся из env через pydantic-settings
+    return Settings()

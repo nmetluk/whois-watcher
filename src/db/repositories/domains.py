@@ -106,7 +106,8 @@ class DomainRepository(BaseRepository):
             .offset(offset)
         )
         result = await self.session.execute(stmt)
-        return result.all()  # list[Row] → каждая Row даёт .tuple() автоматически в распаковке
+        # outerjoin делает WhoisCache опциональным на рантайме, но стабы об этом не знают
+        return [(row[0], row[1]) for row in result.all()]
 
     async def toggle_notifications(
         self,

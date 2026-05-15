@@ -5,14 +5,13 @@ description = "Telegram-бот для проверки WHOIS-данных дом
 authors = [
     { name = "Whois Watcher Contributors" },
 ]
-license = { text = "MIT" }
+license = "MIT"
 readme = "README.md"
 requires-python = ">=3.11,<4.0"
 keywords = ["telegram", "bot", "whois", "rdap", "domains", "monitoring"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: System Administrators",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -111,6 +110,9 @@ select = [
 ignore = [
     "E501",   # line length (handled by black)
     "B008",   # function calls in default args (FastAPI/aiogram pattern)
+    "RUF001", # ambiguous unicode in strings — bilingual project (RU/EN)
+    "RUF002", # ambiguous unicode in docstrings — bilingual project (RU/EN)
+    "RUF003", # ambiguous unicode in comments — bilingual project (RU/EN)
 ]
 
 [tool.ruff.lint.per-file-ignores]

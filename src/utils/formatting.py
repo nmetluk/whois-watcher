@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from src.utils.idn import from_punycode
 
 # Статус-эмодзи по дням до истечения (docs/commands.md → /list).
-EMOJI_OK = "🟢"           # > 30 дней
-EMOJI_WARNING = "🟡"      # 7–30 дней
-EMOJI_CRITICAL = "🔴"     # < 7 дней или истёк
-EMOJI_UNKNOWN = "⚫"      # нет данных
+EMOJI_OK = "🟢"  # > 30 дней
+EMOJI_WARNING = "🟡"  # 7–30 дней
+EMOJI_CRITICAL = "🔴"  # < 7 дней или истёк
+EMOJI_UNKNOWN = "⚫"  # нет данных
 
 
 def days_until(target: datetime, *, now: datetime | None = None) -> int:
@@ -19,7 +19,7 @@ def days_until(target: datetime, *, now: datetime | None = None) -> int:
     Отрицательное значение — домен уже истёк. ``now`` — для тестов;
     в проде используется ``datetime.now(timezone.utc)``.
     """
-    moment = now if now is not None else datetime.now(tz=timezone.utc)
+    moment = now if now is not None else datetime.now(tz=UTC)
     if target.tzinfo is None:
         raise ValueError("days_until: target must be timezone-aware")
     if moment.tzinfo is None:
@@ -28,13 +28,16 @@ def days_until(target: datetime, *, now: datetime | None = None) -> int:
     return delta.days
 
 
-def format_days_until(target: datetime, *, lang: str = "ru") -> tuple[int, str]:
+def format_days_until(
+    target: datetime, *, lang: str = "ru", now: datetime | None = None
+) -> tuple[int, str]:
     """Возвращает пару (дней, человекочитаемая строка).
 
     Локализация — на двух языках. Для RU используется упрощённое склонение:
     1 день / 2-4 дня / 5+ дней — точная плюрализация поддерживается.
+    ``now`` — для тестов; в проде используется ``datetime.now(timezone.utc)``.
     """
-    days = days_until(target)
+    days = days_until(target, now=now)
     if lang == "en":
         return days, _format_days_en(days)
     return days, _format_days_ru(days)

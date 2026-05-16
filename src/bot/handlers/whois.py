@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import io
 import logging
+from typing import Literal
 
 from aiogram import Router
 from aiogram.filters import Command, CommandObject
@@ -24,6 +25,7 @@ from src.db.session import get_session
 from src.locales import t
 from src.services.domains import DomainService
 from src.services.formatters import format_whois_response
+from src.services.formatters_full import build_full_text_from_cache_row
 from src.services.whois_facade import WhoisFacade
 from src.utils.idn import from_punycode
 
@@ -270,15 +272,18 @@ async def _force_refresh(
 
 
 async def _send_raw(message: Message, *, lang: str, domain: str) -> None:
-    """Кнопка «Полный ответ» — отдаём raw_data как .txt-файл."""
+    """Кнопка «Полный ответ» — отдаём комбинированный «человекочитаемая шапка +
+    raw source data» как .txt-файл (Этап 8).
+    """
     async with get_session() as session:
         cache_repo = WhoisCacheRepository(session)
         cached = await cache_repo.get(domain)
     if cached is None or not cached.raw_data:
         await message.answer(t("errors.whois_unavailable", lang))
         return
-    raw = cached.raw_data.get("raw_text") or str(cached.raw_data)
-    buffer = io.BytesIO(raw.encode("utf-8"))
+    file_lang: Literal["ru", "en"] = "en" if lang == "en" else "ru"
+    text = build_full_text_from_cache_row(cached, lang=file_lang)
+    buffer = io.BytesIO(text.encode("utf-8"))
     await message.answer_document(
         BufferedInputFile(buffer.getvalue(), filename=f"{domain}.whois.txt")
     )

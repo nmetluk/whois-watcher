@@ -283,4 +283,51 @@ LOCALE: dict[str, str] = {
         "✅ Added {count} domains.\n"
         "Data is being fetched in the background, check /list in a few minutes."
     ),
+    # ------------------------------------------------------------------
+    # Notifications (Stage 5)
+    # ------------------------------------------------------------------
+    "notifications.expiry.title": "⏰ Registration expires soon",
+    "notifications.expiry.body": (
+        "⏰ <b>{domain}</b>\n"
+        "\n"
+        "📅 Expires: {expires_at} (in {days_left})\n"
+        "🏢 Registrar: {registrar}\n"
+        "\n"
+        "Don't forget to renew."
+    ),
+    "notifications.expiry.button_renewed": "✅ Already renewed",
+    "notifications.expiry.button_mute": "🔕 Stop reminders for this domain",
+    "notifications.change.registrar": (
+        "🏢 <b>{domain}</b> — registrar changed\n\nWas: {old}\nNow: {new}"
+    ),
+    "notifications.change.ns": (
+        "🌍 <b>{domain}</b> — NS servers changed\n\nWas: {old}\nNow: {new}"
+    ),
+    "notifications.change.status": (
+        "🔧 <b>{domain}</b> — statuses changed\n\nWas: {old}\nNow: {new}"
+    ),
+    "notifications.change.expires_at": (
+        "📅 <b>{domain}</b> — expiry date changed\n\nWas: {old}\nNow: {new}"
+    ),
+    "notifications.change.button_open": "🌐 Open domain",
+    "notifications.change.unknown": "—",
+    "notifications.problem.title": "⚠️ Can't check {domain}",
+    "notifications.problem.body": (
+        "⚠️ <b>{domain}</b>\n"
+        "\n"
+        "Can't refresh WHOIS data.\n"
+        "Last successful check: {last_ok}\n"
+        "Last known expiry: {expires_at}\n"
+        "\n"
+        "Try manually or verify that the domain is still active."
+    ),
+    "notifications.problem.button_retry": "🔄 Retry now",
+    "notifications.problem.button_mute": "🔕 Mute problem alerts",
+    "notifications.ack.muted": "🔕 Notifications for this domain are off",
+    "notifications.ack.refresh_started": "🔄 Refresh started",
+    "notifications.ack.no_access": "❌ This domain isn't in your list",
+    "notifications.value.unknown": "—",
+    "notifications.value.never": "never",
+    "notify.on": "🔔 Notifications for {domain} enabled",
+    "notify.off": "🔕 Notifications for {domain} disabled",
 }

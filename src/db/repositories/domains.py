@@ -77,6 +77,26 @@ class DomainRepository(BaseRepository):
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none() is not None
 
+    async def get_for_user(self, user_id: int, domain: str) -> UserDomain | None:
+        """Возвращает строку ``user_domains`` для конкретной пары или None.
+
+        Нужна задачам уведомлений: перед send_message проверяем актуальные
+        флаги ``notify_*`` и ``last_problem_notified_at`` — на момент рассылки
+        пользователь мог уже выключить уведомления.
+        """
+        stmt = select(UserDomain).where(UserDomain.user_id == user_id, UserDomain.domain == domain)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def mark_problem_notified(self, user_id: int, domain: str, *, at: datetime) -> None:
+        """Проставляет ``last_problem_notified_at`` после отправки problem-уведомления."""
+        stmt = (
+            update(UserDomain)
+            .where(and_(UserDomain.user_id == user_id, UserDomain.domain == domain))
+            .values(last_problem_notified_at=at)
+        )
+        await self.session.execute(stmt)
+
     async def count_by_user(self, user_id: int) -> int:
         """Количество доменов в портфеле."""
         stmt = select(func.count()).select_from(UserDomain).where(UserDomain.user_id == user_id)

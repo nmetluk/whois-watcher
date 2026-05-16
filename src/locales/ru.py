@@ -284,4 +284,51 @@ LOCALE: dict[str, str] = {
         "✅ Добавлено {count} доменов.\n"
         "Данные подгружаются в фоне, проверьте /list через несколько минут."
     ),
+    # ------------------------------------------------------------------
+    # Уведомления (Этап 5)
+    # ------------------------------------------------------------------
+    "notifications.expiry.title": "⏰ Скоро истечёт регистрация",
+    "notifications.expiry.body": (
+        "⏰ <b>{domain}</b>\n"
+        "\n"
+        "📅 Истекает: {expires_at} (через {days_left})\n"
+        "🏢 Регистратор: {registrar}\n"
+        "\n"
+        "Не забудьте продлить."
+    ),
+    "notifications.expiry.button_renewed": "✅ Уже продлил",
+    "notifications.expiry.button_mute": "🔕 Не напоминать про этот домен",
+    "notifications.change.registrar": (
+        "🏢 <b>{domain}</b> — сменился регистратор\n\nБыло: {old}\nСтало: {new}"
+    ),
+    "notifications.change.ns": (
+        "🌍 <b>{domain}</b> — сменились NS-серверы\n\nБыло: {old}\nСтало: {new}"
+    ),
+    "notifications.change.status": (
+        "🔧 <b>{domain}</b> — изменились статусы\n\nБыло: {old}\nСтало: {new}"
+    ),
+    "notifications.change.expires_at": (
+        "📅 <b>{domain}</b> — изменилась дата истечения\n\nБыло: {old}\nСтало: {new}"
+    ),
+    "notifications.change.button_open": "🌐 Открыть домен",
+    "notifications.change.unknown": "—",
+    "notifications.problem.title": "⚠️ Не удаётся проверить {domain}",
+    "notifications.problem.body": (
+        "⚠️ <b>{domain}</b>\n"
+        "\n"
+        "Не получается обновить WHOIS-данные.\n"
+        "Последняя успешная проверка: {last_ok}\n"
+        "Известная дата истечения: {expires_at}\n"
+        "\n"
+        "Попробуйте ещё раз вручную или проверьте, что домен ещё активен."
+    ),
+    "notifications.problem.button_retry": "🔄 Попробовать сейчас",
+    "notifications.problem.button_mute": "🔕 Не уведомлять о проблемах",
+    "notifications.ack.muted": "🔕 Уведомления для этого домена выключены",
+    "notifications.ack.refresh_started": "🔄 Запустил повторную проверку",
+    "notifications.ack.no_access": "❌ Этот домен не в вашем списке",
+    "notifications.value.unknown": "—",
+    "notifications.value.never": "никогда",
+    "notify.on": "🔔 Уведомления для {domain} включены",
+    "notify.off": "🔕 Уведомления для {domain} выключены",
 }

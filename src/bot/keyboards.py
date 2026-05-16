@@ -76,6 +76,19 @@ class DownloadAction(CallbackData, prefix="dl"):
     action: str  # "add" | "cancel" | "show_invalid"
 
 
+class NotifyAction(CallbackData, prefix="notif"):
+    """Действия из карточек уведомлений (Этап 5).
+
+    - ``refresh`` — принудительная WHOIS-проверка домена (используется в
+      «Уже продлил» и «Попробовать сейчас»).
+    - ``mute``    — выключить все 4 типа уведомлений для домена (ADR 015).
+    - ``enable``  — обратное к ``mute``: вернуть дефолтные флаги.
+    """
+
+    action: str  # "refresh" | "mute" | "enable"
+    domain: str
+
+
 # ---------------------------------------------------------------------------
 # Готовые клавиатуры
 # ---------------------------------------------------------------------------
@@ -318,6 +331,56 @@ def confirm_delete(domain: str, lang: str) -> InlineKeyboardMarkup:
         callback_data=ConfirmAction(action="delete_domain", target=domain, answer="no").pack(),
     )
     builder.adjust(2)
+    return builder.as_markup()
+
+
+def expiry_notification(domain: str, *, lang: str) -> InlineKeyboardMarkup:
+    """Кнопки под напоминанием об истечении (Этап 5)."""
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text=t("notifications.expiry.button_renewed", lang),
+        callback_data=NotifyAction(action="refresh", domain=domain).pack(),
+    )
+    builder.button(
+        text=t("notifications.expiry.button_mute", lang),
+        callback_data=NotifyAction(action="mute", domain=domain).pack(),
+    )
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def change_notification(domain: str, *, lang: str) -> InlineKeyboardMarkup:
+    """Кнопка «Открыть домен» под уведомлением о смене данных."""
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text=t("notifications.change.button_open", lang),
+        callback_data=NotifyAction(action="refresh", domain=domain).pack(),
+    )
+    return builder.as_markup()
+
+
+def problem_notification(domain: str, *, lang: str) -> InlineKeyboardMarkup:
+    """Кнопки под уведомлением о длительных проблемах с WHOIS."""
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text=t("notifications.problem.button_retry", lang),
+        callback_data=NotifyAction(action="refresh", domain=domain).pack(),
+    )
+    builder.button(
+        text=t("notifications.problem.button_mute", lang),
+        callback_data=NotifyAction(action="mute", domain=domain).pack(),
+    )
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def notify_enable_button(domain: str, *, lang: str) -> InlineKeyboardMarkup:
+    """Кнопка «🔔 Включить обратно» под ответом на /unnotify."""
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text=t("button.notify_on", lang),
+        callback_data=NotifyAction(action="enable", domain=domain).pack(),
+    )
     return builder.as_markup()
 
 

@@ -20,6 +20,7 @@ import logging
 import idna
 
 from src.config.limits import Limits, get_limits
+from src.config.settings import get_settings
 from src.utils.idn import normalize_domain
 from src.whois.parser import parse_rdap, parse_whois_text
 from src.whois.rdap import query_rdap
@@ -72,7 +73,11 @@ async def lookup_domain(domain: str, *, limits: Limits | None = None) -> WhoisRe
 
     # --- WHOIS:43 fallback ---
     try:
-        raw_text = await query_whois(normalized, timeout=timeout)
+        raw_text = await query_whois(
+            normalized,
+            server_overrides=get_settings().whois_server_overrides,
+            timeout=timeout,
+        )
     except TimeoutError:
         return WhoisError(domain=normalized, error_type="timeout", message="WHOIS:43 timeout")
     except WhoisProtocolError as exc:

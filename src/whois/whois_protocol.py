@@ -103,19 +103,32 @@ async def query_whois(
     domain: str,
     *,
     server: str | None = None,
+    server_overrides: dict[str, str] | None = None,
     timeout: float,
 ) -> str:
     """Делает WHOIS-запрос на 43 порт и возвращает декодированный текст.
 
-    Если ``server`` не задан — ищет по ``WHOIS_SERVERS``, при отсутствии —
-    спрашивает у IANA. ``WhoisProtocolError`` — если ни один путь не дал
-    сервер или соединение не удалось.
+    Приоритет выбора сервера:
+
+    1. Явный ``server`` (программное намерение, в т.ч. тесты).
+    2. ``server_overrides[tld]`` (конфиг через env — обход недоступных серверов).
+    3. ``WHOIS_SERVERS[tld]`` (встроенный mapping).
+    4. IANA discovery.
+
+    ``WhoisProtocolError`` — если ни один путь не дал сервер или соединение
+    не удалось. Ключи в ``server_overrides`` должны быть в lowercase
+    (валидатор Settings уже это гарантирует).
     """
-    target = server or WHOIS_SERVERS.get(_tld_of(domain))
+    tld = _tld_of(domain)
+    target = server
+    if target is None and server_overrides is not None:
+        target = server_overrides.get(tld)
+    if target is None:
+        target = WHOIS_SERVERS.get(tld)
     if target is None:
         target = await _resolve_via_iana(domain, timeout=timeout)
     if target is None:
-        raise WhoisProtocolError(f"No WHOIS server known for .{_tld_of(domain)}")
+        raise WhoisProtocolError(f"No WHOIS server known for .{tld}")
     return await _query(host=target, query=domain, timeout=timeout)
 
 

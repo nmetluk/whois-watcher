@@ -5,6 +5,49 @@ If a key is missing here, the locale resolver falls back to ``ru``.
 
 from __future__ import annotations
 
+from src.locales.ru import StatusSeverity
+
+# WHOIS status code → (severity, English text, emoji_override). See ru.py for
+# the schema; this table mirrors the keys but with English translations.
+WHOIS_STATUSES: dict[str, tuple[StatusSeverity, str, str | None]] = {
+    "ok": ("normal", "Active", "🟢"),
+    "active": ("normal", "Active", "🟢"),
+    "inactive": ("warning", "Not active", "🟡"),
+    "clientTransferProhibited": ("info", "Transfer locked (registrar)", "🔒"),
+    "clientUpdateProhibited": ("info", "Updates locked (registrar)", "🔒"),
+    "clientDeleteProhibited": ("info", "Delete locked (registrar)", "🔒"),
+    "clientHold": ("critical", "On hold by registrar", "🚨"),
+    "clientRenewProhibited": ("info", "Auto-renew disabled by registrar", "🔒"),
+    "serverTransferProhibited": ("info", "Transfer locked (registry)", "🔒"),
+    "serverUpdateProhibited": ("info", "Updates locked (registry)", "🔒"),
+    "serverDeleteProhibited": ("info", "Delete locked (registry)", "🔒"),
+    "serverRenewProhibited": ("info", "Renew locked (registry)", "🔒"),
+    "serverHold": ("critical", "On hold by registry", "🚨"),
+    "pendingCreate": ("info", "Registration pending", "🕘"),
+    "pendingDelete": ("critical", "Pending delete — will be removed soon", "⏳"),
+    "pendingTransfer": ("warning", "Transfer pending", "🔄"),
+    "pendingUpdate": ("info", "Update pending", "🕘"),
+    "pendingRenew": ("info", "Renewal pending", "🕘"),
+    "pendingRestore": ("warning", "Restore pending", "🔄"),
+    "redemptionPeriod": ("warning", "Redemption period", "⚠️"),
+    "addPeriod": ("info", "Add grace period", "📅"),
+    "autoRenewPeriod": ("info", "Auto-renew grace period", "📅"),
+    "renewPeriod": ("info", "Renew grace period", "📅"),
+    "transferPeriod": ("info", "Transfer grace period", "📅"),
+    "REGISTERED": ("normal", "Registered", None),
+    "DELEGATED": ("normal", "Delegated", None),
+    "VERIFIED": ("normal", "Verified", None),
+    "NOT DELEGATED": ("warning", "Not delegated", "⚠️"),
+    "BLOCKED": ("critical", "Blocked", "🚨"),
+    "connect": ("normal", "Connected", "🟢"),
+    "failed": ("critical", "Delegation failed", "🚨"),
+    "free": ("info", "Free", None),
+    "ACTIVE": ("normal", "Active", "🟢"),
+    "REDEMPTION": ("warning", "Redemption period", "⚠️"),
+    "FROZEN": ("warning", "Frozen", "⚠️"),
+}
+
+
 LOCALE: dict[str, str] = {
     # ------------------------------------------------------------------
     # /start, /help, /cancel
@@ -200,6 +243,13 @@ LOCALE: dict[str, str] = {
     "commands.whois.line_expires": "Expires: {date} ({days_until})",
     "commands.whois.line_updated": "Updated: {date}",
     "commands.whois.line_registrar": "🏢 Registrar: {registrar}",
+    "commands.whois.line_owner": "👤 Owner: {owner}",
+    "commands.whois.owner_org": "{org} ({country})",
+    "commands.whois.owner_org_no_country": "{org}",
+    "commands.whois.owner_name": "{name} ({country})",
+    "commands.whois.owner_name_no_country": "{name}",
+    "commands.whois.owner_redacted_private": "Private individual (hidden)",
+    "commands.whois.owner_redacted_privacy": "Hidden (privacy protected)",
     "commands.whois.section_status": "🔧 Statuses:",
     "commands.whois.section_ns": "🌍 Nameservers:",
     "commands.whois.source_just_now": "ℹ️ Fetched: just now",
@@ -373,6 +423,13 @@ LOCALE: dict[str, str] = {
     "notifications.change.expires_at": (
         "📅 <b>{domain}</b> — expiry date changed\n\nWas: {old}\nNow: {new}"
     ),
+    "notifications.change.registrant": (
+        "👤 <b>{domain}</b> — owner changed\n\nWas: {old}\nNow: {new}"
+    ),
+    "notifications.change.privacy_revealed": (
+        "👤 <b>{domain}</b> — owner data revealed\n\nNow: {new}"
+    ),
+    "notifications.change.privacy_hidden": ("👤 <b>{domain}</b> — owner data hidden\n\nWas: {old}"),
     "notifications.change.button_open": "🌐 Open domain",
     "notifications.change.unknown": "—",
     "notifications.problem.title": "⚠️ Can't check {domain}",

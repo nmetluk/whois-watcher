@@ -6,6 +6,62 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
+# Severity статуса домена — определяет цвет/эмодзи в карточке и сортировку.
+StatusSeverity = Literal["normal", "info", "warning", "critical"]
+
+
+# Перевод WHOIS-статусов: код → (severity, человеческий текст, emoji_override).
+# ``emoji_override=None`` → форматтер использует дефолтный эмодзи по severity.
+#
+# Перекрывает три семейства:
+#   • EPP (RFC 5731) gTLD-статусы — самая частая категория
+#   • TCINET (.ru / .рф) — английскими словами, но другой набор
+#   • DENIC (.de), AFNIC (.fr) — нестандартные служебные ярлыки
+WHOIS_STATUSES: dict[str, tuple[StatusSeverity, str, str | None]] = {
+    # ---- EPP gTLD -----------------------------------------------------
+    "ok": ("normal", "Активен", "🟢"),
+    "active": ("normal", "Активен", "🟢"),
+    "inactive": ("warning", "Не активен", "🟡"),
+    "clientTransferProhibited": ("info", "Защищён от трансфера", "🔒"),
+    "clientUpdateProhibited": ("info", "Защищён от изменений", "🔒"),
+    "clientDeleteProhibited": ("info", "Защищён от удаления", "🔒"),
+    "clientHold": ("critical", "Заблокирован регистратором", "🚨"),
+    "clientRenewProhibited": ("info", "Защищён от автопродления", "🔒"),
+    "serverTransferProhibited": ("info", "Защищён от трансфера (реестр)", "🔒"),
+    "serverUpdateProhibited": ("info", "Защищён реестром от изменений", "🔒"),
+    "serverDeleteProhibited": ("info", "Защищён реестром от удаления", "🔒"),
+    "serverRenewProhibited": ("info", "Реестр запрещает продление", "🔒"),
+    "serverHold": ("critical", "Заблокирован реестром", "🚨"),
+    "pendingCreate": ("info", "Регистрация в процессе", "🕘"),
+    "pendingDelete": ("critical", "Скоро будет удалён", "⏳"),
+    "pendingTransfer": ("warning", "В процессе трансфера", "🔄"),
+    "pendingUpdate": ("info", "В процессе изменения", "🕘"),
+    "pendingRenew": ("info", "В процессе продления", "🕘"),
+    "pendingRestore": ("warning", "В процессе восстановления", "🔄"),
+    "redemptionPeriod": ("warning", "В периоде восстановления", "⚠️"),
+    "addPeriod": ("info", "Период добавления", "📅"),
+    "autoRenewPeriod": ("info", "Период автопродления", "📅"),
+    "renewPeriod": ("info", "Период продления", "📅"),
+    "transferPeriod": ("info", "Период трансфера", "📅"),
+    # ---- TCINET (.ru / .рф / .su) ------------------------------------
+    "REGISTERED": ("normal", "Зарегистрирован", None),
+    "DELEGATED": ("normal", "Делегирован", None),
+    "VERIFIED": ("normal", "Верифицирован", None),
+    "NOT DELEGATED": ("warning", "Не делегирован", "⚠️"),
+    "BLOCKED": ("critical", "Заблокирован", "🚨"),
+    # ---- DENIC (.de) -------------------------------------------------
+    "connect": ("normal", "Подключён", "🟢"),
+    "failed": ("critical", "Ошибка делегирования", "🚨"),
+    "free": ("info", "Свободен", None),
+    # ---- AFNIC (.fr) -------------------------------------------------
+    "ACTIVE": ("normal", "Активен", "🟢"),
+    "REDEMPTION": ("warning", "В периоде восстановления", "⚠️"),
+    "FROZEN": ("warning", "Заморожен", "⚠️"),
+}
+
+
 LOCALE: dict[str, str] = {
     # ------------------------------------------------------------------
     # /start, /help, /cancel
@@ -199,6 +255,13 @@ LOCALE: dict[str, str] = {
     "commands.whois.line_expires": "Истекает: {date} ({days_until})",
     "commands.whois.line_updated": "Обновлён: {date}",
     "commands.whois.line_registrar": "🏢 Регистратор: {registrar}",
+    "commands.whois.line_owner": "👤 Владелец: {owner}",
+    "commands.whois.owner_org": "{org} ({country})",
+    "commands.whois.owner_org_no_country": "{org}",
+    "commands.whois.owner_name": "{name} ({country})",
+    "commands.whois.owner_name_no_country": "{name}",
+    "commands.whois.owner_redacted_private": "Скрыт (физ.лицо)",
+    "commands.whois.owner_redacted_privacy": "Скрыт (приватность)",
     "commands.whois.section_status": "🔧 Статусы:",
     "commands.whois.section_ns": "🌍 NS-серверы:",
     "commands.whois.source_just_now": "ℹ️ Данные получены: только что",
@@ -373,6 +436,15 @@ LOCALE: dict[str, str] = {
     ),
     "notifications.change.expires_at": (
         "📅 <b>{domain}</b> — изменилась дата истечения\n\nБыло: {old}\nСтало: {new}"
+    ),
+    "notifications.change.registrant": (
+        "👤 <b>{domain}</b> — изменился владелец\n\nБыло: {old}\nСтало: {new}"
+    ),
+    "notifications.change.privacy_revealed": (
+        "👤 <b>{domain}</b> — владелец раскрыл данные\n\nТеперь: {new}"
+    ),
+    "notifications.change.privacy_hidden": (
+        "👤 <b>{domain}</b> — владелец скрыл данные\n\nБыло: {old}"
     ),
     "notifications.change.button_open": "🌐 Открыть домен",
     "notifications.change.unknown": "—",

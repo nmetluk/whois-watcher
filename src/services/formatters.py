@@ -14,7 +14,8 @@ from src.db.models import UserDomain, WhoisCache
 from src.locales import t
 from src.utils.formatting import format_date, format_days_until, get_expiry_emoji
 from src.utils.idn import from_punycode
-from src.whois.types import WhoisData
+from src.whois.status_format import format_statuses
+from src.whois.types import WhoisContact, WhoisData
 
 
 def _display_domain(domain_punycode: str) -> str:
@@ -85,13 +86,20 @@ def format_whois_response(
         )
         sections.append("")
 
-    if data.status:
-        status_lines = [t("commands.whois.section_status", lang)]
-        for item in data.status:
-            status_lines.append(f"├ <code>{html.escape(item)}</code>")
-        status_lines = _fix_tree_endings(status_lines)
-        sections.append("\n".join(status_lines))
+    owner_line = _format_owner_line(data.registrant, lang=lang)
+    if owner_line is not None:
+        sections.append(owner_line)
         sections.append("")
+
+    if data.status:
+        formatted = format_statuses(data.status, lang="en" if lang == "en" else "ru")
+        if formatted:
+            status_lines = [t("commands.whois.section_status", lang)]
+            for item in formatted:
+                status_lines.append(f"├ {item.emoji} {html.escape(item.text)}")
+            status_lines = _fix_tree_endings(status_lines)
+            sections.append("\n".join(status_lines))
+            sections.append("")
 
     if data.name_servers:
         ns_lines = [t("commands.whois.section_ns", lang)]
@@ -171,6 +179,66 @@ def format_add_success(
 # ---------------------------------------------------------------------------
 # Внутреннее
 # ---------------------------------------------------------------------------
+
+
+def _format_owner_line(contact: WhoisContact | None, *, lang: str) -> str | None:
+    """Возвращает готовую строку «👤 Владелец: …» или ``None`` если нечего показать.
+
+    Логика:
+
+    - есть organization → ``ООО "Пример" (RU)`` или без страны
+    - нет org, но есть name → имя как organization
+    - is_redacted И «Private Person» в name → ``Скрыт (физ.лицо)``
+    - is_redacted без явного имени → ``Скрыт (приватность)``
+    - совсем нет данных → секцию скрываем (возвращаем None)
+    """
+    if contact is None:
+        return None
+
+    if contact.organization:
+        owner = (
+            t(
+                "commands.whois.owner_org",
+                lang,
+                org=html.escape(contact.organization),
+                country=html.escape(contact.country),
+            )
+            if contact.country
+            else t(
+                "commands.whois.owner_org_no_country",
+                lang,
+                org=html.escape(contact.organization),
+            )
+        )
+        return t("commands.whois.line_owner", lang, owner=owner)
+
+    if contact.name and not contact.is_redacted:
+        owner = (
+            t(
+                "commands.whois.owner_name",
+                lang,
+                name=html.escape(contact.name),
+                country=html.escape(contact.country),
+            )
+            if contact.country
+            else t(
+                "commands.whois.owner_name_no_country",
+                lang,
+                name=html.escape(contact.name),
+            )
+        )
+        return t("commands.whois.line_owner", lang, owner=owner)
+
+    if contact.is_redacted:
+        # «Private Person» в .ru / .su / .рф → подсказать что это физ.лицо.
+        name_lower = (contact.name or "").lower().strip()
+        if "private person" in name_lower:
+            owner = t("commands.whois.owner_redacted_private", lang)
+        else:
+            owner = t("commands.whois.owner_redacted_privacy", lang)
+        return t("commands.whois.line_owner", lang, owner=owner)
+
+    return None
 
 
 def _is_muted(domain: UserDomain) -> bool:

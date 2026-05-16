@@ -83,20 +83,39 @@ def _tld_of(domain: str) -> str:
     return domain.rsplit(".", 1)[-1].lower() if "." in domain else domain.lower()
 
 
+_IANA_DISCOVERY_TIMEOUT_SECONDS = 5.0
+
+# IANA отдаёт WHOIS-сервер TLD под разными ключами в зависимости от записи:
+# - ``refer:`` — самый распространённый (gTLD: .com, .info, .org)
+# - ``whois:`` — встречается у ccTLD (.us, .me и ряд других)
+# Регэксп берёт первое попавшееся; если в одном ответе оба ключа, мы
+# приоритизируем ``refer:`` отдельным проходом (см. ниже).
+_IANA_REFER_RE = re.compile(r"^refer:\s*(\S+)", re.MULTILINE | re.IGNORECASE)
+_IANA_WHOIS_RE = re.compile(r"^whois:\s*(\S+)", re.MULTILINE | re.IGNORECASE)
+
+
 async def _resolve_via_iana(domain: str, *, timeout: float) -> str | None:
     """Спрашивает у IANA, на каком сервере искать WHOIS этого TLD.
 
-    IANA на запрос ``<tld>\\r\\n`` отдаёт текст с полем ``refer: <hostname>``.
-    Если поля нет — возвращаем None.
+    IANA на запрос ``<tld>\\r\\n`` отдаёт текст с полем ``refer: <hostname>``
+    (gTLD) или ``whois: <hostname>`` (ccTLD типа .us/.me). Проверяем оба,
+    ``refer:`` приоритетнее.
+
+    Таймаут на эту операцию ограничен 5 секундами независимо от глобального
+    ``timeout`` — IANA отвечает быстро, и долго ждать смысла нет.
     """
     tld = _tld_of(domain)
+    iana_timeout = min(timeout, _IANA_DISCOVERY_TIMEOUT_SECONDS)
     try:
-        text = await _query(host=IANA_WHOIS_SERVER, query=tld, timeout=timeout)
+        text = await _query(host=IANA_WHOIS_SERVER, query=tld, timeout=iana_timeout)
     except WhoisProtocolError as exc:
         logger.debug("IANA whois discovery failed for .%s: %s", tld, exc)
         return None
-    m = re.search(r"^refer:\s*(\S+)", text, re.MULTILINE | re.IGNORECASE)
-    return m.group(1).strip() if m else None
+    m = _IANA_REFER_RE.search(text) or _IANA_WHOIS_RE.search(text)
+    if m is None:
+        logger.debug("IANA whois discovery for .%s: no refer:/whois: line", tld)
+        return None
+    return m.group(1).strip()
 
 
 async def query_whois(

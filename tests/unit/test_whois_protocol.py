@@ -125,3 +125,85 @@ class TestQueryWhoisIanaDiscovery:
 
         with pytest.raises(whois_protocol.WhoisProtocolError, match="No WHOIS server"):
             await whois_protocol.query_whois("domain.exotic", timeout=5.0)
+
+
+class TestResolveViaIana:
+    """Юнит-тесты для ``_resolve_via_iana`` (gTLD ``refer:``, ccTLD ``whois:``)."""
+
+    async def test_parses_refer_line(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        async def fake_query(*, host: str, query: str, timeout: float) -> str:
+            del host, query, timeout
+            return (
+                "% IANA WHOIS server\n"
+                "% for more information on IANA, visit http://www.iana.org\n"
+                "\n"
+                "refer:        whois.nic.info\n"
+                "domain:       INFO\n"
+            )
+
+        monkeypatch.setattr(whois_protocol, "_query", fake_query)
+        result = await whois_protocol._resolve_via_iana("foo.info", timeout=10.0)
+        assert result == "whois.nic.info"
+
+    async def test_parses_whois_line_for_ccTLD(  # — phrasing matches doc
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """ccTLD (.us) IANA отдаёт через ``whois:``, а не ``refer:``."""
+
+        async def fake_query(*, host: str, query: str, timeout: float) -> str:
+            del host, query, timeout
+            return (
+                "% IANA WHOIS server\n"
+                "domain:       US\n"
+                "organisation: NeuStar, Inc.\n"
+                "nserver:      A.CCTLD.US\n"
+                "\n"
+                "whois:        whois.nic.us\n"
+                "\n"
+                "status:       ACTIVE\n"
+                "source:       IANA\n"
+            )
+
+        monkeypatch.setattr(whois_protocol, "_query", fake_query)
+        result = await whois_protocol._resolve_via_iana("example.us", timeout=10.0)
+        assert result == "whois.nic.us"
+
+    async def test_refer_takes_precedence_over_whois(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        async def fake_query(*, host: str, query: str, timeout: float) -> str:
+            del host, query, timeout
+            return "refer: whois.preferred.example\nwhois: whois.other.example\n"
+
+        monkeypatch.setattr(whois_protocol, "_query", fake_query)
+        result = await whois_protocol._resolve_via_iana("foo.bar", timeout=10.0)
+        assert result == "whois.preferred.example"
+
+    async def test_no_match_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        async def fake_query(*, host: str, query: str, timeout: float) -> str:
+            del host, query, timeout
+            return "% IANA WHOIS server\n% nothing useful here\n"
+
+        monkeypatch.setattr(whois_protocol, "_query", fake_query)
+        result = await whois_protocol._resolve_via_iana("foo.bar", timeout=10.0)
+        assert result is None
+
+    async def test_iana_timeout_is_capped(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """IANA discovery не должна ждать дольше 5 секунд."""
+        captured: dict[str, float] = {}
+
+        async def fake_query(*, host: str, query: str, timeout: float) -> str:
+            captured["timeout"] = timeout
+            return "refer: whois.nic.test\n"
+
+        monkeypatch.setattr(whois_protocol, "_query", fake_query)
+        # Передаём «глобальные» 30 секунд — но IANA-таймаут должен быть 5.
+        await whois_protocol._resolve_via_iana("foo.bar", timeout=30.0)
+        assert captured["timeout"] == 5.0
+
+    async def test_protocol_error_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        async def fake_query(*, host: str, query: str, timeout: float) -> str:
+            del host, query, timeout
+            raise whois_protocol.WhoisProtocolError("network down")
+
+        monkeypatch.setattr(whois_protocol, "_query", fake_query)
+        result = await whois_protocol._resolve_via_iana("foo.bar", timeout=10.0)
+        assert result is None

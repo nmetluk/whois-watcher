@@ -266,6 +266,44 @@ LOCALE: dict[str, str] = {
     "csv.generating": "Generating a file with {count} domains…",
     "csv.ready": "File ready: {count} domains",
     # ------------------------------------------------------------------
+    # /download
+    # ------------------------------------------------------------------
+    "download.intro": (
+        "📥 Bulk import\n"
+        "\n"
+        "Send a TXT or CSV file with a list of domains "
+        "(one per line, or in the first column).\n"
+        "\n"
+        "Limit: {limit} domains per import. Use /cancel to abort."
+    ),
+    "download.cancel": "Import cancelled.",
+    "download.timeout": "Timed out, please start /download again.",
+    "download.no_file": "Send a file or /cancel.",
+    "download.too_large": "❌ File too large, maximum {max_mb} MB.",
+    "download.parse_failed": "❌ Could not parse the file.",
+    "download.rate_limit": "❌ You can run import at most {limit} times per day.",
+    "download.preview": (
+        "📋 Found {total} domains\n"
+        "\n"
+        "✅ Valid and new: {new}\n"
+        "⚠️ Already tracked: {already}\n"
+        "❌ Invalid: {invalid}"
+    ),
+    "download.preview_truncated": (
+        "\n\n⚠️ The {limit} domains per import limit was hit. " "The rest of the file was ignored."
+    ),
+    "download.confirm_button": "✅ Add {count}",
+    "download.cancel_button": "❌ Cancel",
+    "download.success": (
+        "✅ Added {count} domains.\n"
+        "Data is being fetched in the background, check /list in a few minutes."
+    ),
+    "download.limit_exceeded": (
+        "⚠️ Only {fits} of {requested} fit — your limit is {limit} domains.\n"
+        "Remove unused ones via /rmv or /list."
+    ),
+    "download.nothing_to_add": "All domains from the file are already tracked.",
+    # ------------------------------------------------------------------
     # /download (legacy keys used by the stub)
     # ------------------------------------------------------------------
     "commands.download.prompt": (

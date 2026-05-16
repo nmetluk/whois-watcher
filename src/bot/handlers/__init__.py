@@ -15,8 +15,9 @@
 9. ``list_domains``  — ``/list`` + пагинация + фильтры
 10. ``notifications`` — ``/notify``, ``/unnotify`` + callback'и из уведомлений
 11. ``csv_export``   — ``/csv``
-12. ``stubs``        — оставшиеся нереализованные команды (/download)
-13. ``text``         — обработка не-команд (последний)
+12. ``download``     — ``/download`` + FSM + callback'и превью
+13. ``stubs``        — пустой роутер (зарезервирован под будущие команды)
+14. ``text``         — обработка не-команд (последний)
 """
 
 from aiogram import Router
@@ -26,6 +27,7 @@ from src.bot.handlers import (
     check,
     csv_export,
     delete_me,
+    download,
     help_cancel,
     list_domains,
     notifications,
@@ -49,6 +51,7 @@ ROUTERS: tuple[Router, ...] = (
     list_domains.router,
     notifications.router,
     csv_export.router,
+    download.router,
     stubs.router,
     text.router,
 )

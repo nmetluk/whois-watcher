@@ -1,21 +1,13 @@
 """Заглушки для команд, реализация которых отложена.
 
-После того как ``/csv`` обзавёлся собственным модулем (``csv_export``),
-здесь остаётся только заглушка ``/download``. Она уйдёт в следующем
-коммите, когда мы подключим реальный массовый импорт.
+После Этапа 6 этот модуль не содержит активных хэндлеров: ``/csv`` и
+``/download`` обзавелись собственными модулями. Оставляем пустой роутер,
+чтобы ``ROUTERS`` оставался стабильным и его несложно было заполнить
+следующими отложенными командами.
 """
 
 from __future__ import annotations
 
 from aiogram import Router
-from aiogram.filters import Command
-from aiogram.types import Message
-
-from src.locales import t
 
 router = Router(name="stubs")
-
-
-@router.message(Command("download"))
-async def stub_download(message: Message, lang: str) -> None:
-    await message.answer(t("stubs.coming_soon_download", lang))

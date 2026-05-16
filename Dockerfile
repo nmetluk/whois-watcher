@@ -29,7 +29,7 @@ COPY pyproject.toml ./
 COPY poetry.lock* ./
 
 RUN --mount=type=cache,target=/tmp/poetry_cache \
-    poetry install --only main --no-root --no-directory
+    poetry install --without dev --no-root --no-directory
 
 # =============================================================================
 # Stage 2: runner — минимальный образ, копирует venv и код

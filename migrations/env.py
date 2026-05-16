@@ -19,7 +19,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.postgres_dsn_sync)
+config.set_main_option("sqlalchemy.url", settings.postgres_dsn)
 
 # Метаданные моделей — Alembic сравнивает с актуальной схемой БД
 # и подсказывает миграции при autogenerate.
@@ -57,7 +57,7 @@ def do_run_migrations(connection: Connection) -> None:
 async def run_migrations_online() -> None:
     """Запуск миграций в online-режиме через async-движок."""
     cfg_section = config.get_section(config.config_ini_section) or {}
-    cfg_section["sqlalchemy.url"] = settings.postgres_dsn_async
+    cfg_section["sqlalchemy.url"] = settings.postgres_dsn
 
     connectable = async_engine_from_config(
         cfg_section,

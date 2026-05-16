@@ -147,16 +147,6 @@ class Settings(BaseSettings):
 
     @computed_field  # type: ignore[prop-decorator]
     @property
-    def postgres_dsn_sync(self) -> str:
-        """DSN для синхронного драйвера (psycopg2 / Alembic offline)."""
-        password = self.postgres_password.get_secret_value()
-        return (
-            f"postgresql+psycopg2://{self.postgres_user}:{password}"
-            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
-        )
-
-    @computed_field  # type: ignore[prop-decorator]
-    @property
     def redis_url(self) -> str:
         """URL Redis для ARQ и rate limiter."""
         return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}"

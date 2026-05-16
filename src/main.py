@@ -7,7 +7,7 @@
 Что делает:
 
 - настраивает structlog (JSON в production, console в development)
-- подключает Sentry, если задан ``SENTRY_DSN``
+- подключает Sentry, если задан ``SENTRY_DSN`` — через ``src.observability``
 - собирает ``Bot``, ``Dispatcher`` и aiohttp-приложение
 - запускает ``web.run_app`` — он сам обрабатывает SIGINT/SIGTERM
 """
@@ -25,6 +25,7 @@ from src.bot.app import create_bot, create_dispatcher
 from src.bot.webhook import create_app
 from src.config.limits import get_limits
 from src.config.settings import Settings, get_settings
+from src.observability import setup_sentry
 
 
 def _setup_logging(settings: Settings) -> None:
@@ -63,26 +64,12 @@ def _setup_logging(settings: Settings) -> None:
     )
 
 
-def _setup_sentry(settings: Settings) -> None:
-    """Инициализирует Sentry, если задан DSN. Тихо ничего не делает иначе."""
-    if not settings.sentry_dsn:
-        return
-    import sentry_sdk
-
-    sentry_sdk.init(
-        dsn=settings.sentry_dsn,
-        environment=settings.environment,
-        # send_default_pii=False — не светим Telegram-username в трейсбеках
-        send_default_pii=False,
-    )
-
-
 def main() -> None:
     """Точка входа: подняли logging/sentry → собрали app → web.run_app."""
     settings = get_settings()
     limits = get_limits()
     _setup_logging(settings)
-    _setup_sentry(settings)
+    setup_sentry(settings)
 
     bot = create_bot(settings.bot_token.get_secret_value())
     redis: Redis[str] = Redis.from_url(settings.redis_url, decode_responses=True)

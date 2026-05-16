@@ -20,6 +20,7 @@ import sys
 from arq.worker import run_worker
 
 from src.config.settings import get_settings
+from src.observability import setup_sentry
 from src.tasks.arq_config import WorkerSettings
 
 
@@ -37,6 +38,7 @@ def _setup_basic_logging() -> None:
 
 def main() -> None:
     _setup_basic_logging()
+    setup_sentry(get_settings())
     run_worker(WorkerSettings)
 
 

@@ -200,6 +200,29 @@ async def _enqueue_change_notices(
         )
     if diff.status_changed:
         pairs.append(("status", True, diff.old_values.get("status"), diff.new_values.get("status")))
+    if diff.registrant_changed:
+        pairs.append(
+            (
+                "registrant",
+                True,
+                diff.old_values.get("registrant_org"),
+                diff.new_values.get("registrant_org"),
+            )
+        )
+    if diff.registrant_privacy_changed:
+        # Old → new: если old был publicly-known, а new скрыт → privacy_hidden.
+        # Если old скрыт, а new — конкретное лицо/организация → privacy_revealed.
+        # Сигнал берём из соответствия old/new значениям registrant_org:
+        # пустое после ранее непустого = скрыли, наоборот = раскрыли.
+        old_val = diff.old_values.get("registrant_org")
+        new_val = diff.new_values.get("registrant_org")
+        if old_val and not new_val:
+            change_type = "registrant_privacy_hidden"
+        elif new_val and not old_val:
+            change_type = "registrant_privacy_revealed"
+        else:
+            change_type = "registrant"  # неоднозначно — общий шаблон
+        pairs.append((change_type, True, old_val, new_val))
 
     for sub in subscribers:
         for change_type, flag_default, old_val, new_val in pairs:
@@ -216,7 +239,12 @@ async def _enqueue_change_notices(
 
 
 def _is_user_subscribed_to(sub: UserDomain, change_type: str, _default: bool) -> bool:
-    """Маппинг типа diff'а на ``UserDomain.notify_*`` флаги (ADR 012)."""
+    """Маппинг типа diff'а на ``UserDomain.notify_*`` флаги (ADR 012).
+
+    Регистрант (и privacy-варианты) использует тот же флаг, что и регистратор:
+    отдельный per-domain выключатель «уведомлять о смене владельца» не вводим
+    — это та же категория «административных изменений» для пользователя.
+    """
     if change_type == "expires_at":
         return bool(sub.notify_expiry)
     if change_type == "ns":
@@ -225,6 +253,12 @@ def _is_user_subscribed_to(sub: UserDomain, change_type: str, _default: bool) ->
         return bool(sub.notify_registrar_change)
     if change_type == "status":
         return bool(sub.notify_status_change)
+    if change_type in (
+        "registrant",
+        "registrant_privacy_revealed",
+        "registrant_privacy_hidden",
+    ):
+        return bool(sub.notify_registrar_change)
     return False
 
 

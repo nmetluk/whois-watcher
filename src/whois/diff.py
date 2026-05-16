@@ -37,13 +37,16 @@ class WhoisDiff:
 
     ``old_values`` / ``new_values`` хранят только изменившиеся поля —
     удобно для уведомлений (показываем «было → стало»). Ключи в этих
-    словарях совпадают с именами полей ``WhoisData``.
+    словарях совпадают с именами полей ``WhoisData``; для регистранта —
+    ``registrant_org`` (строка/None) и ``registrant_redacted`` (bool).
     """
 
     expires_at_changed: bool = False
     registrar_changed: bool = False
     name_servers_changed: bool = False
     status_changed: bool = False
+    registrant_changed: bool = False
+    registrant_privacy_changed: bool = False
     old_values: dict[str, Any] = field(default_factory=dict)
     new_values: dict[str, Any] = field(default_factory=dict)
 
@@ -55,6 +58,8 @@ class WhoisDiff:
             or self.registrar_changed
             or self.name_servers_changed
             or self.status_changed
+            or self.registrant_changed
+            or self.registrant_privacy_changed
         )
 
 
@@ -62,6 +67,15 @@ def compute_diff(old: WhoisData | None, new: WhoisData) -> WhoisDiff:
     """Сравнивает старое и новое состояние домена.
 
     Если ``old`` None — diff пустой (это первая проверка).
+
+    Регистрант:
+
+    - ``registrant_changed`` срабатывает только при смене ``organization``
+      (или name, если org нет ни до, ни после). Смену email/phone мы
+      намеренно не считаем сменой владельца — эти поля часто
+      «переезжают» без реальной смены юр.лица.
+    - ``registrant_privacy_changed`` срабатывает на изменении флага
+      ``is_redacted``: «раскрыли»/«скрыли» владельца.
     """
     diff = WhoisDiff()
     if old is None:
@@ -87,7 +101,41 @@ def compute_diff(old: WhoisData | None, new: WhoisData) -> WhoisDiff:
         diff.old_values["status"] = list(old.status)
         diff.new_values["status"] = list(new.status)
 
+    _compare_registrants(diff, old, new)
+
     return diff
+
+
+def _compare_registrants(diff: WhoisDiff, old: WhoisData, new: WhoisData) -> None:
+    """Регистрант: смена org → registrant_changed, смена privacy → privacy_changed.
+
+    Игнорируем переход «None → None», а также случай когда новый контакт
+    отсутствует (NULL в свежей записи может означать «не распарсилось»,
+    а не «удалили владельца») — то же поведение, что и для ``registrar``
+    в существующем коде.
+    """
+    old_c = old.registrant
+    new_c = new.registrant
+    if old_c is None or new_c is None:
+        return
+
+    old_id = _norm_str(old_c.organization) or _norm_str(old_c.name)
+    new_id = _norm_str(new_c.organization) or _norm_str(new_c.name)
+    if old_id != new_id:
+        diff.registrant_changed = True
+        diff.old_values["registrant_org"] = old_c.organization or old_c.name
+        diff.new_values["registrant_org"] = new_c.organization or new_c.name
+
+    if bool(old_c.is_redacted) != bool(new_c.is_redacted):
+        diff.registrant_privacy_changed = True
+        diff.old_values.setdefault(
+            "registrant_org",
+            old_c.organization or old_c.name,
+        )
+        diff.new_values.setdefault(
+            "registrant_org",
+            new_c.organization or new_c.name,
+        )
 
 
 def _dt_eq(a: datetime | None, b: datetime | None) -> bool:

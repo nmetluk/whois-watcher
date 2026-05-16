@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from src.whois.diff import compute_diff
-from src.whois.types import WhoisData
+from src.whois.types import WhoisContact, WhoisData
 
 
 def _data(
@@ -138,3 +138,81 @@ class TestComputeDiff:
         # ровно 1 час == граница, всё ещё «не изменилось».
         diff = compute_diff(old, new)
         assert not diff.expires_at_changed
+
+
+# ---------------------------------------------------------------------------
+# Регистрант (Этап 8)
+# ---------------------------------------------------------------------------
+
+
+def _data_with_registrant(
+    *,
+    name: str | None = None,
+    organization: str | None = None,
+    country: str | None = None,
+    is_redacted: bool = False,
+) -> WhoisData:
+    return WhoisData(
+        domain="example.com",
+        is_registered=True,
+        contacts=[
+            WhoisContact(
+                role="registrant",
+                name=name,
+                organization=organization,
+                country=country,
+                is_redacted=is_redacted,
+            )
+        ],
+    )
+
+
+class TestRegistrantDiff:
+    def test_org_changed_triggers_registrant_changed(self) -> None:
+        old = _data_with_registrant(organization="Example LLC", country="US")
+        new = _data_with_registrant(organization="Other LLC", country="US")
+        diff = compute_diff(old, new)
+        assert diff.registrant_changed is True
+        assert diff.has_any_changes
+        assert diff.old_values["registrant_org"] == "Example LLC"
+        assert diff.new_values["registrant_org"] == "Other LLC"
+
+    def test_same_org_no_change(self) -> None:
+        old = _data_with_registrant(organization="Example LLC")
+        new = _data_with_registrant(organization="Example LLC")
+        diff = compute_diff(old, new)
+        assert diff.registrant_changed is False
+
+    def test_country_only_change_does_not_trigger(self) -> None:
+        # По спецификации: меняем только идентификатор юр.лица.
+        old = _data_with_registrant(organization="Example LLC", country="US")
+        new = _data_with_registrant(organization="Example LLC", country="GB")
+        diff = compute_diff(old, new)
+        assert diff.registrant_changed is False
+
+    def test_privacy_revealed(self) -> None:
+        old = _data_with_registrant(is_redacted=True)
+        new = _data_with_registrant(organization="Public Org Inc.", is_redacted=False)
+        diff = compute_diff(old, new)
+        assert diff.registrant_privacy_changed is True
+        # И registrant_changed тоже — старый id был None, новый есть.
+        assert diff.registrant_changed is True
+        assert diff.new_values["registrant_org"] == "Public Org Inc."
+
+    def test_privacy_hidden(self) -> None:
+        old = _data_with_registrant(organization="Was Public Inc.")
+        new = _data_with_registrant(is_redacted=True)
+        diff = compute_diff(old, new)
+        assert diff.registrant_privacy_changed is True
+        assert diff.registrant_changed is True
+        assert diff.old_values["registrant_org"] == "Was Public Inc."
+
+    def test_no_registrant_at_all_no_change(self) -> None:
+        # Старого registrant нет (старая запись до миграции),
+        # новый registrant есть → НЕ триггерим, чтобы избежать ложного
+        # «появился владелец» на каждом домене после первой пере-проверки.
+        old = WhoisData(domain="example.com", is_registered=True)
+        new = _data_with_registrant(organization="Example LLC")
+        diff = compute_diff(old, new)
+        assert diff.registrant_changed is False
+        assert diff.registrant_privacy_changed is False

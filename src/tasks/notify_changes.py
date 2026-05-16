@@ -26,6 +26,12 @@ logger = logging.getLogger(__name__)
 
 # Карта типа diff'а из check_domain → ключ локали + ``notification_type``
 # в журнале sent_notifications + поле UserDomain для проверки.
+#
+# Регистрант мапится на тот же флаг, что и регистратор (``notify_registrar_change``):
+# мы не плодим отдельный per-domain выключатель — у кого включены уведомления
+# о смене регистратора, тому интересно и о смене владельца. ``privacy_*`` — варианты
+# ``registrant``, разделены отдельными ключами локали в зависимости от направления
+# изменения (раскрыли / скрыли данные).
 _TYPE_MAP: dict[str, tuple[str, str, str]] = {
     "registrar": (
         "notifications.change.registrar",
@@ -38,6 +44,21 @@ _TYPE_MAP: dict[str, tuple[str, str, str]] = {
         "notifications.change.expires_at",
         "expiry_change",
         "notify_expiry",
+    ),
+    "registrant": (
+        "notifications.change.registrant",
+        "registrant_change",
+        "notify_registrar_change",
+    ),
+    "registrant_privacy_revealed": (
+        "notifications.change.privacy_revealed",
+        "registrant_change",
+        "notify_registrar_change",
+    ),
+    "registrant_privacy_hidden": (
+        "notifications.change.privacy_hidden",
+        "registrant_change",
+        "notify_registrar_change",
     ),
 }
 

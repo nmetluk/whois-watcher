@@ -34,6 +34,7 @@ from redis.asyncio import Redis as AsyncRedis
 from src.db.models import UserDomain, WhoisCache
 from src.db.repositories import DomainRepository, UserRepository, WhoisCacheRepository
 from src.db.session import get_session
+from src.observability import bind_log_context, clear_log_context
 from src.services.formatters import format_whois_response
 from src.services.whois_facade import _cache_to_data
 from src.whois.client import lookup_domain
@@ -64,27 +65,35 @@ async def check_domain(ctx: dict[str, Any], domain: str) -> None:
     redis: AsyncRedis[str] = ctx["sync_redis"]
     bot: Bot = ctx["bot"]
 
-    # 1. Защита от параллельных проверок одного домена.
-    acquired = await redis.set(_in_progress_key(domain), "1", ex=_IN_PROGRESS_TTL_SECONDS, nx=True)
-    if not acquired:
-        logger.debug("check_domain skipped (already in progress): %s", domain)
-        return
-
+    # Контекст для логов: имя домена попадёт во все структуры внутри таски,
+    # включая «глубокие» logger.exception() из вложенных функций.
+    bind_log_context(domain=domain)
     try:
-        async with get_session() as session:
-            cache_repo = WhoisCacheRepository(session)
-            existing = await cache_repo.get(domain)
-            old_data = _cache_to_data(existing, domain) if existing is not None else None
-        # 2. Live-lookup.
-        result = await lookup_domain(domain)
-
-        if isinstance(result, WhoisError):
-            await _handle_failure(domain, result, ctx)
+        # 1. Защита от параллельных проверок одного домена.
+        acquired = await redis.set(
+            _in_progress_key(domain), "1", ex=_IN_PROGRESS_TTL_SECONDS, nx=True
+        )
+        if not acquired:
+            logger.debug("check_domain skipped (already in progress): %s", domain)
             return
 
-        await _handle_success(domain, result, old_data, ctx, bot)
+        try:
+            async with get_session() as session:
+                cache_repo = WhoisCacheRepository(session)
+                existing = await cache_repo.get(domain)
+                old_data = _cache_to_data(existing, domain) if existing is not None else None
+            # 2. Live-lookup.
+            result = await lookup_domain(domain)
+
+            if isinstance(result, WhoisError):
+                await _handle_failure(domain, result, ctx)
+                return
+
+            await _handle_success(domain, result, old_data, ctx, bot)
+        finally:
+            await redis.delete(_in_progress_key(domain))
     finally:
-        await redis.delete(_in_progress_key(domain))
+        clear_log_context()
 
 
 # ---------------------------------------------------------------------------

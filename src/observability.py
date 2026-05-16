@@ -1,31 +1,38 @@
-"""Sentry SDK setup — общий код для бота и воркера (Этап 7a).
+"""Sentry + structlog setup — общий код для бота и воркера (Этап 7a).
 
-Раньше каждый entrypoint инициализировал Sentry самостоятельно; теперь
-``main.py`` и ``worker.py`` зовут ``setup_sentry`` отсюда, чтобы поведение
-было идентичным.
+Раньше каждый entrypoint настраивал logging самостоятельно; теперь они зовут
+``setup_logging`` и ``setup_sentry`` отсюда, чтобы поведение было идентичным.
 
 Поведение:
 
-- если ``SENTRY_DSN`` пуст — info-лог «Sentry not configured» и выход
-- иначе ``sentry_sdk.init`` с интеграциями aiohttp/sqlalchemy/redis,
-  ``traces_sample_rate=0.1`` и ``send_default_pii=False``
+- ``setup_logging`` ставит structlog с JSON-renderer в production и
+  ConsoleRenderer в development. ``stdlib.logging`` подключается через
+  ``ProcessorFormatter`` — так все логи (наши и сторонние) проходят
+  через единый pipeline.
+- ``setup_sentry`` инициализирует Sentry SDK, если задан ``SENTRY_DSN``.
+  Иначе тихо ничего не делает (info-log). Интеграции: aiohttp, sqlalchemy,
+  redis — это самое полезное в нашем стеке.
 - ``before_send`` фильтрует event перед отправкой: маскирует значения
   чувствительных ключей (token/password/secret/...) и вырезает поля
-  с сырыми WHOIS-ответами — Sentry не должен видеть наши секреты и
-  персональные данные владельцев доменов, даже если кто-то случайно
-  залогирует их.
+  с сырыми WHOIS-ответами.
+- ``bind_log_context`` / ``clear_log_context`` — тонкая обёртка над
+  ``structlog.contextvars`` для middleware и тасок ARQ.
 
 Использование::
 
-    from src.observability import setup_sentry
+    from src.observability import setup_logging, setup_sentry
 
+    setup_logging(settings)
     setup_sentry(settings)
 """
 
 from __future__ import annotations
 
 import logging
+import sys
 from typing import Any
+
+import structlog
 
 from src.config.settings import Settings
 
@@ -54,6 +61,85 @@ _BULK_DATA_KEYS: tuple[str, ...] = (
     "raw_text",
     "raw_whois",
 )
+
+
+def setup_logging(settings: Settings) -> None:
+    """Конфигурирует structlog + stdlib logging.
+
+    В ``production`` — JSON renderer (для Loki/ELK), в остальных режимах —
+    ConsoleRenderer для удобства разработки. Все stdlib-логи (aiogram,
+    aiohttp, SQLAlchemy) проходят через ``ProcessorFormatter`` — выход
+    единого формата.
+    """
+    timestamper = structlog.processors.TimeStamper(fmt="iso", utc=True)
+
+    # Процессоры, применяемые ко всем записям независимо от источника. Часть
+    # из них применима только к structlog-loggerам, другая — общая.
+    shared_processors: list[structlog.types.Processor] = [
+        structlog.contextvars.merge_contextvars,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.add_logger_name,
+        timestamper,
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.UnicodeDecoder(),
+    ]
+
+    renderer: structlog.types.Processor
+    if settings.environment == "production":
+        renderer = structlog.processors.JSONRenderer()
+    else:
+        renderer = structlog.dev.ConsoleRenderer(colors=False)
+
+    structlog.configure(
+        processors=[
+            *shared_processors,
+            # ProcessorFormatter expects this as the last step before render:
+            structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+        ],
+        wrapper_class=structlog.make_filtering_bound_logger(
+            logging.getLevelName(settings.log_level)
+        ),
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        cache_logger_on_first_use=True,
+    )
+
+    # stdlib → structlog мост. Все ``logging.getLogger(...).info(...)`` пройдут
+    # через ProcessorFormatter и тот же renderer.
+    formatter = structlog.stdlib.ProcessorFormatter(
+        foreign_pre_chain=shared_processors,
+        processors=[
+            structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+            renderer,
+        ],
+    )
+    handler = logging.StreamHandler(stream=sys.stderr)
+    handler.setFormatter(formatter)
+
+    root = logging.getLogger()
+    root.handlers.clear()
+    root.addHandler(handler)
+    root.setLevel(settings.log_level)
+
+    # Чуть приглушаем шумные логгеры, которые любят DEBUG-спам на INFO уровне.
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    logging.getLogger("aiosqlite").setLevel(logging.WARNING)
+
+
+def bind_log_context(**kwargs: Any) -> None:
+    """Удобный alias для ``structlog.contextvars.bind_contextvars``.
+
+    Используется в middleware/тасках: после вызова все последующие
+    structlog-логи внутри того же контекста (asyncio task) будут содержать
+    переданные поля.
+    """
+    structlog.contextvars.bind_contextvars(**kwargs)
+
+
+def clear_log_context() -> None:
+    """Сбрасывает контекстные поля — вызывать после обработки запроса/таски."""
+    structlog.contextvars.clear_contextvars()
 
 
 def setup_sentry(settings: Settings) -> None:
@@ -137,4 +223,9 @@ def _scrub_in_place(node: Any) -> None:
             _scrub_in_place(item)
 
 
-__all__ = ["setup_sentry"]
+__all__ = [
+    "bind_log_context",
+    "clear_log_context",
+    "setup_logging",
+    "setup_sentry",
+]

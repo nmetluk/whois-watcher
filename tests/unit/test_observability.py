@@ -1,19 +1,64 @@
-"""Тесты ``src.observability.setup_sentry`` и фильтра ``before_send``.
+"""Тесты ``src.observability``: setup_logging, setup_sentry и фильтр.
 
 Sentry SDK мы не дёргаем по-настоящему — только проверяем, что ``init``
 зовётся с нужными аргументами и что ``_scrub_in_place`` чистит секреты.
+``setup_logging`` проверяем по факту: production → JSON, dev → console.
 """
 
 from __future__ import annotations
 
+import io
+import json
+import logging
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from src.observability import _before_send, _scrub_in_place, setup_sentry
+import structlog
+
+from src.observability import _before_send, _scrub_in_place, setup_logging, setup_sentry
 
 
 def _settings(*, env: str = "development", dsn: str | None = None) -> SimpleNamespace:
     return SimpleNamespace(environment=env, log_level="INFO", sentry_dsn=dsn)
+
+
+def _reset_logging() -> None:
+    """Сбрасывает глобальное состояние structlog/logging после теста."""
+    root = logging.getLogger()
+    for handler in list(root.handlers):
+        root.removeHandler(handler)
+    root.addHandler(logging.StreamHandler(io.StringIO()))
+    structlog.reset_defaults()
+
+
+class TestSetupLogging:
+    def test_production_emits_json(self, capsys: object) -> None:
+        setup_logging(_settings(env="production"))
+        try:
+            log = structlog.get_logger("test")
+            log.info("hello", user_id=42)
+            # stdlib logger тоже должен пройти через JSON renderer
+            logging.getLogger("test.std").info("stdlib")
+        finally:
+            _reset_logging()
+
+        captured = capsys.readouterr()  # type: ignore[attr-defined]
+        stderr = captured.err
+        for line in stderr.strip().splitlines():
+            doc = json.loads(line)
+            assert "event" in doc
+            assert "level" in doc
+
+    def test_development_uses_console_renderer(self, capsys: object) -> None:
+        setup_logging(_settings(env="development"))
+        try:
+            structlog.get_logger("test").info("hello")
+        finally:
+            _reset_logging()
+
+        captured = capsys.readouterr()  # type: ignore[attr-defined]
+        assert "hello" in captured.err
+        assert not captured.err.strip().startswith("{")
 
 
 class TestSetupSentry:

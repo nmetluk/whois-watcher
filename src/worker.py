@@ -14,31 +14,19 @@ ARQ сам ставит обработчики SIGINT/SIGTERM для graceful sh
 
 from __future__ import annotations
 
-import logging
-import sys
-
 from arq.worker import run_worker
 
 from src.config.settings import get_settings
-from src.observability import setup_sentry
+from src.observability import setup_logging, setup_sentry
 from src.tasks.arq_config import WorkerSettings
 
 
-def _setup_basic_logging() -> None:
-    """Минимальный stdlib logging — структурированный structlog настроится
-    в ``arq_config._on_startup`` через ctx по аналогии с ботом.
-    """
-    settings = get_settings()
-    logging.basicConfig(
-        format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
-        level=settings.log_level,
-        stream=sys.stderr,
-    )
-
-
 def main() -> None:
-    _setup_basic_logging()
-    setup_sentry(get_settings())
+    """Поднимает structlog/Sentry и запускает воркер."""
+    settings = get_settings()
+    # Тот же шаблон, что в src.main: один источник истины для observability.
+    setup_logging(settings)
+    setup_sentry(settings)
     run_worker(WorkerSettings)
 
 

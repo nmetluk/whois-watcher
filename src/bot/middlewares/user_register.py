@@ -26,6 +26,7 @@ from src.db.models import User
 from src.db.repositories import UserRepository
 from src.db.session import get_session
 from src.locales import t
+from src.observability import bind_log_context, clear_log_context
 
 # Языковые коды из Telegram, которые мы считаем русскоязычной аудиторией.
 _RU_LANG_CODES = frozenset({"ru", "uk", "be", "kk"})
@@ -51,6 +52,23 @@ def _extract_tg_user(event: TelegramObject) -> TgUser | None:
     return None
 
 
+def _extract_update_id(event: TelegramObject) -> int | None:
+    """Возвращает ``message_id`` / ``callback_query.id`` для логов.
+
+    Это не Telegram update_id (его middleware не видит напрямую), но
+    идентификатор конкретного события — этого достаточно, чтобы связать
+    логи одного запроса в трассе.
+    """
+    if isinstance(event, Message):
+        return event.message_id
+    if isinstance(event, CallbackQuery):
+        try:
+            return int(event.id)
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
 class UserRegisterMiddleware(BaseMiddleware):
     """Регистрирует пользователя и кладёт его в ``data["user"]``.
 
@@ -72,28 +90,37 @@ class UserRegisterMiddleware(BaseMiddleware):
             # Системный апдейт без пользователя — пропускаем дальше как есть.
             return await handler(event, data)
 
-        async with get_session() as session:
-            users = UserRepository(session)
-            user = await users.get_by_telegram_id(tg_user.id)
-            if user is None:
-                user = await users.create(
-                    telegram_id=tg_user.id,
-                    username=tg_user.username,
-                    language=_resolve_language(
-                        tg_user.language_code, self._settings.default_language
-                    ),
-                    timezone=self._settings.default_timezone,
-                    notify_at_hour=self._settings.default_notify_hour,
-                )
-            else:
-                await users.touch_last_active(user.id)
+        # Привязываем поля в structlog-контекст: все логи внутри обработки
+        # этого апдейта получат user_id/telegram_id. Чистим в finally, иначе
+        # контекст «протечёт» в соседние корутины через ContextVar.
+        bind_log_context(telegram_id=tg_user.id, update_id=_extract_update_id(event))
+        try:
+            async with get_session() as session:
+                users = UserRepository(session)
+                user = await users.get_by_telegram_id(tg_user.id)
+                if user is None:
+                    user = await users.create(
+                        telegram_id=tg_user.id,
+                        username=tg_user.username,
+                        language=_resolve_language(
+                            tg_user.language_code, self._settings.default_language
+                        ),
+                        timezone=self._settings.default_timezone,
+                        notify_at_hour=self._settings.default_notify_hour,
+                    )
+                else:
+                    await users.touch_last_active(user.id)
 
-        if user.is_blocked:
-            await _reply_blocked(event, user)
-            return None
+            bind_log_context(user_id=user.id)
 
-        data["user"] = user
-        return await handler(event, data)
+            if user.is_blocked:
+                await _reply_blocked(event, user)
+                return None
+
+            data["user"] = user
+            return await handler(event, data)
+        finally:
+            clear_log_context()
 
 
 async def _reply_blocked(event: TelegramObject, user: User) -> None:

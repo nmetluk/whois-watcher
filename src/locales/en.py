@@ -330,4 +330,11 @@ LOCALE: dict[str, str] = {
     "notifications.value.never": "never",
     "notify.on": "🔔 Notifications for {domain} enabled",
     "notify.off": "🔕 Notifications for {domain} disabled",
+    # ------------------------------------------------------------------
+    # Inline buttons from the welcome screen (start_keyboard callbacks)
+    # ------------------------------------------------------------------
+    "start.check_prompt": (
+        "🌐 Send a domain as a message — I'll show its WHOIS.\n"
+        "Or use the command: /whois example.com"
+    ),
 }

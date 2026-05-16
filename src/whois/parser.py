@@ -40,10 +40,11 @@ EXPIRY_KEYS: frozenset[str] = frozenset(
         "expires on",
         "expire",
         "expiry date",
+        "expire date",  # .it
         "registry expiry date",
         "registrar registration expiration date",
         "renewal date",
-        "paid-till",
+        "paid-till",  # .ru / .su / .рф
     }
 )
 
@@ -57,6 +58,8 @@ CREATED_KEYS: frozenset[str] = frozenset(
         "registered on",
         "registration date",
         "registration time",
+        "domain created",  # .kz (TCI-style)
+        "domain registered",  # .kz alternative phrasing
     }
 )
 
@@ -68,7 +71,8 @@ UPDATED_KEYS: frozenset[str] = frozenset(
         "last update",
         "last modified",
         "modified",
-        "changed",
+        "changed",  # .de (DENIC)
+        "last modification date",  # .kz
     }
 )
 
@@ -78,6 +82,8 @@ REGISTRAR_KEYS: frozenset[str] = frozenset(
         "registrar",
         "sponsoring registrar",
         "registrar name",
+        "registrar.organization",  # .it
+        "current registrar",  # .kz
     }
 )
 
@@ -97,6 +103,9 @@ NS_KEYS: frozenset[str] = frozenset(
         "nserver",
         "nameserver",
         "name servers",
+        "nameservers",  # .it
+        "primary name server",  # .kz
+        "secondary name server",  # .kz
     }
 )
 
@@ -121,8 +130,9 @@ NOT_FOUND_PATTERNS: tuple[str, ...] = (
 # Регулярка для строки ``key: value`` или ``key:value`` (с любым количеством
 # пробелов). Не используем split(":", 1), потому что некоторые сервера
 # отдают многострочные значения через продолжение строк — для таких полей
-# отдельная обработка ниже.
-_KV_RE = re.compile(r"^\s*([A-Za-z][A-Za-z0-9 _\-/]*?)\s*:\s*(.*)$")
+# отдельная обработка ниже. Символ ``.`` в ключе нужен для .it
+# (``Registrar.Organization: ...``).
+_KV_RE = re.compile(r"^\s*([A-Za-z][A-Za-z0-9 _\-/.]*?)\s*:\s*(.*)$")
 
 
 # ---------------------------------------------------------------------------
@@ -200,6 +210,16 @@ def parse_whois_text(text: str, domain: str) -> WhoisData:
     возвращает ``WhoisData(is_registered=False)`` с пустыми полями.
 
     Никогда не бросает исключение. Нераспознанные поля — игнорируются.
+
+    Особенности форматов:
+
+    - **.de (DENIC)** не публикует дату истечения — это политика реестра,
+      а не баг парсинга. ``expires_at`` будет ``None``; на уровне ``info``
+      это логируется (один раз на ответ), без warning.
+    - **.it (NIC.it)** отдаёт nameservers блоком с продолжением строк
+      (``Nameservers:\\n    ns1...\\n    ns2...``) — разбирается отдельно.
+    - **REDACTED FOR PRIVACY** и подобные плейсхолдеры в значениях
+      игнорируются: лучше ``None``, чем строка ``"REDACTED"``.
     """
     raw_data: dict[str, Any] = {"raw_text": text}
 
@@ -218,17 +238,43 @@ def parse_whois_text(text: str, domain: str) -> WhoisData:
     status: list[str] = []
     name_servers: list[str] = []
 
+    # Multi-line блок текущего «списочного» ключа: используется для .it
+    # ``Nameservers:`` с продолжением на следующих indented-строках.
+    continuation_list: list[str] | None = None
+
     for line in text.splitlines():
-        # Комментарии WHOIS — строки, начинающиеся с ``%`` (RIPE-style) или ``#``.
         stripped = line.strip()
+        # Комментарии WHOIS — строки, начинающиеся с ``%`` (RIPE-style) или ``#``.
         if not stripped or stripped.startswith(("%", "#", ">>>")):
+            continuation_list = None
             continue
+
+        # Если идёт multi-line блок (например Nameservers): строки без ``:``
+        # с продолжением — это значения списка. Прерываем по пустой строке
+        # или по новой паре ``key:`` (это покрывается ниже).
         m = _KV_RE.match(line)
-        if not m:
+        if m is None:
+            if continuation_list is not None and line.startswith((" ", "\t")):
+                # indented продолжение — берём весь токен
+                ns = _clean_ns(stripped)
+                if ns and ns not in continuation_list:
+                    continuation_list.append(ns)
             continue
+
         key = m.group(1).lower().strip()
         value = m.group(2).strip()
+
+        # Новый KV прерывает блок продолжения.
+        continuation_list = None
+
+        # Игнорируем плейсхолдеры приватности — лучше None, чем мусор в БД.
+        if _looks_like_redacted(value):
+            value = ""
+
         if not value:
+            # Список с продолжением: ``Nameservers:\n    ns1\n    ns2``.
+            if key in NS_KEYS:
+                continuation_list = name_servers
             continue
 
         # Первое непустое значение для каждого «одиночного» поля; для списочных
@@ -248,6 +294,14 @@ def parse_whois_text(text: str, domain: str) -> WhoisData:
             if ns and ns not in name_servers:
                 name_servers.append(ns)
 
+    # .de WHOIS никогда не показывает expires_at — это особенность DENIC,
+    # документируется в публичной политике. Не warning, а info: «всё ок».
+    if expires_at is None and domain.lower().endswith(".de"):
+        logger.info(
+            "WHOIS for .de domain has no expires_at (DENIC policy)",
+            extra={"domain": domain},
+        )
+
     return WhoisData(
         domain=domain,
         is_registered=True,
@@ -260,6 +314,24 @@ def parse_whois_text(text: str, domain: str) -> WhoisData:
         raw_data=raw_data,
         source="whois",
     )
+
+
+# Плейсхолдеры приватности в WHOIS-ответах (нижний регистр). При попадании
+# в значение → трактуем как пустое.
+_REDACTED_VALUES: frozenset[str] = frozenset(
+    {
+        "redacted for privacy",
+        "redacted",
+        "not disclosed",
+        "data protected",
+        "privacy protect",
+    }
+)
+
+
+def _looks_like_redacted(value: str) -> bool:
+    """True, если значение целиком — плейсхолдер приватности."""
+    return value.strip().lower() in _REDACTED_VALUES
 
 
 def _looks_like_not_found(text: str) -> bool:

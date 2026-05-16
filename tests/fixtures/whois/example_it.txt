@@ -1,0 +1,21 @@
+Domain:                 example.it
+Status:                 ok
+Signed:                 no
+Created:                2014-06-12 00:00:00
+Last Update:            2025-07-01 10:14:33
+Expire Date:            2027-06-12
+
+Registrant.Organization: Example S.r.l.
+Registrant.Country:      IT
+
+Admin.Name:              REDACTED FOR PRIVACY
+Admin.Organization:      REDACTED FOR PRIVACY
+
+Registrar.Organization:  Example Registrar S.p.A.
+Registrar.Name:          EXAMPLE-REG
+Registrar.Web:           https://example-registrar.it
+
+Nameservers:
+    ns1.example.it
+    ns2.example.it
+    ns3.example.it

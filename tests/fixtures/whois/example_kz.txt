@@ -1,0 +1,17 @@
+% Whois server for .kz
+% Hosted by KazNIC (https://nic.kz)
+%
+% No warranties — use at your own risk.
+
+Domain Name............: example.kz
+Domain created:         2010-09-15 12:00:00 (GMT+6)
+Last modification date: 2025-11-20 09:31:55 (GMT+6)
+Expires:                2027-09-15 00:00:00 (GMT+6)
+Current registrar:      EXAMPLE REGISTRAR LLP
+Status:                 ok
+Domain Status:          ok https://icann.org/epp#ok
+
+Primary Name Server:    ns1.example.kz
+Secondary Name Server:  ns2.example.kz
+
+Source:                 KazNIC

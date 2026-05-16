@@ -1,0 +1,18 @@
+% Copyright (c) 2010 by DENIC
+% Version: 2.0
+%
+% Restricted rights.
+%
+% Terms and Conditions of Use
+% https://www.denic.de/en/service/whois-service/
+%
+% The data in this record is provided by DENIC for informational purposes
+% only. DENIC does not guarantee its accuracy and cannot, under any
+% circumstances, be held liable in case the stored information would prove
+% to be wrong, incomplete or not accurate in any sense.
+
+Domain: example.de
+Nserver: ns1.example.de
+Nserver: ns2.example.de
+Status: connect
+Changed: 2026-04-12T08:30:11+02:00

@@ -152,6 +152,52 @@ class TestParseWhoisText:
         # Не парсим, но и не падаем — это и есть цель теста.
         assert data.is_registered is True
 
+    def test_de_format_no_expiry(self) -> None:
+        """DENIC не публикует expires_at — это политика реестра, не баг."""
+        data = parse_whois_text(_load("example_de.txt"), "example.de")
+        assert data.is_registered is True
+        # У .de WHOIS-ответа expires_at ОТСУТСТВУЕТ — это нормально.
+        assert data.expires_at is None
+        assert data.updated_at == datetime(2026, 4, 12, 6, 30, 11, tzinfo=UTC)
+        assert data.status == ["connect"]
+        assert data.name_servers == ["ns1.example.de", "ns2.example.de"]
+
+    def test_it_format(self) -> None:
+        data = parse_whois_text(_load("example_it.txt"), "example.it")
+        assert data.is_registered is True
+        assert data.expires_at == datetime(2027, 6, 12, tzinfo=UTC)
+        assert data.created_at == datetime(2014, 6, 12, tzinfo=UTC)
+        assert data.updated_at == datetime(2025, 7, 1, 10, 14, 33, tzinfo=UTC)
+        assert data.registrar == "Example Registrar S.p.A."
+        assert data.status == ["ok"]
+        # Nameservers собраны из блока с continuation
+        assert data.name_servers == ["ns1.example.it", "ns2.example.it", "ns3.example.it"]
+
+    def test_kz_format(self) -> None:
+        data = parse_whois_text(_load("example_kz.txt"), "example.kz")
+        assert data.is_registered is True
+        assert data.expires_at == datetime(2027, 9, 15, tzinfo=UTC)
+        assert data.created_at == datetime(2010, 9, 15, 12, 0, tzinfo=UTC)
+        assert data.updated_at == datetime(2025, 11, 20, 9, 31, 55, tzinfo=UTC)
+        assert data.registrar == "EXAMPLE REGISTRAR LLP"
+        # Status может задвоиться (Status: ok + Domain Status: ok https://...) —
+        # это и есть наблюдаемое поведение, дедупликации статусов нет.
+        assert "ok" in data.status
+        assert set(data.name_servers) == {"ns1.example.kz", "ns2.example.kz"}
+
+    def test_redacted_for_privacy_filtered(self) -> None:
+        """Плейсхолдер ``REDACTED FOR PRIVACY`` → не попадает в поле."""
+        text = (
+            "Domain Name: privacy.example\n"
+            "Registrar: REDACTED FOR PRIVACY\n"
+            "Creation Date: 2024-01-01\n"
+        )
+        data = parse_whois_text(text, "privacy.example")
+        # registrar остаётся None — плейсхолдер отфильтрован
+        assert data.registrar is None
+        # Дата сохранилась
+        assert data.created_at == datetime(2024, 1, 1, tzinfo=UTC)
+
 
 # ---------------------------------------------------------------------------
 # parse_rdap

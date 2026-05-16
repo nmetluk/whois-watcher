@@ -280,3 +280,258 @@ class TestParseRdap:
         ]
         data = parse_rdap(rdap, "example.com")
         assert data.expires_at is None  # ничего валидного не нашлось
+
+
+# ---------------------------------------------------------------------------
+# Контакты — текстовый WHOIS (Этап 8)
+# ---------------------------------------------------------------------------
+
+
+class TestParseWhoisTextContacts:
+    def test_thick_registrant_admin_tech(self) -> None:
+        text = (
+            "Registry Domain ID: 12345\n"
+            "Registrar: Example Inc.\n"
+            "Registrant Name: John Doe\n"
+            "Registrant Organization: Example LLC\n"
+            "Registrant Country: US\n"
+            "Registrant Email: john@example.com\n"
+            "Registrant Phone: +1.5555550100\n"
+            "Admin Name: Jane Roe\n"
+            "Admin Email: admin@example.com\n"
+            "Tech Name: Tech Person\n"
+            "Tech Email: tech@example.com\n"
+            "Name Server: ns1.example.com\n"
+        )
+        data = parse_whois_text(text, "example.com")
+        reg = data.registrant
+        assert reg is not None
+        assert reg.organization == "Example LLC"
+        assert reg.name == "John Doe"
+        assert reg.country == "US"
+        assert reg.email == "john@example.com"
+        assert reg.phone == "+1.5555550100"
+        assert reg.is_redacted is False
+
+        admin = data.admin
+        assert admin is not None
+        assert admin.name == "Jane Roe"
+        assert admin.email == "admin@example.com"
+
+        tech = data.tech
+        assert tech is not None
+        assert tech.name == "Tech Person"
+        assert tech.email == "tech@example.com"
+
+    def test_redacted_for_privacy_marks_contact(self) -> None:
+        text = (
+            "Registrant Name: REDACTED FOR PRIVACY\n"
+            "Registrant Organization: REDACTED FOR PRIVACY\n"
+            "Registrant Country: US\n"
+        )
+        data = parse_whois_text(text, "example.com")
+        reg = data.registrant
+        assert reg is not None
+        assert reg.is_redacted is True
+        assert reg.name is None
+        assert reg.organization is None
+        assert reg.country == "US"  # country обычно остаётся видимым
+
+    def test_ru_org_juridical(self) -> None:
+        text = (
+            "domain:        EXAMPLE.RU\n"
+            'org:           ООО "Пример"\n'
+            "e-mail:        admin@example.ru\n"
+            "registrar:     RU-CENTER-RU\n"
+            "admin-contact: https://www.nic.ru/whois\n"
+        )
+        data = parse_whois_text(text, "example.ru")
+        reg = data.registrant
+        assert reg is not None
+        assert reg.organization == 'ООО "Пример"'
+        assert reg.email == "admin@example.ru"
+        # admin-contact: это URL, не email — должен быть проигнорирован
+        assert reg.is_redacted is False
+
+    def test_ru_private_person(self) -> None:
+        text = (
+            "domain:        PRIV.RU\n"
+            "person:        Private Person\n"
+            "e-mail:        owner@priv.ru\n"
+            "registrar:     RU-CENTER-RU\n"
+        )
+        data = parse_whois_text(text, "priv.ru")
+        reg = data.registrant
+        assert reg is not None
+        assert reg.is_redacted is True
+        # Email при этом часто остаётся видимым (форвард через анонимайзер).
+        assert reg.email == "owner@priv.ru"
+
+    def test_it_dotted_keys(self) -> None:
+        text = (
+            "Domain:                 example.it\n"
+            "Status:                 ok\n"
+            "Registrant.Organization: Example S.r.l.\n"
+            "Registrant.Country:      IT\n"
+            "Admin.Name:              REDACTED FOR PRIVACY\n"
+            "Admin.Organization:      REDACTED FOR PRIVACY\n"
+        )
+        data = parse_whois_text(text, "example.it")
+        reg = data.registrant
+        assert reg is not None
+        assert reg.organization == "Example S.r.l."
+        assert reg.country == "IT"
+
+        admin = data.admin
+        assert admin is not None
+        assert admin.is_redacted is True
+
+
+# ---------------------------------------------------------------------------
+# Контакты — RDAP (Этап 8)
+# ---------------------------------------------------------------------------
+
+
+def _rdap_with_contacts() -> dict[str, object]:
+    return {
+        "objectClassName": "domain",
+        "ldhName": "example.com",
+        "entities": [
+            {
+                "objectClassName": "entity",
+                "roles": ["registrant"],
+                "vcardArray": [
+                    "vcard",
+                    [
+                        ["version", {}, "text", "4.0"],
+                        ["fn", {}, "text", "Alice Holder"],
+                        ["org", {}, "text", "Example Holdings"],
+                        ["email", {}, "text", "alice@example.com"],
+                        ["tel", {"type": ["voice"]}, "uri", "tel:+1.5555550100"],
+                        [
+                            "adr",
+                            {},
+                            "text",
+                            ["", "", "1 Infinite Loop", "Cupertino", "CA", "95014", "us"],
+                        ],
+                    ],
+                ],
+            },
+            {
+                "objectClassName": "entity",
+                "roles": ["administrative"],
+                "vcardArray": [
+                    "vcard",
+                    [
+                        ["version", {}, "text", "4.0"],
+                        ["fn", {}, "text", "Bob Admin"],
+                        ["email", {}, "text", "admin@example.com"],
+                    ],
+                ],
+            },
+            {
+                "objectClassName": "entity",
+                "roles": ["technical"],
+                "vcardArray": [
+                    "vcard",
+                    [
+                        ["version", {}, "text", "4.0"],
+                        ["fn", {}, "text", "Carol Tech"],
+                    ],
+                ],
+            },
+        ],
+    }
+
+
+class TestParseRdapContacts:
+    def test_extracts_three_roles(self) -> None:
+        data = parse_rdap(_rdap_with_contacts(), "example.com")
+        reg = data.registrant
+        assert reg is not None
+        assert reg.name == "Alice Holder"
+        assert reg.organization == "Example Holdings"
+        assert reg.email == "alice@example.com"
+        assert reg.phone == "+1.5555550100"
+        assert reg.country == "US"  # верхний регистр для 2-3 символов
+        assert reg.is_redacted is False
+
+        assert data.admin is not None
+        assert data.admin.name == "Bob Admin"
+        assert data.admin.email == "admin@example.com"
+        assert data.tech is not None
+        assert data.tech.name == "Carol Tech"
+
+    def test_rfc9537_redacted_marks_contact(self) -> None:
+        rdap = _rdap_with_contacts()
+        # Удалим email из vCard registrant'а и добавим redacted-маркер.
+        registrant_entity = rdap["entities"][0]  # type: ignore[index]
+        registrant_entity["vcardArray"][1] = [  # type: ignore[index]
+            ["version", {}, "text", "4.0"],
+        ]
+        rdap["redacted"] = [
+            {
+                "name": {"type": "Registrant Email"},
+                "method": "removal",
+                "prePath": "$.entities[?(@.roles[0]=='registrant')].vcardArray[1]",
+            }
+        ]
+        data = parse_rdap(rdap, "example.com")
+        reg = data.registrant
+        assert reg is not None
+        assert reg.is_redacted is True
+
+    def test_abuse_inside_registrar(self) -> None:
+        rdap = {
+            "objectClassName": "domain",
+            "ldhName": "x.com",
+            "entities": [
+                {
+                    "objectClassName": "entity",
+                    "roles": ["registrar"],
+                    "vcardArray": [
+                        "vcard",
+                        [
+                            ["version", {}, "text", "4.0"],
+                            ["fn", {}, "text", "Big Registrar"],
+                        ],
+                    ],
+                    "entities": [
+                        {
+                            "objectClassName": "entity",
+                            "roles": ["abuse"],
+                            "vcardArray": [
+                                "vcard",
+                                [
+                                    ["version", {}, "text", "4.0"],
+                                    ["fn", {}, "text", "Abuse Desk"],
+                                    ["email", {}, "text", "abuse@big.com"],
+                                ],
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+        data = parse_rdap(rdap, "x.com")
+        abuse = next((c for c in data.contacts if c.role == "abuse"), None)
+        assert abuse is not None
+        assert abuse.email == "abuse@big.com"
+
+    def test_empty_vcard_with_remarks_redaction_marks(self) -> None:
+        """RDAP-сервер вернул entity без vCard, но с remark «object truncated»."""
+        rdap = {
+            "objectClassName": "domain",
+            "ldhName": "x.com",
+            "entities": [
+                {
+                    "objectClassName": "entity",
+                    "roles": ["registrant"],
+                    "remarks": [{"title": "Incomplete Data", "type": "object truncated"}],
+                }
+            ],
+        }
+        data = parse_rdap(rdap, "x.com")
+        reg = data.registrant
+        assert reg is not None
+        assert reg.is_redacted is True

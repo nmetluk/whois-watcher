@@ -31,6 +31,33 @@ WhoisErrorType = Literal[
 ]
 
 
+# Роль контакта в WHOIS/RDAP. ``abuse`` — отдельный канал жалоб (берётся
+# из RDAP-entities[role=abuse] или из «Registrar Abuse Contact» текстового
+# WHOIS); ``billing`` практически нигде не публикуется после GDPR, но
+# оставлен для совместимости с парсерами вне gTLD.
+ContactRole = Literal["registrant", "admin", "tech", "billing", "abuse"]
+
+
+@dataclass(slots=True, kw_only=True)
+class WhoisContact:
+    """Контактные данные одной роли (registrant / admin / tech / abuse / billing).
+
+    Заполняется парсерами «насколько возможно». ``is_redacted=True`` означает,
+    что регистрар скрыл идентифицирующие поля (RFC 9537 redacted[], плейсхолдер
+    ``REDACTED FOR PRIVACY`` или ``Private Person`` в .ru). В этом случае поля
+    ``name``/``organization`` могут быть ``None`` или содержать сам плейсхолдер
+    — UI трактует это однообразно через флаг.
+    """
+
+    role: ContactRole
+    name: str | None = None
+    organization: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    country: str | None = None  # ISO-3166 alpha-2, верхний регистр, если удалось
+    is_redacted: bool = False
+
+
 @dataclass(slots=True, kw_only=True)
 class WhoisData:
     """Структурированные WHOIS-данные домена.
@@ -40,6 +67,11 @@ class WhoisData:
 
     ``is_registered=False`` — домен свободен (NXDOMAIN / "no match"). В этом
     случае остальные поля могут быть пустыми/None.
+
+    ``contacts`` — список контактов всех ролей, найденных в ответе. Порядок
+    в списке не нормализован: парсер возвращает их в порядке появления в
+    источнике. Для удобного доступа к стандартным ролям — свойства
+    ``registrant`` / ``admin`` / ``tech``.
     """
 
     domain: str
@@ -50,8 +82,27 @@ class WhoisData:
     registrar: str | None = None
     status: list[str] = field(default_factory=list)
     name_servers: list[str] = field(default_factory=list)
+    contacts: list[WhoisContact] = field(default_factory=list)
     raw_data: dict[str, Any] = field(default_factory=dict)
     source: DataSource = "whois"
+
+    @property
+    def registrant(self) -> WhoisContact | None:
+        """Возвращает контакт ``registrant`` если он есть."""
+        return self._contact_for("registrant")
+
+    @property
+    def admin(self) -> WhoisContact | None:
+        """Возвращает контакт ``admin`` (administrative) если он есть."""
+        return self._contact_for("admin")
+
+    @property
+    def tech(self) -> WhoisContact | None:
+        """Возвращает контакт ``tech`` (technical) если он есть."""
+        return self._contact_for("tech")
+
+    def _contact_for(self, role: ContactRole) -> WhoisContact | None:
+        return next((c for c in self.contacts if c.role == role), None)
 
 
 @dataclass(slots=True, kw_only=True)
@@ -71,3 +122,14 @@ class WhoisError:
 # Union-тип возвращаемого значения фасада. Хэндлеры и таски проверяют
 # через ``isinstance(result, WhoisData)`` / ``WhoisError``.
 WhoisResult = WhoisData | WhoisError
+
+
+__all__ = [
+    "ContactRole",
+    "DataSource",
+    "WhoisContact",
+    "WhoisData",
+    "WhoisError",
+    "WhoisErrorType",
+    "WhoisResult",
+]

@@ -40,7 +40,28 @@ from src.services.whois_facade import _cache_to_data
 from src.whois.client import lookup_domain
 from src.whois.diff import WhoisDiff, compute_diff
 from src.whois.scheduler import calculate_next_check, calculate_retry_after_failure
-from src.whois.types import WhoisData, WhoisError
+from src.whois.types import WhoisContact, WhoisData, WhoisError
+
+
+def _serialize_contacts(contacts: list[WhoisContact]) -> list[dict[str, Any]]:
+    """Сериализует ``WhoisContact[]`` в JSON-совместимый список для JSONB-колонки.
+
+    Формат — стабильный (один к одному с полями ``WhoisContact``); при чтении
+    из БД восстанавливается через ``_cache_to_data`` в whois_facade.
+    """
+    return [
+        {
+            "role": c.role,
+            "name": c.name,
+            "organization": c.organization,
+            "email": c.email,
+            "phone": c.phone,
+            "country": c.country,
+            "is_redacted": bool(c.is_redacted),
+        }
+        for c in contacts
+    ]
+
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +133,7 @@ async def _handle_success(
     now = datetime.now(tz=UTC)
     next_check = calculate_next_check(new_data.expires_at, now=now)
 
+    registrant = new_data.registrant
     fields: dict[str, Any] = {
         "expires_at": new_data.expires_at,
         "created_at_registrar": new_data.created_at,
@@ -120,6 +142,12 @@ async def _handle_success(
         "status": new_data.status or None,
         "name_servers": new_data.name_servers or None,
         "raw_data": new_data.raw_data or None,
+        "registrant_name": registrant.name if registrant else None,
+        "registrant_org": registrant.organization if registrant else None,
+        "registrant_country": registrant.country if registrant else None,
+        "registrant_email": registrant.email if registrant else None,
+        "registrant_is_redacted": bool(registrant.is_redacted) if registrant else False,
+        "contacts_data": _serialize_contacts(new_data.contacts) if new_data.contacts else None,
         "fetched_at": now,
         "last_successful_fetch_at": now,
         "next_check_at": next_check,

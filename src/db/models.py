@@ -163,6 +163,21 @@ class WhoisCache(Base):
     name_servers: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
     raw_data: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
+    # Денормализованные поля владельца (Этап 8). NULL для записей, созданных
+    # до миграции; при следующей плановой проверке заполняются парсером.
+    # Хранится в денормализованном виде, чтобы карточка /whois и
+    # diff-сравнение не парсили JSON каждый раз.
+    registrant_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    registrant_org: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    registrant_country: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    registrant_email: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    registrant_is_redacted: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    # Полный список контактов (включая admin/tech/abuse) — для «Полного ответа»
+    # и потенциального сравнения версий без парса raw_data.
+    contacts_data: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB, nullable=True)
+
     fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_successful_fetch_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

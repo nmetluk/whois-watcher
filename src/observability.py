@@ -42,6 +42,10 @@ logger = logging.getLogger(__name__)
 # Поля, которые мы НИКОГДА не хотим видеть в Sentry-эвентах. Регистронезависимое
 # вхождение в ключ — этого достаточно, чтобы покрыть и snake_case, и kebab-case,
 # и заголовки HTTP.
+#
+# Этап 8: добавлены registrant / admin_email / tech_phone / contacts_data —
+# это публичные WHOIS-поля, но не для Sentry: их можно агрегировать и
+# деанонимизировать. Лучше сразу маскировать в любых extra/contexts.
 _SENSITIVE_KEY_SUBSTRINGS: tuple[str, ...] = (
     "token",
     "password",
@@ -50,6 +54,12 @@ _SENSITIVE_KEY_SUBSTRINGS: tuple[str, ...] = (
     "api_key",
     "apikey",
     "x-telegram-bot-api-secret",
+    "registrant",
+    "admin_email",
+    "admin_phone",
+    "tech_email",
+    "tech_phone",
+    "contacts_data",
 )
 
 # Ключи, которые мы целиком вырезаем из ``extra``/``contexts`` Sentry-эвента:

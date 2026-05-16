@@ -24,7 +24,7 @@ from src.config.limits import Limits
 from src.db.repositories import WhoisCacheRepository
 from src.services.results import FacadeResult
 from src.whois.client import lookup_domain
-from src.whois.types import WhoisData, WhoisError
+from src.whois.types import ContactRole, WhoisContact, WhoisData, WhoisError
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +109,13 @@ def _cache_to_data(cache: object, domain: str) -> WhoisData:
     Аргумент типизирован как ``object`` намеренно — здесь нам нужен только
     набор атрибутов, и мы избегаем циклического импорта типа ``WhoisCache``
     в подсказках. Парсер сюда не ходит.
+
+    Контакты восстанавливаются из ``contacts_data`` JSONB; если поле
+    отсутствует (старая запись до миграции), но денормализованные
+    ``registrant_*`` есть — собираем «синтетический» registrant-контакт
+    из них. Это нужно для diff'а: иначе после миграции первая же
+    проверка покажет «registrant_changed: None → ...» для каждого
+    домена, которого видел бот.
     """
     return WhoisData(
         domain=domain,
@@ -120,9 +127,60 @@ def _cache_to_data(cache: object, domain: str) -> WhoisData:
         registrar=getattr(cache, "registrar", None),
         status=list(getattr(cache, "status", []) or []),
         name_servers=list(getattr(cache, "name_servers", []) or []),
+        contacts=_restore_contacts(cache),
         raw_data=getattr(cache, "raw_data", None) or {},
         source="rdap",
     )
+
+
+def _restore_contacts(cache: object) -> list[WhoisContact]:
+    """Восстанавливает ``WhoisContact[]`` из ``contacts_data`` JSONB.
+
+    Если ``contacts_data`` None, но в денормализованных колонках есть
+    registrant_org/name/...  — собираем единичный registrant из них.
+    """
+    raw = getattr(cache, "contacts_data", None)
+    if isinstance(raw, list) and raw:
+        out: list[WhoisContact] = []
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+            role = item.get("role")
+            if role not in ("registrant", "admin", "tech", "billing", "abuse"):
+                continue
+            out.append(
+                WhoisContact(
+                    role=role,
+                    name=item.get("name"),
+                    organization=item.get("organization"),
+                    email=item.get("email"),
+                    phone=item.get("phone"),
+                    country=item.get("country"),
+                    is_redacted=bool(item.get("is_redacted", False)),
+                )
+            )
+        return out
+
+    # Fallback: денормализованные колонки. Подобрать тип ContactRole руками,
+    # чтобы mypy не ругался.
+    role_lit: ContactRole = "registrant"
+    name = getattr(cache, "registrant_name", None)
+    org = getattr(cache, "registrant_org", None)
+    country = getattr(cache, "registrant_country", None)
+    email = getattr(cache, "registrant_email", None)
+    redacted = bool(getattr(cache, "registrant_is_redacted", False))
+    if any([name, org, country, email, redacted]):
+        return [
+            WhoisContact(
+                role=role_lit,
+                name=name,
+                organization=org,
+                country=country,
+                email=email,
+                is_redacted=redacted,
+            )
+        ]
+    return []
 
 
 __all__ = ["FacadeResult", "WhoisError", "WhoisFacade"]

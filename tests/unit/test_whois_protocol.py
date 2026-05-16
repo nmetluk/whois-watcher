@@ -207,3 +207,92 @@ class TestResolveViaIana:
         monkeypatch.setattr(whois_protocol, "_query", fake_query)
         result = await whois_protocol._resolve_via_iana("foo.bar", timeout=10.0)
         assert result is None
+
+
+class TestReferralFollowing:
+    """Тесты ``follow_referral=True`` — второй запрос к серверу регистратора."""
+
+    async def test_no_referral_returns_thin_response(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Один запрос: ответ без "Registrar WHOIS Server" → возвращаем как есть.
+        calls: list[str] = []
+
+        async def fake_query(*, host: str, query: str, timeout: float) -> str:
+            calls.append(host)
+            return "Domain Name: example.com\nRegistrar: Verisign\n"
+
+        monkeypatch.setattr(whois_protocol, "_query", fake_query)
+        out = await whois_protocol.query_whois("example.com", timeout=5.0, follow_referral=True)
+        assert "Domain Name" in out
+        assert calls == [whois_protocol.WHOIS_SERVERS["com"]]
+
+    async def test_referral_triggers_second_query(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        thin = (
+            "Domain Name: telegram.org\n"
+            "Registrar WHOIS Server: whois.markmonitor.com\n"
+            "Registrar: MarkMonitor Inc.\n"
+        )
+        thick = (
+            "Domain Name: telegram.org\n"
+            "Registrar: MarkMonitor Inc.\n"
+            "Creation Date: 1999-09-15T07:00:00Z\n"
+            "Registry Expiry Date: 2030-09-15T07:00:00Z\n"
+            "Name Server: NS1.STEALTH.NET\n"
+        )
+        calls: list[str] = []
+
+        async def fake_query(*, host: str, query: str, timeout: float) -> str:
+            calls.append(host)
+            return thick if host == "whois.markmonitor.com" else thin
+
+        monkeypatch.setattr(whois_protocol, "_query", fake_query)
+        out = await whois_protocol.query_whois("telegram.org", timeout=5.0, follow_referral=True)
+        # Получили thick-ответ
+        assert "Registry Expiry Date" in out
+        # Делали два запроса: сначала pir.org (для .org), потом MarkMonitor
+        assert len(calls) == 2
+        assert calls[1] == "whois.markmonitor.com"
+
+    async def test_referral_to_same_host_skipped(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Если referral указывает на тот же сервер — не делаем второй запрос."""
+        host_used = whois_protocol.WHOIS_SERVERS["org"]
+        response = f"Domain Name: example.org\nRegistrar WHOIS Server: {host_used}\n"
+        calls: list[str] = []
+
+        async def fake_query(*, host: str, query: str, timeout: float) -> str:
+            calls.append(host)
+            return response
+
+        monkeypatch.setattr(whois_protocol, "_query", fake_query)
+        await whois_protocol.query_whois("example.org", timeout=5.0, follow_referral=True)
+        assert len(calls) == 1
+
+    async def test_referral_failure_returns_thin_response(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Если referral-сервер упал — возвращаем thin-ответ без падения."""
+        thin = "Domain Name: example.com\nRegistrar WHOIS Server: whois.broken.example\n"
+
+        async def fake_query(*, host: str, query: str, timeout: float) -> str:
+            if host == "whois.broken.example":
+                raise whois_protocol.WhoisProtocolError("connect refused")
+            return thin
+
+        monkeypatch.setattr(whois_protocol, "_query", fake_query)
+        out = await whois_protocol.query_whois("example.com", timeout=5.0, follow_referral=True)
+        # Получили thin-ответ — не падаем
+        assert "Registrar WHOIS Server" in out
+
+    async def test_follow_referral_false_skips_second_query(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        thin = "Domain Name: example.com\nRegistrar WHOIS Server: whois.markmonitor.com\n"
+        calls: list[str] = []
+
+        async def fake_query(*, host: str, query: str, timeout: float) -> str:
+            calls.append(host)
+            return thin
+
+        monkeypatch.setattr(whois_protocol, "_query", fake_query)
+        # follow_referral по умолчанию False — второго запроса нет
+        await whois_protocol.query_whois("example.com", timeout=5.0)
+        assert len(calls) == 1

@@ -118,12 +118,16 @@ async def _resolve_via_iana(domain: str, *, timeout: float) -> str | None:
     return m.group(1).strip()
 
 
+_REFERRAL_RE = re.compile(r"^\s*Registrar WHOIS Server:\s*(\S+)", re.MULTILINE | re.IGNORECASE)
+
+
 async def query_whois(
     domain: str,
     *,
     server: str | None = None,
     server_overrides: dict[str, str] | None = None,
     timeout: float,
+    follow_referral: bool = False,
 ) -> str:
     """Делает WHOIS-запрос на 43 порт и возвращает декодированный текст.
 
@@ -133,6 +137,11 @@ async def query_whois(
     2. ``server_overrides[tld]`` (конфиг через env — обход недоступных серверов).
     3. ``WHOIS_SERVERS[tld]`` (встроенный mapping).
     4. IANA discovery.
+
+    ``follow_referral=True`` (для thin-WHOIS реестров типа Verisign .com/.net):
+    если в первом ответе есть ``Registrar WHOIS Server:`` и он отличается от
+    сервера, к которому мы уже ходили — делаем второй запрос туда и
+    возвращаем ответ регистратора (он содержит полные данные регистрации).
 
     ``WhoisProtocolError`` — если ни один путь не дал сервер или соединение
     не удалось. Ключи в ``server_overrides`` должны быть в lowercase
@@ -148,7 +157,37 @@ async def query_whois(
         target = await _resolve_via_iana(domain, timeout=timeout)
     if target is None:
         raise WhoisProtocolError(f"No WHOIS server known for .{tld}")
-    return await _query(host=target, query=domain, timeout=timeout)
+
+    response = await _query(host=target, query=domain, timeout=timeout)
+    if not follow_referral:
+        return response
+
+    referral = _extract_referral(response)
+    if referral is None or referral.lower() == target.lower():
+        return response
+
+    # Второй раунд: ходим в WHOIS-сервер регистратора. Сетевые ошибки тут
+    # не валим — лучше отдать thin-ответ, чем ничего: парсер из него
+    # извлечёт хотя бы базовые поля.
+    try:
+        return await _query(host=referral, query=domain, timeout=timeout)
+    except WhoisProtocolError as exc:
+        logger.debug(
+            "Referral WHOIS query failed (%s → %s): %s; returning thin response",
+            target,
+            referral,
+            exc,
+        )
+        return response
+
+
+def _extract_referral(response: str) -> str | None:
+    """Возвращает ``Registrar WHOIS Server`` из thin-ответа или None."""
+    m = _REFERRAL_RE.search(response)
+    if m is None:
+        return None
+    candidate = m.group(1).strip().rstrip(".")
+    return candidate or None
 
 
 async def _query(*, host: str, query: str, timeout: float) -> str:

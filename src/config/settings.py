@@ -148,6 +148,19 @@ class Settings(BaseSettings):
         ),
     )
 
+    # Включает «referral following»: для thin-WHOIS реестров (Verisign .com/.net,
+    # Afilias и т. п.) после первого ответа парсим ``Registrar WHOIS Server`` и
+    # делаем второй запрос — он даёт полные данные регистрации. Полезно для
+    # большинства .com/.net доменов. Если хостинг блокирует исходящий 43-порт
+    # на внешние сервера, можно выключить.
+    whois_referral_following: bool = Field(
+        True,
+        description=(
+            "Делать ли второй WHOIS-запрос на ``Registrar WHOIS Server`` для "
+            "thin-WHOIS реестров (.com/.net). True — полнее данные, +1 TCP."
+        ),
+    )
+
     @field_validator("whois_server_overrides", mode="before")
     @classmethod
     def _parse_whois_overrides(cls, value: object) -> object:

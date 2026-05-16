@@ -72,11 +72,13 @@ async def lookup_domain(domain: str, *, limits: Limits | None = None) -> WhoisRe
         )
 
     # --- WHOIS:43 fallback ---
+    settings = get_settings()
     try:
         raw_text = await query_whois(
             normalized,
-            server_overrides=get_settings().whois_server_overrides,
+            server_overrides=settings.whois_server_overrides,
             timeout=timeout,
+            follow_referral=settings.whois_referral_following,
         )
     except TimeoutError:
         return WhoisError(domain=normalized, error_type="timeout", message="WHOIS:43 timeout")

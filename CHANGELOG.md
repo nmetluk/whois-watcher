@@ -7,7 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Nothing yet — see [TODO.md](TODO.md) for the roadmap.
+### Added — Enhanced WHOIS display (Stage 8)
+
+- **Owner section in `/whois` card** — extracts `registrant`, `admin`,
+  `tech`, `abuse`, `billing` contacts from both RDAP (entities + vCard +
+  RFC 9537 `redacted[]`) and textual WHOIS (thick gTLD, TCINET `.ru`,
+  NIC.it dotted keys, AFNIC, DENIC). Shows owner organization with
+  country, or honest "hidden (private individual)" / "hidden (privacy
+  protected)" labels when registry redacts data.
+- **Localized status names** — raw EPP codes (`clientTransferProhibited`,
+  `pendingDelete`) are translated to human-readable text with severity
+  highlighting (critical → warning → info → normal). Unknown codes fall
+  back to a humanized form (`clientHold` → "Client hold"). Trivial
+  `ok`/`active` are hidden when other statuses are present.
+- **Registrant change notifications** — new `notify` types: `registrant`
+  (organization changed), `registrant_privacy_revealed` (was hidden,
+  now public), `registrant_privacy_hidden` (was public, now hidden).
+  Email/phone changes are intentionally ignored to avoid notification
+  noise. Subscribed via the existing `notify_registrar_change` flag —
+  no new per-domain switch.
+- **Human-readable "full WHOIS" file** — the "Full response" button now
+  returns a `.txt` with a structured header (domain / timeline /
+  registrar / contacts / status / nameservers / DNSSEC) **plus** the
+  raw source data: pretty-printed JSON for RDAP, original text for
+  WHOIS:43. Replaces the previous Python `repr(dict)` for RDAP domains.
+
+### Changed
+
+- `WhoisData` gains `contacts: list[WhoisContact]` and `registrant` /
+  `admin` / `tech` convenience properties.
+- `whois_cache` schema adds denormalized `registrant_*` columns and a
+  JSONB `contacts_data` column (migration `20260516_registrant`,
+  additive; existing rows fill on next scheduled check).
+- Sentry `before_send` masks `registrant*`, `admin_email`, `admin_phone`,
+  `tech_email`, `tech_phone`, `contacts_data` keys — public WHOIS data
+  shouldn't sit in error trackers.
+
+### Migration notes
+
+- `alembic upgrade head` adds nullable columns. Existing cached domains
+  show no Owner section until the next plan-driven `check_domain` run
+  fills the new fields. To force-refresh a specific domain, press the
+  "🔄 Обновить" button in its `/whois` card.
 
 ## [0.1.0] — 2026-05-16
 

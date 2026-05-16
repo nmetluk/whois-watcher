@@ -173,8 +173,8 @@ whois-watcher/
 ## Команды для разработки
 
 ```bash
-# Установка зависимостей
-poetry install
+# Установка зависимостей (включая dev-группу)
+uv sync
 
 # Запуск окружения
 docker-compose up -d postgres redis

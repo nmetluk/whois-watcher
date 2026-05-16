@@ -41,16 +41,16 @@
 
 ```bash
 # Установка pre-commit
-poetry run pre-commit install
+uv run pre-commit install
 
 # Все проверки
-poetry run pre-commit run --all-files
+uv run pre-commit run --all-files
 
 # По отдельности
-poetry run ruff check src tests
-poetry run black src tests
-poetry run mypy src
-poetry run pytest
+uv run ruff check src tests
+uv run black src tests
+uv run mypy src
+uv run pytest
 ```
 
 ## Структура коммитов

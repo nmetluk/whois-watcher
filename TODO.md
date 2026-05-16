@@ -8,7 +8,7 @@
 - [ ] Коммит проектной документации (`CLAUDE.md`, `docs/`, `TODO.md`)
 - [ ] `README.md` (заглушка с описанием)
 - [ ] `.gitignore`, `.env.example`
-- [ ] `pyproject.toml` (Poetry или PEP 621) со всеми зависимостями
+- [ ] `pyproject.toml` (PEP 621, менеджер — uv) со всеми зависимостями
 - [ ] `Dockerfile` для бота и воркера
 - [ ] `docker-compose.yml` (postgres, redis, bot, worker, scheduler)
 - [ ] `docker-compose.dev.yml` (с volume-маунтами для разработки)

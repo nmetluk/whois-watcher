@@ -1,38 +1,37 @@
 # syntax=docker/dockerfile:1.7
 
 # =============================================================================
-# Stage 1: builder — устанавливает зависимости через Poetry в виртуальное окружение
+# Stage 1: builder — устанавливает зависимости через uv
 # =============================================================================
 FROM python:3.12-slim-bookworm AS builder
 
+# uv копируем из официального образа (быстрее curl-установщика, воспроизводимо)
+COPY --from=ghcr.io/astral-sh/uv:0.11.14 /uv /uvx /bin/
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    POETRY_VERSION=1.8.3 \
-    POETRY_NO_INTERACTION=1 \
-    POETRY_VIRTUALENVS_CREATE=true \
-    POETRY_VIRTUALENVS_IN_PROJECT=true \
-    POETRY_CACHE_DIR=/tmp/poetry_cache
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        build-essential \
-        curl \
-        libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN pip install "poetry==${POETRY_VERSION}"
+    UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1 \
+    UV_PROJECT_ENVIRONMENT=/app/.venv
 
 WORKDIR /app
 
-COPY pyproject.toml ./
-COPY poetry.lock* ./
+# Только манифесты — слой кэшируется пока lock/pyproject не меняются
+COPY pyproject.toml uv.lock ./
 
-RUN --mount=type=cache,target=/tmp/poetry_cache \
-    poetry install --without dev --no-root --no-directory
+# --frozen: ровно версии из uv.lock; --no-dev: без dev-группы;
+# --no-install-project: сам проект не ставить (аналог Poetry --no-root)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project
+
+# Код приложения — после deps, для лучшего кэша слоёв
+COPY alembic.ini ./
+COPY migrations ./migrations
+COPY src ./src
+COPY scripts ./scripts
 
 # =============================================================================
-# Stage 2: runner — минимальный образ, копирует venv и код
+# Stage 2: runner — минимальный образ, только venv + код
 # =============================================================================
 FROM python:3.12-slim-bookworm AS runner
 
@@ -53,12 +52,8 @@ RUN groupadd --system --gid 1000 app \
 
 WORKDIR /app
 
-COPY --from=builder --chown=app:app /app/.venv /app/.venv
-
-COPY --chown=app:app alembic.ini ./
-COPY --chown=app:app migrations ./migrations
-COPY --chown=app:app src ./src
-COPY --chown=app:app scripts ./scripts
+# Целиком /app из builder: venv + код
+COPY --from=builder --chown=app:app /app /app
 
 USER app
 

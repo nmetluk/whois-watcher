@@ -48,6 +48,6 @@ repos:
         args: [--baseline, .secrets.baseline]
         exclude: |
           (?x)^(
-              poetry\.lock|
+              uv\.lock|
               \.env\.example
           )$

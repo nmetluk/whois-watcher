@@ -47,9 +47,9 @@ cp .env.example .env
 # заполните BOT_TOKEN и остальные переменные
 
 docker-compose up -d postgres redis
-poetry install
-poetry run alembic upgrade head
-poetry run python -m src.main
+uv sync
+uv run alembic upgrade head
+uv run python -m src.main
 ```
 
 Подробности — в [docs/deployment.md](docs/deployment.md) (TODO).

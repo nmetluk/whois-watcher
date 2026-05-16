@@ -13,9 +13,10 @@
 7. ``add_remove``    — ``/add``, ``/rmv``
 8. ``check``         — ``/check`` (после ``whois``, чтобы общий хелпер был доступен)
 9. ``list_domains``  — ``/list`` + пагинация + фильтры
-10. ``notifications`` — ``/notify``, ``/unnotify`` + callback'и из уведомлений (Этап 5)
-11. ``stubs``        — оставшиеся нереализованные команды (CSV)
-12. ``text``         — обработка не-команд (последний)
+10. ``notifications`` — ``/notify``, ``/unnotify`` + callback'и из уведомлений
+11. ``csv_export``   — ``/csv``
+12. ``stubs``        — оставшиеся нереализованные команды (/download)
+13. ``text``         — обработка не-команд (последний)
 """
 
 from aiogram import Router
@@ -23,6 +24,7 @@ from aiogram import Router
 from src.bot.handlers import (
     add_remove,
     check,
+    csv_export,
     delete_me,
     help_cancel,
     list_domains,
@@ -46,6 +48,7 @@ ROUTERS: tuple[Router, ...] = (
     check.router,
     list_domains.router,
     notifications.router,
+    csv_export.router,
     stubs.router,
     text.router,
 )

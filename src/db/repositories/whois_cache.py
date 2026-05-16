@@ -52,6 +52,25 @@ class WhoisCacheRepository(BaseRepository):
         assert refreshed is not None  # invariant: только что вставили
         return refreshed
 
+    async def bulk_ensure(self, domains: Sequence[str]) -> Sequence[str]:
+        """Вставляет недостающие строки в ``whois_cache`` (без UPDATE).
+
+        Возвращает домены, для которых строка была фактически создана —
+        вызывающая сторона может поставить им ``check_domain``.
+        Используется ``/download`` после bulk_add в user_domains.
+        """
+        if not domains:
+            return []
+        rows = [{"domain": d} for d in domains]
+        stmt = (
+            pg_insert(WhoisCache)
+            .values(rows)
+            .on_conflict_do_nothing(index_elements=[WhoisCache.domain])
+            .returning(WhoisCache.domain)
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
     async def get_due_for_check(self, *, limit: int) -> Sequence[WhoisCache]:
         """Доменные записи, у которых ``next_check_at <= now()``.
 

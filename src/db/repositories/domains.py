@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import and_, delete, func, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from src.db.models import UserDomain, WhoisCache
 from src.db.repositories.base import BaseRepository
@@ -58,6 +59,37 @@ class DomainRepository(BaseRepository):
         await self.session.flush()
         await self.session.refresh(row)
         return row
+
+    async def bulk_add(self, user_id: int, domains: Iterable[str]) -> int:
+        """Bulk INSERT в ``user_domains`` с пропуском дублей.
+
+        Используется ``/download`` после превью и подтверждения. Возвращает
+        фактическое количество вставленных строк (``ON CONFLICT DO NOTHING``
+        отсеет уже добавленные).
+        """
+        rows = [{"user_id": user_id, "domain": d} for d in domains]
+        if not rows:
+            return 0
+        stmt = (
+            pg_insert(UserDomain)
+            .values(rows)
+            .on_conflict_do_nothing(constraint="uq_user_domains_user_domain")
+            .returning(UserDomain.id)
+        )
+        result = await self.session.execute(stmt)
+        return len(result.scalars().all())
+
+    async def bulk_existing_for_user(self, user_id: int, domains: Iterable[str]) -> set[str]:
+        """Возвращает множество доменов, уже отслеживаемых пользователем."""
+        domains_list = list(domains)
+        if not domains_list:
+            return set()
+        stmt = select(UserDomain.domain).where(
+            UserDomain.user_id == user_id,
+            UserDomain.domain.in_(domains_list),
+        )
+        result = await self.session.execute(stmt)
+        return set(result.scalars().all())
 
     async def remove(self, user_id: int, domain: str) -> bool:
         """Удаляет одну запись. Возвращает ``True`` если что-то удалили."""
@@ -120,6 +152,27 @@ class DomainRepository(BaseRepository):
         )
         result = await self.session.execute(stmt)
         return result.scalars().all()
+
+    async def iter_all_with_whois(
+        self,
+        user_id: int,
+    ) -> Sequence[tuple[UserDomain, WhoisCache | None]]:
+        """Все домены пользователя с WHOIS-кэшем — для экспорта в CSV.
+
+        Без LIMIT/OFFSET: вызывающая сторона должна понимать, что для
+        ``MAX_DOMAINS_PER_USER=50_000`` это до 50 тыс. строк.
+        """
+        stmt = (
+            select(UserDomain, WhoisCache)
+            .outerjoin(WhoisCache, WhoisCache.domain == UserDomain.domain)
+            .where(UserDomain.user_id == user_id)
+            .order_by(
+                WhoisCache.expires_at.asc().nulls_last(),
+                UserDomain.added_at.desc(),
+            )
+        )
+        result = await self.session.execute(stmt)
+        return [(row[0], row[1]) for row in result.all()]
 
     async def list_with_whois(
         self,

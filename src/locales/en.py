@@ -260,7 +260,13 @@ LOCALE: dict[str, str] = {
     "commands.settings.lang_ru_name": "Русский",
     "commands.settings.lang_en_name": "English",
     # ------------------------------------------------------------------
-    # /download
+    # /csv
+    # ------------------------------------------------------------------
+    "csv.empty": "You have no domains to export.",
+    "csv.generating": "Generating a file with {count} domains…",
+    "csv.ready": "File ready: {count} domains",
+    # ------------------------------------------------------------------
+    # /download (legacy keys used by the stub)
     # ------------------------------------------------------------------
     "commands.download.prompt": (
         "📥 Bulk import\n"

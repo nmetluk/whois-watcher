@@ -1,7 +1,8 @@
-"""Заглушки для команд, требующих логики этапов 6+.
+"""Заглушки для команд, реализация которых отложена.
 
-Реализованные команды живут в собственных модулях. Здесь — только то, что
-ещё не подключено: CSV-импорт/экспорт.
+После того как ``/csv`` обзавёлся собственным модулем (``csv_export``),
+здесь остаётся только заглушка ``/download``. Она уйдёт в следующем
+коммите, когда мы подключим реальный массовый импорт.
 """
 
 from __future__ import annotations
@@ -13,11 +14,6 @@ from aiogram.types import Message
 from src.locales import t
 
 router = Router(name="stubs")
-
-
-@router.message(Command("csv"))
-async def stub_csv(message: Message, lang: str) -> None:
-    await message.answer(t("stubs.coming_soon", lang, command="/csv"))
 
 
 @router.message(Command("download"))

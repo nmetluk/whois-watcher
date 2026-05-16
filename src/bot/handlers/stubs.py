@@ -1,8 +1,7 @@
-"""Заглушки для команд, требующих логики этапов 5-6.
+"""Заглушки для команд, требующих логики этапов 6+.
 
-Реализованные команды (/whois, /add, /rmv, /list, /check) живут в собственных
-модулях. Здесь — только то, что ещё не реализовано: импорт/экспорт CSV и
-гранулярная настройка уведомлений.
+Реализованные команды живут в собственных модулях. Здесь — только то, что
+ещё не подключено: CSV-импорт/экспорт.
 """
 
 from __future__ import annotations
@@ -24,13 +23,3 @@ async def stub_csv(message: Message, lang: str) -> None:
 @router.message(Command("download"))
 async def stub_download(message: Message, lang: str) -> None:
     await message.answer(t("stubs.coming_soon_download", lang))
-
-
-@router.message(Command("notify"))
-async def stub_notify(message: Message, lang: str) -> None:
-    await message.answer(t("stubs.coming_soon", lang, command="/notify"))
-
-
-@router.message(Command("unnotify"))
-async def stub_unnotify(message: Message, lang: str) -> None:
-    await message.answer(t("stubs.coming_soon", lang, command="/unnotify"))

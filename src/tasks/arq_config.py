@@ -56,13 +56,33 @@ async def _on_startup(ctx: dict[str, Any]) -> None:
     ctx["sync_redis"] = sync_redis
     logger.info("ARQ worker started")
 
+    # Info-алерт в админ-канал — даёт сигнал, что воркер реально стартовал.
+    try:
+        from src.services.alerts import AlertService
+
+        alerts = AlertService(bot=bot, redis=sync_redis, settings=settings, limits=limits)
+        await alerts.send_info("worker started", f"environment={settings.environment}")
+    except Exception:
+        logger.exception("Failed to send worker-start alert")
+
 
 async def _on_shutdown(ctx: dict[str, Any]) -> None:
     """Закрывает то, что открыли в startup."""
     bot = ctx.get("bot")
+    sync_redis = ctx.get("sync_redis")
+    settings = ctx.get("settings")
+    limits = ctx.get("limits")
+    if bot is not None and sync_redis is not None and settings is not None and limits is not None:
+        try:
+            from src.services.alerts import AlertService
+
+            alerts = AlertService(bot=bot, redis=sync_redis, settings=settings, limits=limits)
+            await alerts.send_info("worker stopped", f"environment={settings.environment}")
+        except Exception:
+            logger.exception("Failed to send worker-stop alert")
+
     if bot is not None:
         await bot.session.close()
-    sync_redis = ctx.get("sync_redis")
     if sync_redis is not None:
         await sync_redis.close()
     # ``dispose_engine`` зовём только если кто-то реально дёрнул БД —
@@ -77,6 +97,8 @@ async def _on_shutdown(ctx: dict[str, Any]) -> None:
 def _build_functions() -> list[Any]:
     """Импорты задач отложены — это разбивает цикл tasks → arq_config → tasks."""
     from src.tasks.check_domain import check_domain
+    from src.tasks.cleanup import cleanup_old_events, cleanup_orphan_cache
+    from src.tasks.daily_stats import send_daily_summary
     from src.tasks.expiry_scheduler import expiry_notification_scheduler
     from src.tasks.notify_changes import send_change_notice
     from src.tasks.notify_problem import send_problem_notice
@@ -90,10 +112,15 @@ def _build_functions() -> list[Any]:
         send_problem_notice,
         send_expiry_reminder,
         expiry_notification_scheduler,
+        send_daily_summary,
+        cleanup_orphan_cache,
+        cleanup_old_events,
     ]
 
 
 def _build_cron_jobs() -> list[Any]:
+    from src.tasks.cleanup import cleanup_old_events, cleanup_orphan_cache
+    from src.tasks.daily_stats import send_daily_summary
     from src.tasks.expiry_scheduler import expiry_notification_scheduler
     from src.tasks.scheduler import scheduler_tick
 
@@ -108,6 +135,26 @@ def _build_cron_jobs() -> list[Any]:
             expiry_notification_scheduler,
             name="expiry_notification_scheduler",
             minute={0},
+        ),
+        # Раз в сутки в 03:00 UTC = 06:00 по Москве — сразу после ночного окна.
+        cron(
+            send_daily_summary,
+            name="send_daily_summary",
+            hour={3},
+            minute={0},
+        ),
+        # Раз в сутки чистим сиротские записи кэша и старые system_events.
+        cron(
+            cleanup_orphan_cache,
+            name="cleanup_orphan_cache",
+            hour={4},
+            minute={0},
+        ),
+        cron(
+            cleanup_old_events,
+            name="cleanup_old_events",
+            hour={4},
+            minute={10},
         ),
     ]
 

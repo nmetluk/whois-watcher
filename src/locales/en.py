@@ -304,6 +304,26 @@ LOCALE: dict[str, str] = {
     ),
     "download.nothing_to_add": "All domains from the file are already tracked.",
     # ------------------------------------------------------------------
+    # /admin
+    # ------------------------------------------------------------------
+    "admin.forbidden": "❌ Admin command — access denied.",
+    "admin.stats": (
+        "📊 System status\n"
+        "\n"
+        "👤 Users: {users}\n"
+        "🌐 Cached domains: {cached_domains}\n"
+        "📌 Subscriptions (user_domains): {tracked}\n"
+        "⏳ Pending checks: {due_checks}"
+    ),
+    "admin.alert_sent": "✅ Alert sent.",
+    "admin.alert_no_text": "Usage: /admin alert <text>",
+    "admin.alert_no_channel": "❌ ADMIN_CHANNEL_ID is not configured.",
+    "admin.unknown": (
+        "Available commands:\n"
+        "/admin stats — current statistics\n"
+        "/admin alert <text> — test channel alert"
+    ),
+    # ------------------------------------------------------------------
     # /download (legacy keys used by the stub)
     # ------------------------------------------------------------------
     "commands.download.prompt": (

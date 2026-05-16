@@ -26,8 +26,10 @@ from arq import create_pool
 from redis.asyncio import Redis
 
 from src.bot.commands import COMMANDS_EN, COMMANDS_RU
+from src.config.limits import get_limits
 from src.config.settings import Settings
 from src.db.session import dispose_engine
+from src.services.alerts import AlertService
 from src.tasks.arq_config import get_redis_settings
 
 logger = logging.getLogger(__name__)
@@ -65,11 +67,15 @@ def create_app(
         dp["arq_redis"] = arq_redis
 
         webhook_url = settings.webhook_url
-        await bot.set_webhook(
-            url=webhook_url,
-            secret_token=settings.webhook_secret.get_secret_value(),
-            drop_pending_updates=True,
-        )
+        try:
+            await bot.set_webhook(
+                url=webhook_url,
+                secret_token=settings.webhook_secret.get_secret_value(),
+                drop_pending_updates=True,
+            )
+        except Exception as exc:
+            await _try_send_critical(bot, redis, settings, "webhook setup failed", repr(exc))
+            raise
         await bot.set_my_commands(
             commands=list(COMMANDS_RU),
             scope=BotCommandScopeDefault(),
@@ -82,7 +88,14 @@ def create_app(
         )
         logger.info("Webhook set: %s", webhook_url)
 
+        await _try_send_info(
+            bot, redis, settings, "bot started", f"environment={settings.environment}"
+        )
+
     async def _on_shutdown(_app: web.Application) -> None:
+        await _try_send_info(
+            bot, redis, settings, "bot stopping", f"environment={settings.environment}"
+        )
         try:
             await bot.delete_webhook(drop_pending_updates=False)
         except Exception:
@@ -97,3 +110,25 @@ def create_app(
     app.on_startup.append(_on_startup)
     app.on_shutdown.append(_on_shutdown)
     return app
+
+
+async def _try_send_info(
+    bot: Bot, redis: Redis[str], settings: Settings, title: str, details: str
+) -> None:
+    """Шлёт info-алерт, проглатывая любые ошибки (startup не должен падать)."""
+    try:
+        alerts = AlertService(bot=bot, redis=redis, settings=settings, limits=get_limits())
+        await alerts.send_info(title, details)
+    except Exception:
+        logger.exception("Failed to send info alert: %s", title)
+
+
+async def _try_send_critical(
+    bot: Bot, redis: Redis[str], settings: Settings, title: str, details: str
+) -> None:
+    """Шлёт critical-алерт без проброса ошибок отправки."""
+    try:
+        alerts = AlertService(bot=bot, redis=redis, settings=settings, limits=get_limits())
+        await alerts.send_critical(title, details)
+    except Exception:
+        logger.exception("Failed to send critical alert: %s", title)

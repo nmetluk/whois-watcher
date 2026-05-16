@@ -16,14 +16,16 @@
 10. ``notifications`` — ``/notify``, ``/unnotify`` + callback'и из уведомлений
 11. ``csv_export``   — ``/csv``
 12. ``download``     — ``/download`` + FSM + callback'и превью
-13. ``stubs``        — пустой роутер (зарезервирован под будущие команды)
-14. ``text``         — обработка не-команд (последний)
+13. ``admin``        — ``/admin`` (доступ ограничен ADMIN_USER_IDS)
+14. ``stubs``        — пустой роутер (зарезервирован под будущие команды)
+15. ``text``         — обработка не-команд (последний)
 """
 
 from aiogram import Router
 
 from src.bot.handlers import (
     add_remove,
+    admin,
     check,
     csv_export,
     delete_me,
@@ -52,6 +54,7 @@ ROUTERS: tuple[Router, ...] = (
     notifications.router,
     csv_export.router,
     download.router,
+    admin.router,
     stubs.router,
     text.router,
 )

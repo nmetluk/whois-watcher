@@ -47,9 +47,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-org/whois-watcher"
-Repository = "https://github.com/your-org/whois-watcher"
-Issues = "https://github.com/your-org/whois-watcher/issues"
+Homepage = "https://github.com/nmetluk/whois-watcher"
+Repository = "https://github.com/nmetluk/whois-watcher"
+Issues = "https://github.com/nmetluk/whois-watcher/issues"
 
 [dependency-groups]
 # Диапазоны умышленно широкие (<X+1.0): сторонние tooling-пакеты выпускают

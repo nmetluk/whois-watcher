@@ -16,8 +16,8 @@ router = Router(name="help_cancel")
 
 # URL'ы внешних ресурсов под кнопками /help.
 # Жёстко зашиты — это публичные ссылки проекта, не секреты.
-_PRIVACY_URL = "https://github.com/your-org/whois-watcher/blob/main/PRIVACY.md"
-_GITHUB_URL = "https://github.com/your-org/whois-watcher"
+_PRIVACY_URL = "https://github.com/nmetluk/whois-watcher/blob/main/PRIVACY.md"
+_GITHUB_URL = "https://github.com/nmetluk/whois-watcher"
 
 
 def _help_keyboard(lang: str) -> InlineKeyboardMarkup:

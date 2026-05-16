@@ -1,127 +1,74 @@
-# План разработки
+# Roadmap
 
-Каждый этап — рабочий бот с расширяющимся функционалом. Двигаемся последовательно, не перескакиваем.
+История изменений по релизам — в [CHANGELOG.md](CHANGELOG.md). Этот файл
+описывает план следующих версий.
 
-## Этап 0: Инфраструктура репозитория
+## v0.1.0 — released 2026-05-16
 
-- [ ] Создан репозиторий `whois-watcher` на GitHub, MIT-лицензия
-- [ ] Коммит проектной документации (`CLAUDE.md`, `docs/`, `TODO.md`)
-- [ ] `README.md` (заглушка с описанием)
-- [ ] `.gitignore`, `.env.example`
-- [ ] `pyproject.toml` (PEP 621, менеджер — uv) со всеми зависимостями
-- [ ] `Dockerfile` для бота и воркера
-- [ ] `docker-compose.yml` (postgres, redis, bot, worker, scheduler)
-- [ ] `docker-compose.dev.yml` (с volume-маунтами для разработки)
-- [ ] `.pre-commit-config.yaml` (black, ruff, detect-secrets)
-- [ ] Базовая структура папок `src/`, `tests/`, `migrations/`, `scripts/`
+MVP. Полный функционал см. в [CHANGELOG.md](CHANGELOG.md). Этапы 0–7
+из исходного плана разработки завершены.
 
-## Этап 1: Фундамент
+## v0.2 — UX & polish (planned)
 
-- [ ] `src/config/settings.py` — pydantic-settings, все переменные
-- [ ] `src/config/limits.py` — класс с лимитами
-- [ ] `src/db/models.py` — все SQLAlchemy-модели (users, user_domains, whois_cache, sent_notifications, domain_changes, system_events)
-- [ ] `alembic.ini` + initial migration
-- [ ] `src/db/session.py` — async engine, session factory
-- [ ] `src/db/repositories/` — UserRepository, DomainRepository, WhoisCacheRepository, NotificationRepository
-- [ ] `src/locales/ru.py`, `src/locales/en.py` — словари ключей
-- [ ] `src/utils/idn.py` — конвертация IDN ↔ punycode
-- [ ] `src/utils/timezone.py` — работа с tz
-- [ ] `src/utils/formatting.py` — форматирование дат, дней
-- [ ] `src/bot/validators.py` — валидация доменов
-
-## Этап 2: Бот без WHOIS-логики
-
-- [ ] `src/bot/app.py` — сборка Bot и Dispatcher
-- [ ] `src/bot/webhook.py` — FastAPI/aiohttp webhook-сервер
-- [ ] `src/main.py` — entrypoint
-- [ ] `src/bot/middlewares/user_register.py` — регистрация пользователя при первом сообщении
-- [ ] `src/bot/middlewares/locale.py` — определение языка
-- [ ] `src/bot/middlewares/rate_limit.py` — общий rate limit
-- [ ] `src/bot/keyboards.py` — все inline-клавиатуры
-- [ ] `src/bot/states.py` — FSM-состояния
-- [ ] Хэндлеры:
-  - [ ] `/start` (`src/bot/handlers/start.py`)
-  - [ ] `/help`, `/cancel` (`src/bot/handlers/help_cancel.py`)
-  - [ ] `/settings` (`src/bot/handlers/settings.py`)
-  - [ ] `/stats` (`src/bot/handlers/stats.py`)
-  - [ ] `/delete_me`, `/delete_me_confirm` (`src/bot/handlers/delete_me.py`)
-  - [ ] Заглушки для остальных команд (отвечают "будет позже")
-- [ ] Юнит-тесты на валидаторы, форматтеры, idn
-
-## Этап 3: WHOIS-ядро
-
-- [ ] `src/whois/rdap.py` — RDAP-клиент через `whoisit`
-- [ ] `src/whois/whois_protocol.py` — TCP-запросы на 43 порт
-- [ ] `src/whois/parser.py` — нормализация ответов в единую структуру
-- [ ] `src/whois/client.py` — фасад: RDAP → WHOIS fallback
-- [ ] `src/whois/scheduler.py` — расчёт `next_check_at` по адаптивному TTL
-- [ ] `src/whois/diff.py` — сравнение старого и нового состояния
-- [ ] Юнит-тесты на парсер (на фикстурах ответов разных регистраторов), scheduler, diff
-
-## Этап 4: Слежение за доменами
-
-- [ ] `src/services/domains.py` — бизнес-логика добавления/удаления
-- [ ] `src/services/users.py` — бизнес-логика пользователя
-- [ ] Хэндлеры:
-  - [ ] `/whois <domain>` (`src/bot/handlers/whois.py`)
-  - [ ] `/add <domain>` (`src/bot/handlers/add_remove.py`)
-  - [ ] `/rmv <domain>` (там же)
-  - [ ] `/list` (`src/bot/handlers/list_domains.py`) с пагинацией и фильтрами
-  - [ ] `/check <domain>` (там же или отдельный файл)
-  - [ ] Обработка плоского домена (`src/bot/handlers/plain_domain.py`)
-  - [ ] Callback-хэндлеры для inline-кнопок
-- [ ] `src/tasks/arq_config.py` — конфиг ARQ
-- [ ] `src/tasks/check_domain.py` — задача проверки одного домена
-- [ ] `src/worker.py` — entrypoint воркера
-- [ ] Cron-задача в ARQ для отбора `next_check_at <= now()`
-- [ ] Интеграционный тест: добавить домен → дождаться обновления в БД
-
-## Этап 5: Уведомления
-
-- [ ] `src/services/notifications.py` — выбор кому что слать, дедупликация
-- [ ] `src/tasks/send_reminders.py` — рассылка по `notify_days`
-- [ ] `src/tasks/send_change_notices.py` — уведомления о смене статусов
-- [ ] `src/tasks/send_problem_notices.py` — уведомления о длительных WHOIS-проблемах
-- [ ] Cron-задача (каждый час) для отбора пользователей с локальным `notify_at_hour`
-- [ ] Логика `sent_notifications` с UNIQUE-защитой
-- [ ] Хэндлеры:
-  - [ ] `/notify <domain>` и `/unnotify <domain>` (`src/bot/handlers/notifications.py`)
-
-## Этап 6: Импорт/экспорт и админ-канал
-
-- [ ] `src/services/csv_io.py` — генерация и парсинг CSV
-- [ ] Хэндлеры:
-  - [ ] `/csv` (`src/bot/handlers/csv_export.py`)
-  - [ ] `/download` (`src/bot/handlers/download.py`) с FSM
-- [ ] `src/services/alerts.py` — отправка в админ-канал с дедупликацией
-- [ ] Интеграция алертов в критичные места кода
-- [ ] `src/tasks/daily_stats.py` — ежедневная сводка
-- [ ] `src/tasks/cleanup.py` — чистка `whois_cache` (сироты), `system_events` (старые)
-
-## Этап 7: Production-готовность
-
-- [ ] Sentry SDK
-- [ ] structlog с JSON-выводом в production
-- [ ] Метрики (опционально: Prometheus exporter)
-- [ ] Healthcheck endpoint
-- [ ] Полный README.md (RU) с описанием, скриншотами, установкой
-- [ ] `README.en.md` — английская версия
-- [ ] `CONTRIBUTING.md`
-- [ ] `PRIVACY.md`
-- [ ] GitHub Actions:
-  - [ ] CI: ruff, black, mypy, pytest на каждый PR
-  - [ ] Docker build для тегов
-- [ ] `docs/deployment.md` — пошаговая инструкция деплоя на VPS
-- [ ] Релиз v0.1.0
-
-## После MVP (будущие версии)
+Уточняющая итерация по UX и краевым случаям после первых пользователей.
 
 - [ ] Гранулярная настройка типов уведомлений на домен через `/settings`
-- [ ] Поиск по списку (`/find <pattern>` или фильтр в `/list`)
-- [ ] Уведомления об освобождении домена (для свободных)
-- [ ] Регистрация домена через бот (партнёрка с регистраторами)
-- [ ] Мониторинг SSL-сертификатов доменов
-- [ ] Мониторинг доступности сайта (HTTP-проверки)
-- [ ] Web-интерфейс (личный кабинет)
-- [ ] Публичная API
-- [ ] Командные/корпоративные аккаунты (если появится спрос)
+  → выбор домена → меню переключателей (`notify_expiry`,
+  `notify_ns_change`, `notify_registrar_change`, `notify_status_change`)
+- [ ] Поиск и фильтр по имени в `/list` (`/find <pattern>` или текстовый
+  поиск из подменю фильтров)
+- [ ] «Wishlist»: уведомлять о появлении домена в свободном пуле (для
+  истёкших доменов, за которыми хочется поохотиться)
+- [ ] Лучший UX для реестров, не публикующих expiry (DENIC и т. п.):
+  отдельный значок в `/list` вместо обычного «нет данных»
+- [ ] Подсказки в `/help` по edge-cases: что значит каждый эмодзи,
+  как ведёт себя бот при WHOIS-ошибках
+
+## v0.3 — Coverage & data quality
+
+Расширение охвата TLD и дополнительные источники данных о домене.
+
+- [ ] WHOIS-парсер для большего числа ccTLD (`.uk`, `.nl`, `.es`, `.br`,
+  `.pl`, `.cz`, `.au`, `.ca`, `.jp` — фикстуры на основе реальных ответов)
+- [ ] Альтернативные WHOIS-маршруты для заблокированных `.ru`-источников
+  (SOCKS/HTTP-прокси через env или внешний whois-relay)
+- [ ] Мониторинг SSL-сертификатов отслеживаемых доменов (ACME-renewal
+  трекинг по `expires_at` сертификата)
+- [ ] Уведомления об изменении A/AAAA-записей (опционально, как
+  отдельный флаг `notify_dns_change`)
+
+## v1.0 — Public stable
+
+Стабилизация публичного API и интерфейса для долговременной поддержки.
+
+- [ ] Веб-дашборд (read-only): список доменов, графики истечения,
+  фильтры — отдельный процесс рядом с ботом
+- [ ] Публичная HTTP API для интеграций (read-only начало)
+- [ ] Командные / организационные аккаунты — общий портфель на группу
+  Telegram-пользователей
+- [ ] Метрики Prometheus exporter и health-эндпойнты для k8s probes
+
+## Tech debt
+
+Накопленные пометки «сделать лучше», без жёстких дат.
+
+- [ ] DENIC: отдельный «expiry hidden by registry»-значок и подсказка
+  в `/list` (см. v0.2). Сейчас `.de` показывается как «нет данных»,
+  что вводит в заблуждение — фактически данные есть, кроме expiry.
+- [ ] Больше интеграционных тестов для ARQ-тасок (сейчас покрыты
+  юнит-тестами с моками; нужны проходы через настоящие Postgres+Redis
+  через `pytest-docker`)
+- [ ] Бенчмарк `scheduler_tick` на 100 K доменов — проверить, что выборка
+  `next_check_at <= now()` остаётся быстрой
+- [ ] `MIGRATIONS.md` — гайд по созданию и проверке новых миграций
+- [ ] Полная конвертация локальной разработки на uv (часть скриптов
+  ещё имеет смешанные команды pip/uv в комментариях)
+- [ ] Документировать ADR 019 «дедупликация алертов»: какие severity и
+  частоту мы считаем нормальными — сейчас только в коде
+
+## Идеи на потом (не запланировано)
+
+- Регистрация домена через бот (партнёрка с регистраторами)
+- Поддержка whois-конкретного-регистратора с авторизацией (для частных
+  TLD-зон, например `.cm` через NSI)
+- Мониторинг репутации (RBL / SpamHaus)

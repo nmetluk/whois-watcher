@@ -97,15 +97,20 @@ async def _on_shutdown(ctx: dict[str, Any]) -> None:
 def _build_functions() -> list[Any]:
     """Импорты задач отложены — это разбивает цикл tasks → arq_config → tasks."""
     from src.tasks.check_domain import check_domain
+    from src.tasks.check_ssl import check_ssl
     from src.tasks.cleanup import cleanup_old_events, cleanup_orphan_cache
     from src.tasks.daily_stats import send_daily_summary
     from src.tasks.expiry_scheduler import expiry_notification_scheduler
     from src.tasks.notify_changes import send_change_notice
     from src.tasks.notify_problem import send_problem_notice
+    from src.tasks.notify_ssl_changes import send_ssl_change_notice
     from src.tasks.notify_wishlist import send_wishlist_available_notice
     from src.tasks.proxy_health import proxy_health_check
     from src.tasks.scheduler import scheduler_tick
     from src.tasks.send_reminders import send_expiry_reminder
+    from src.tasks.send_ssl_reminder import send_ssl_expiry_reminder
+    from src.tasks.ssl_reminders_scheduler import ssl_reminders_scheduler
+    from src.tasks.ssl_scheduler import ssl_scheduler_tick
 
     return [
         check_domain,
@@ -119,6 +124,12 @@ def _build_functions() -> list[Any]:
         cleanup_old_events,
         send_wishlist_available_notice,
         proxy_health_check,
+        # SSL (Этап 12, ADR 030)
+        check_ssl,
+        ssl_scheduler_tick,
+        ssl_reminders_scheduler,
+        send_ssl_expiry_reminder,
+        send_ssl_change_notice,
     ]
 
 
@@ -128,6 +139,8 @@ def _build_cron_jobs() -> list[Any]:
     from src.tasks.expiry_scheduler import expiry_notification_scheduler
     from src.tasks.proxy_health import proxy_health_check
     from src.tasks.scheduler import scheduler_tick
+    from src.tasks.ssl_reminders_scheduler import ssl_reminders_scheduler
+    from src.tasks.ssl_scheduler import ssl_scheduler_tick
 
     return [
         cron(
@@ -146,6 +159,20 @@ def _build_cron_jobs() -> list[Any]:
         cron(
             expiry_notification_scheduler,
             name="expiry_notification_scheduler",
+            minute={0},
+        ),
+        # ADR 030: SSL scheduler работает на той же частоте что и WHOIS
+        # — каждые 5 минут раздаёт due-домены в очередь check_ssl.
+        cron(
+            ssl_scheduler_tick,
+            name="ssl_scheduler_tick",
+            minute={0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55},
+            run_at_startup=True,
+        ),
+        # Напоминания об истечении SSL — раз в час, как и для WHOIS.
+        cron(
+            ssl_reminders_scheduler,
+            name="ssl_reminders_scheduler",
             minute={0},
         ),
         # Раз в сутки в 03:00 UTC = 06:00 по Москве — сразу после ночного окна.

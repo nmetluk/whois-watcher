@@ -601,6 +601,11 @@ git fetch
 git log --oneline HEAD..origin/main   # посмотреть, что прилетит
 git pull origin main
 
+# Сгенерировать build info (Этап 9). Файл src/_build_info.py
+# гитнорируется и попадает в образ ТОЛЬКО если выполнить этот шаг до
+# `docker compose build`. Без него /version покажет "unknown/dev".
+bash scripts/generate_build_info.sh
+
 # Пересборка образа (быстро благодаря кэшу слоёв)
 docker compose build
 

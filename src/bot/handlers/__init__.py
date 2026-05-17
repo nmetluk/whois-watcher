@@ -17,8 +17,9 @@
 11. ``csv_export``   — ``/csv``
 12. ``download``     — ``/download`` + FSM + callback'и превью
 13. ``admin``        — ``/admin`` (доступ ограничен ADMIN_USER_IDS)
-14. ``stubs``        — пустой роутер (зарезервирован под будущие команды)
-15. ``text``         — обработка не-команд (последний)
+14. ``version``      — скрытая ``/version`` (диагностика, не в меню/help)
+15. ``stubs``        — пустой роутер (зарезервирован под будущие команды)
+16. ``text``         — обработка не-команд (последний)
 """
 
 from aiogram import Router
@@ -38,6 +39,7 @@ from src.bot.handlers import (
     stats,
     stubs,
     text,
+    version,
     whois,
 )
 
@@ -55,6 +57,7 @@ ROUTERS: tuple[Router, ...] = (
     csv_export.router,
     download.router,
     admin.router,
+    version.router,
     stubs.router,
     text.router,
 )

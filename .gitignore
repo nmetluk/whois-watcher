@@ -84,3 +84,8 @@ dmypy.json
 
 # Claude Code
 .claude/
+
+# Auto-generated build info (created by scripts/generate_build_info.sh
+# before docker build; intentionally not committed — it pins each build
+# to a specific git revision and timestamp).
+src/_build_info.py

@@ -7,16 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-05-17
+
 ### Changed
 
-- **WHOIS lookups now route through internal proxy gateway**
-  (`WHOIS_PROXY_URL`, default `http://127.0.0.1:8043`) by default, with
-  automatic fallback to direct RDAP/WHOIS:43 when proxy is unreachable
-  (`ProxyUnreachable`). See [ADR 028](docs/decisions.md#028-whois-proxy-gateway-as-primary-lookup).
-- Proxy handles RU-zone lookups via dedicated RU-relay, fixing
-  reliability issues with `.ru`/`.рф`/`.su` domains from non-RU hosts.
-- Proxy provides 24-hour positive caching, reducing load on upstream
-  registries and improving response times.
+- WHOIS lookups now route through internal proxy gateway running on the
+  host (`host.docker.internal:8043` from containers). The proxy handles
+  RDAP, generic WHOIS, and RU-specific upstream via a dedicated RU-VDS.
+  See [ADR 028](docs/decisions.md#028-whois-proxy-gateway-as-primary-lookup).
+- 24-hour positive caching on proxy side reduces load on registries and
+  improves response times.
 - New `DataSource` literal values: `proxy_rdap`, `proxy_whois`,
   `proxy_whois_ru`, `proxy_none` — track which upstream the proxy used.
 
@@ -24,16 +24,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `src/whois/proxy_client.py` — HTTP/JSON client for the proxy gateway
   (`lookup_via_proxy`, `proxy_healthcheck`, `ProxyUnreachable`).
-- `src/tasks/proxy_health.py` — ARQ cron `proxy_health_check` runs every
-  15 minutes, pings `/healthz`, sends `send_critical` to the admin
-  channel if proxy is down.
+- Proxy health monitoring: ARQ cron `proxy_health_check` runs every
+  15 minutes, pings `/healthz`, sends critical alert to admin channel
+  if the proxy is down.
+- Source attribution in WHOIS data: `proxy_rdap`, `proxy_whois`,
+  `proxy_whois_ru`, `proxy_none` to track upstream and cache status.
+- Automatic fallback to direct RDAP/WHOIS:43 lookup when proxy is
+  unreachable — bot remains functional during proxy downtime.
+- Docker compose network configured to reach host-side proxy: pinned
+  subnet `172.28.0.0/16`, explicit gateway in `extra_hosts`, and ufw
+  allow rule (`ufw allow from 172.28.0.0/16 to any port 8043 proto tcp`)
+  on the host. Docker's `host-gateway` magic doesn't work for
+  user-defined compose networks — see ADR 028 for the trap.
+- New [ADR 028](docs/decisions.md#028-whois-proxy-gateway-as-primary-lookup):
+  WHOIS proxy gateway as primary lookup.
 
 ### Removed
 
 - `WHOIS_SERVER_OVERRIDES` env variable and its validator (replaced by
-  the proxy gateway). [ADR 023](docs/decisions.md#023-whois-server-overrides-per-tld-deprecated-in-v040)
-  is marked DEPRECATED for historical reference.
+  the proxy gateway).
 - `server_overrides=` parameter of `whois_protocol.query_whois`.
+- [ADR 023](docs/decisions.md#023-whois-server-overrides-per-tld-deprecated-in-v040)
+  marked DEPRECATED (kept for historical reference).
+
+### Fixed
+
+- `.ru` / `.рф` / `.su` domains now consistently return full WHOIS data
+  from non-RU IP addresses (previously blocked by TCI).
+
+### Documentation
+
+- Cross-referenced `scripts/deploy.sh` across README, ADR 027,
+  CONTRIBUTING for long-term discoverability (back-dated to v0.3.x but
+  landed after the v0.3.0 tag).
 
 ## [0.3.0] — 2026-05-17
 

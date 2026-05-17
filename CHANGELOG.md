@@ -7,32 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added — /version, search/filter, wishlist (Stage 9)
+## [0.3.0] — 2026-05-17
 
-- **Hidden `/version` command** for build diagnostics. Minimal output
-  for everyone (version + commit + build time); full report for
-  `ADMIN_USER_IDS` (uptime, component checks, storage stats, stack
-  versions, GitHub commit link). NOT registered in the BotFather menu
-  and not mentioned in `/help` — accessible only to people who know.
-- **Search in `/list` by substring** via the new `🔍 Поиск` button and
-  FSM input. Supports both punycode and Unicode variants (search
-  «пример», find `xn--…`). Active search adds a `❌ Сбросить поиск`
-  button and a `🔍 Поиск: <query>` line in the header.
-- **New `/list` filters:** `🚨 С проблемами` (critical EPP statuses
-  — `clientHold`, `pendingDelete`, `serverHold`, `BLOCKED`, `failed`)
+### Added
+
+- **Hidden `/version` command** with build info: short output for
+  everyone (version + commit + build time), extended report for
+  `ADMIN_USER_IDS` (uptime, Postgres/Redis health, storage counters,
+  stack versions, GitHub commit link). Not registered in the BotFather
+  menu and not mentioned in `/help`.
+- **Search by substring in `/list`** via the new `🔍 Поиск` button and
+  FSM input — supports both punycode and Unicode variants («пример»
+  finds `xn--…`).
+- **New `/list` filters:** `🚨 С проблемами` (critical EPP statuses —
+  `clientHold`, `pendingDelete`, `serverHold`, `BLOCKED`, `failed`)
   and `💀 Истёкшие` (`expires_at < now()`).
-- **Wishlist feature:** `/wishlist <domain>` or the new
-  `🎯 Хочу когда освободится` button in the `/whois` card. The bot
-  re-checks wishlist domains every 24 hours and sends a **one-shot**
-  notification when the domain becomes available, then automatically
-  removes the wishlist subscription. Filter `🎯 Wishlist` in `/list`
-  shows the active wishlist.
+- **Wishlist:** `/wishlist <domain>` or the inline button
+  «🎯 Хочу когда освободится» in the `/whois` card. The bot re-checks
+  wishlist domains every 24 hours and sends a one-shot notification
+  when the domain becomes available, then auto-removes the
+  subscription. Filter `🎯 Wishlist` in `/list` shows the active
+  wishlist.
+- **One-command deployment:** `scripts/deploy.sh` — clean working tree
+  check → git pull → build info regen → docker build → alembic upgrade
+  → recreate services → health verification.
+- **`APP_VERSION` baked into build info** at deploy time: read from
+  `pyproject.toml` via `tomllib` and written to `_build_info.py`
+  alongside git metadata, so `/version` reports a real version in
+  containers (where `importlib.metadata` returns `unknown` due to
+  `uv sync --no-install-project`).
 
 ### Fixed
 
-- `/list` pagination no longer resets the active filter when paging
-  prev/next (state is now persisted in Redis `list_state:{user_id}`
-  for 30 minutes).
+- **`/list` "CSV" button now exports the file directly** instead of
+  responding with a hint to use the `/csv` command. Both entry points
+  now share the same `send_user_csv_file` helper.
+- **No bogus change notifications on first fetch after `/add`** —
+  `compute_diff` was treating the NULL → real-value transition from
+  the placeholder `whois_cache` row (inserted by `add_for_user` before
+  `check_domain` ran) as a real change. Guard now also requires
+  `old_data.is_registered=True`.
+- **`/list` pagination no longer resets the active filter** when
+  paging prev/next — state is persisted in Redis `list_state:{user_id}`
+  (TTL 30 min) along with the search query.
 
 ### Database
 
@@ -40,13 +57,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `20260517_wishlist`). Existing rows are unaffected.
 - New `notification_type='wishlist_available'` value used in
   `sent_notifications` for audit logging.
-
-### Build & deployment
-
-- `scripts/generate_build_info.sh` writes `src/_build_info.py` before
-  `docker compose build`. The generated file is gitignored — each
-  build pins its own git revision and timestamp. `docs/deployment.md`
-  updates the «Обновление до новой версии» runbook accordingly.
 
 ## [0.2.0] — 2026-05-17
 

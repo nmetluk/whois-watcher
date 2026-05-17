@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-import json
 from functools import lru_cache
 from typing import Annotated, Literal
 
@@ -164,18 +163,6 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------
     # WHOIS — direct fallback (используется когда прокси недоступен)
     # ------------------------------------------------------------------
-    # ``NoDecode`` нужен, чтобы env-источник передал сырую строку нашему
-    # ``mode='before'`` валидатору. Так мы сами нормализуем ключи к lowercase
-    # и аккуратно обрабатываем пустую строку.
-    whois_server_overrides: Annotated[dict[str, str], NoDecode] = Field(
-        default_factory=dict,
-        description=(
-            "Override WHOIS-серверов по TLD. JSON-объект, например: "
-            '{"ru":"whois.example.com"}. Ключи приводятся к lowercase. '
-            "Полезно когда дефолтный сервер недоступен с конкретного хоста."
-        ),
-    )
-
     # Включает «referral following»: для thin-WHOIS реестров (Verisign .com/.net,
     # Afilias и т. п.) после первого ответа парсим ``Registrar WHOIS Server`` и
     # делаем второй запрос — он даёт полные данные регистрации. Полезно для
@@ -188,24 +175,6 @@ class Settings(BaseSettings):
             "thin-WHOIS реестров (.com/.net). True — полнее данные, +1 TCP."
         ),
     )
-
-    @field_validator("whois_server_overrides", mode="before")
-    @classmethod
-    def _parse_whois_overrides(cls, value: object) -> object:
-        """JSON-строка (env обычно строка) → dict[lowercase tld, server]."""
-        if value is None or value == "":
-            return {}
-        if isinstance(value, str):
-            try:
-                parsed = json.loads(value)
-            except json.JSONDecodeError as exc:
-                raise ValueError(f"WHOIS_SERVER_OVERRIDES must be valid JSON: {exc}") from exc
-            if not isinstance(parsed, dict):
-                raise ValueError("WHOIS_SERVER_OVERRIDES must be a JSON object")
-            return {str(k).lower(): str(v) for k, v in parsed.items()}
-        if isinstance(value, dict):
-            return {str(k).lower(): str(v) for k, v in value.items()}
-        return value
 
     # ------------------------------------------------------------------
     # Вычисляемые свойства

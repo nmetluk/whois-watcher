@@ -29,75 +29,30 @@ def captured(monkeypatch: pytest.MonkeyPatch) -> dict[str, object]:
 
 
 class TestQueryWhoisServerSelection:
-    async def test_override_takes_precedence_over_default_mapping(
+    async def test_default_mapping_used_when_no_explicit_server(
         self, captured: dict[str, object]
     ) -> None:
-        result = await whois_protocol.query_whois(
-            "yandex.ru",
-            server_overrides={"ru": "whois.pinspb.ru"},
-            timeout=5.0,
-        )
-
+        result = await whois_protocol.query_whois("yandex.ru", timeout=5.0)
         assert result == "fake-response"
-        assert captured["host"] == "whois.pinspb.ru"
+        assert captured["host"] == whois_protocol.WHOIS_SERVERS["ru"]
         assert captured["query"] == "yandex.ru"
 
-    async def test_no_override_falls_back_to_default_mapping(
+    async def test_explicit_server_overrides_default_mapping(
         self, captured: dict[str, object]
     ) -> None:
-        await whois_protocol.query_whois(
-            "yandex.ru",
-            timeout=5.0,
-        )
-
-        # Без override используется встроенный mapping (.ru → whois.tcinet.ru)
-        assert captured["host"] == whois_protocol.WHOIS_SERVERS["ru"]
-
-    async def test_override_lookup_is_case_insensitive_for_domain_tld(
-        self, captured: dict[str, object]
-    ) -> None:
-        # Ключи overrides — lowercase (нормализуется валидатором Settings).
-        # TLD домена приходит в любом регистре — _tld_of приводит к lowercase.
-        await whois_protocol.query_whois(
-            "Example.RU",
-            server_overrides={"ru": "whois.pinspb.ru"},
-            timeout=5.0,
-        )
-
-        assert captured["host"] == "whois.pinspb.ru"
-
-    async def test_explicit_server_outranks_override(self, captured: dict[str, object]) -> None:
         await whois_protocol.query_whois(
             "yandex.ru",
             server="whois.explicit.example",
-            server_overrides={"ru": "whois.pinspb.ru"},
             timeout=5.0,
         )
-
-        # Явный параметр server — высший приоритет
         assert captured["host"] == "whois.explicit.example"
 
-    async def test_override_for_unknown_tld_uses_override(
+    async def test_lookup_is_case_insensitive_for_domain_tld(
         self, captured: dict[str, object]
     ) -> None:
-        # TLD которого нет ни в WHOIS_SERVERS, ни в IANA — но есть в override
-        await whois_protocol.query_whois(
-            "domain.exotic",
-            server_overrides={"exotic": "whois.exotic.example"},
-            timeout=5.0,
-        )
-
-        assert captured["host"] == "whois.exotic.example"
-
-    async def test_override_not_matching_tld_falls_back(self, captured: dict[str, object]) -> None:
-        # Override на .ru, а домен .com → должен сработать дефолтный mapping
-        await whois_protocol.query_whois(
-            "example.com",
-            server_overrides={"ru": "whois.pinspb.ru"},
-            timeout=5.0,
-        )
-
-        assert captured["host"] == whois_protocol.WHOIS_SERVERS["com"]
+        # TLD домена приходит в любом регистре — _tld_of приводит к lowercase.
+        await whois_protocol.query_whois("Example.RU", timeout=5.0)
+        assert captured["host"] == whois_protocol.WHOIS_SERVERS["ru"]
 
 
 class TestQueryWhoisIanaDiscovery:

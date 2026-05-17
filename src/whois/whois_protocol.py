@@ -125,7 +125,6 @@ async def query_whois(
     domain: str,
     *,
     server: str | None = None,
-    server_overrides: dict[str, str] | None = None,
     timeout: float,
     follow_referral: bool = False,
 ) -> str:
@@ -134,9 +133,8 @@ async def query_whois(
     Приоритет выбора сервера:
 
     1. Явный ``server`` (программное намерение, в т.ч. тесты).
-    2. ``server_overrides[tld]`` (конфиг через env — обход недоступных серверов).
-    3. ``WHOIS_SERVERS[tld]`` (встроенный mapping).
-    4. IANA discovery.
+    2. ``WHOIS_SERVERS[tld]`` (встроенный mapping).
+    3. IANA discovery.
 
     ``follow_referral=True`` (для thin-WHOIS реестров типа Verisign .com/.net):
     если в первом ответе есть ``Registrar WHOIS Server:`` и он отличается от
@@ -144,13 +142,16 @@ async def query_whois(
     возвращаем ответ регистратора (он содержит полные данные регистрации).
 
     ``WhoisProtocolError`` — если ни один путь не дал сервер или соединение
-    не удалось. Ключи в ``server_overrides`` должны быть в lowercase
-    (валидатор Settings уже это гарантирует).
+    не удалось.
+
+    .. note::
+
+       Параметр ``server_overrides`` (env ``WHOIS_SERVER_OVERRIDES``) удалён
+       в Этапе 10 — его роль играет WHOIS proxy gateway (ADR 028, DEPRECATED
+       ADR 023).
     """
     tld = _tld_of(domain)
     target = server
-    if target is None and server_overrides is not None:
-        target = server_overrides.get(tld)
     if target is None:
         target = WHOIS_SERVERS.get(tld)
     if target is None:

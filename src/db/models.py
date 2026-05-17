@@ -60,6 +60,13 @@ class User(Base):
         server_default="{30,7,1}",
     )
     notify_at_hour: Mapped[int] = mapped_column(Integer, nullable=False, server_default="9")
+    # Этап 12 (ADR 030): дни-предупреждения для SSL-сертификатов. SSL живёт
+    # короче WHOIS (LE — 90 дней), поэтому дефолт более частый.
+    notify_ssl_days_before: Mapped[list[int]] = mapped_column(
+        ARRAY(Integer),
+        nullable=False,
+        server_default="{14,7,3,1}",
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -123,6 +130,22 @@ class UserDomain(Base):
     # True → подавляет ВСЕ уведомления независимо от индивидуальных
     # ``notify_*`` флагов. При unmute индивидуальные настройки сохраняются.
     is_muted: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+
+    # Этап 12 (ADR 030): SSL-мониторинг. ``track_ssl=False`` исключает
+    # домен из ssl_scheduler — экономим ресурсы и не плодим уведомлений.
+    track_ssl: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    notify_ssl_expiry: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    notify_ssl_change_issuer: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    # NULL → используем ``User.notify_ssl_days_before``.
+    notify_ssl_days_override: Mapped[list[int] | None] = mapped_column(
+        ARRAY(Integer), nullable=True
+    )
 
     last_problem_notified_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -309,3 +332,65 @@ class SystemEvent(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+# ---------------------------------------------------------------------------
+# ssl_cache (Этап 12, ADR 030)
+# ---------------------------------------------------------------------------
+class SSLCache(Base):
+    """Общий кэш SSL-сертификатов по доменам (ADR 030).
+
+    Параллельно ``whois_cache``: одна запись на домен (PK ``domain``),
+    обслуживает всех подписчиков. Adaptive ``next_check_at`` зависит от
+    близости истечения сертификата (см. ``src.ssl.scheduler``).
+    """
+
+    __tablename__ = "ssl_cache"
+    __table_args__ = (
+        Index(
+            "ix_ssl_cache_next_check_at",
+            "next_check_at",
+        ),
+        Index("ix_ssl_cache_not_after", "not_after"),
+    )
+
+    domain: Mapped[str] = mapped_column(Text, primary_key=True)
+
+    # Scheduling
+    last_checked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_successful_check_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    next_check_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    # Reachability
+    is_reachable: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    has_certificate: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+
+    # Certificate dates
+    not_before: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    not_after: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Issuer (отслеживаем смену CA)
+    issuer_cn: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    issuer_o: Mapped[str | None] = mapped_column(String(256), nullable=True)
+
+    # Subject (информативно)
+    subject_cn: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    subject_alt_names: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+
+    # Identifiers
+    serial_number: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    fingerprint_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    signature_algorithm: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    # Failure tracking
+    fail_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<SSLCache domain={self.domain!r} not_after={self.not_after}>"

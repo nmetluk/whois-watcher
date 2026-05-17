@@ -478,8 +478,7 @@ LOCALE: dict[str, str] = {
     ),
     "commands.wishlist.header": "🎯 Your wishlist ({total})\n\nPage {page}/{total_pages}",
     "commands.wishlist.added": (
-        "🎯 <b>{domain}</b> added to wishlist.\n"
-        "I'll send one alert when it becomes available."
+        "🎯 <b>{domain}</b> added to wishlist.\n" "I'll send one alert when it becomes available."
     ),
     "commands.wishlist.tracked_now": (
         "✅ <b>{domain}</b> is now in your normal /list. Good luck with registration!"

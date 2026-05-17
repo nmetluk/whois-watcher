@@ -57,6 +57,11 @@ services:
         condition: service_healthy
     networks:
       - internal
+    # ADR 028: WHOIS-прокси работает на хосте (не в Docker); пробрасываем
+    # имя host.docker.internal в /etc/hosts контейнера, чтобы lookup_via_proxy
+    # мог достучаться по http://host.docker.internal:8043.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:${WEBHOOK_PORT:-8080}:8080"
     healthcheck:
@@ -85,6 +90,9 @@ services:
         condition: service_healthy
     networks:
       - internal
+    # ADR 028: см. комментарий в сервисе bot.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
       interval: 30s
@@ -112,6 +120,9 @@ services:
         condition: service_healthy
     networks:
       - internal
+    # ADR 028: см. комментарий в сервисе bot.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
       interval: 30s

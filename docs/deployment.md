@@ -534,10 +534,34 @@ curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo" | python3 -m j
 
 ## WHOIS proxy gateway (ADR 028)
 
-С Этапа 10 бот ходит за WHOIS-данными через локальный proxy-gateway
-(`WHOIS_PROXY_URL=http://127.0.0.1:8043`). Прокси сам выбирает upstream
-(RDAP / WHOIS:43 / выделенный RU-relay для `.ru/.рф/.su`) и кэширует
-ответы на 24 ч.
+С Этапа 10 бот ходит за WHOIS-данными через локальный proxy-gateway.
+Прокси сам выбирает upstream (RDAP / WHOIS:43 / выделенный RU-relay для
+`.ru/.рф/.su`) и кэширует ответы на 24 ч.
+
+### Сетевая топология
+
+Прокси-сервис (`/opt/whoisd/server.py`) работает на **хосте**, слушает
+`127.0.0.1:8043`. Контейнеры бот/worker/scheduler имеют изолированный
+network namespace — `127.0.0.1` внутри контейнера это loopback самого
+контейнера, не хоста.
+
+Чтобы контейнеры могли достучаться до прокси на хосте, в `docker-compose.yml`
+для сервисов `bot`/`worker`/`scheduler` указано:
+
+```yaml
+extra_hosts:
+  - "host.docker.internal:host-gateway"
+```
+
+— это стандартный Docker-механизм пробрасывания хоста в контейнерную
+сеть. В `.env`:
+
+```
+WHOIS_PROXY_URL=http://host.docker.internal:8043
+```
+
+(Для прямого запуска `python -m src.main` без Docker — указывать
+`http://127.0.0.1:8043`.)
 
 Старый механизм `WHOIS_SERVER_OVERRIDES` (env с маппингом `tld → server`)
 **удалён** — см. DEPRECATED [ADR 023](decisions.md#023-whois-server-overrides-per-tld-deprecated-in-v040)

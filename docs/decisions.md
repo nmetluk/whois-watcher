@@ -428,6 +428,10 @@ ADR 023 (`WHOIS_SERVER_OVERRIDES`) решил частный случай — п
 - Возвращает структурированный JSON с метаданными
   (`source`, `cached`, `fetched_at`, `ttl_remaining`).
 - Healthcheck через `/healthz`.
+- Прокси-сервис работает на хосте (не в Docker) — для доступа из
+  контейнеров используется `extra_hosts: host.docker.internal:host-gateway`
+  в `docker-compose.yml`. URL контейнеры читают из `WHOIS_PROXY_URL`
+  (в проде — `http://host.docker.internal:8043`).
 
 Бот теперь ходит ВСЕГДА в прокси через HTTP/JSON
 (`src.whois.proxy_client.lookup_via_proxy`). При недоступности прокси —

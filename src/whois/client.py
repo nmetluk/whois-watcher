@@ -3,10 +3,12 @@
 Внешний код (хэндлеры на Этапе 4, таски воркеров) пользуется ИСКЛЮЧИТЕЛЬНО
 этой функцией. Внутри она:
 
-1. Нормализует домен через IDN-конвертер.
-2. Пробует RDAP (``whoisit``).
-3. При неудаче/unsupported — fallback на WHOIS:43.
-4. Возвращает ``WhoisData`` или ``WhoisError``.
+1. **Primary path (ADR 028, Этап 10):** HTTP-запрос к локальному
+   WHOIS proxy gateway (``src.whois.proxy_client.lookup_via_proxy``).
+   Прокси сам выбирает upstream и кэширует ответы.
+2. **Fallback:** если прокси недоступен (``ProxyUnreachable``) —
+   прямой RDAP + WHOIS:43 lookup (``lookup_direct``). Это сохранённый
+   страховочный путь из Этапов 3 и 7a; всё что было раньше — здесь.
 
 Никаких побочных эффектов кроме сетевого I/O. Сохранение в БД, отправка
 уведомлений — слой выше.
@@ -23,6 +25,7 @@ from src.config.limits import Limits, get_limits
 from src.config.settings import get_settings
 from src.utils.idn import normalize_domain
 from src.whois.parser import parse_rdap, parse_whois_text
+from src.whois.proxy_client import ProxyUnreachable, lookup_via_proxy
 from src.whois.rdap import query_rdap
 from src.whois.types import WhoisData, WhoisError, WhoisResult
 from src.whois.whois_protocol import WhoisProtocolError, query_whois
@@ -31,11 +34,42 @@ logger = logging.getLogger(__name__)
 
 
 async def lookup_domain(domain: str, *, limits: Limits | None = None) -> WhoisResult:
-    """Получает WHOIS-данные домена, RDAP с фоллбэком на WHOIS:43.
+    """Главный entry-point WHOIS-ядра — прокси сначала, direct как fallback.
 
-    ``limits`` параметризован для тестов; в проде берётся синглтон. Возвращает
-    либо ``WhoisData``, либо ``WhoisError`` — ни в каком случае не бросает
-    исключение.
+    1. Если ``whois_proxy_enabled=True`` (дефолт) — пробуем прокси.
+    2. ``ProxyUnreachable`` → переходим на ``lookup_direct``. В лог летит
+       warning (Sentry увидит как event); если direct тоже сфейлится —
+       вернётся обычная ``WhoisError``.
+    3. Прокси отключён → сразу ``lookup_direct``.
+
+    ``limits`` параметризован только для direct-пути — прокси читает свой
+    таймаут из ``Settings.whois_proxy_timeout_seconds``.
+    """
+    settings = get_settings()
+
+    if settings.whois_proxy_enabled:
+        try:
+            return await lookup_via_proxy(domain)
+        except ProxyUnreachable as exc:
+            logger.warning(
+                "WHOIS proxy unreachable, falling back to direct lookup: %s " "(domain=%s)",
+                exc,
+                domain,
+            )
+            # Здесь могла бы быть отправка alert в админ-канал, но мы её
+            # делаем через отдельный cron-хелсчек (proxy_health.py): иначе
+            # дедупликация AlertService отфильтрует первый алерт, и потом
+            # любой direct-fallback подавится без записи.
+
+    return await lookup_direct(domain, limits=limits)
+
+
+async def lookup_direct(domain: str, *, limits: Limits | None = None) -> WhoisResult:
+    """Прямой WHOIS lookup без прокси — RDAP сначала, WHOIS:43 как fallback.
+
+    Сохранённая старая логика из Этапов 3/7a, используется как страховка
+    когда прокси недоступен. ``limits`` для тестов; в проде — синглтон.
+    Возвращает либо ``WhoisData``, либо ``WhoisError`` — не бросает.
     """
     cfg = limits if limits is not None else get_limits()
     timeout = float(cfg.whois_timeout_seconds)
@@ -76,7 +110,6 @@ async def lookup_domain(domain: str, *, limits: Limits | None = None) -> WhoisRe
     try:
         raw_text = await query_whois(
             normalized,
-            server_overrides=settings.whois_server_overrides,
             timeout=timeout,
             follow_referral=settings.whois_referral_following,
         )
@@ -117,4 +150,11 @@ async def lookup_with_semaphore(
         return await lookup_domain(domain, limits=limits)
 
 
-__all__ = ["WhoisData", "WhoisError", "WhoisResult", "lookup_domain", "lookup_with_semaphore"]
+__all__ = [
+    "WhoisData",
+    "WhoisError",
+    "WhoisResult",
+    "lookup_direct",
+    "lookup_domain",
+    "lookup_with_semaphore",
+]

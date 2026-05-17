@@ -144,14 +144,15 @@ class TestFetchCertificate:
         assert isinstance(result, SSLError)
         assert result.error_type == "connection_timeout"
 
-    async def test_connection_refused_classified(self) -> None:
+    async def test_connection_refused_classified_as_no_https(self) -> None:
+        # Port 443 closed = у домена нет HTTPS, это не алерт.
         with patch(
             "src.ssl.client.asyncio.open_connection",
             new=AsyncMock(side_effect=ConnectionRefusedError("port closed")),
         ):
             result = await fetch_certificate("example.com")
         assert isinstance(result, SSLError)
-        assert result.error_type == "connection_refused"
+        assert result.error_type == "no_https"
 
     async def test_ssl_handshake_failure_classified(self) -> None:
         with patch(
@@ -174,6 +175,16 @@ class TestFetchCertificate:
 
     async def test_network_unreachable_classified_as_no_https(self) -> None:
         err = OSError(101, "Network is unreachable")
+        with patch(
+            "src.ssl.client.asyncio.open_connection",
+            new=AsyncMock(side_effect=err),
+        ):
+            result = await fetch_certificate("example.com")
+        assert isinstance(result, SSLError)
+        assert result.error_type == "no_https"
+
+    async def test_no_address_associated_classified_as_no_https(self) -> None:
+        err = OSError(-5, "No address associated with hostname")
         with patch(
             "src.ssl.client.asyncio.open_connection",
             new=AsyncMock(side_effect=err),

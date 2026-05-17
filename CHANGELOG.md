@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **SSL bootstrap для существующих доменов**: `ssl_scheduler_tick` теперь
+  на каждом тике вставляет заглушки в `ssl_cache` для всех `user_domains`
+  с `track_ssl=true`, у которых ещё нет записи (`INSERT ... ON CONFLICT
+  DO NOTHING`). Без этого SSL-мониторинг включался только для доменов,
+  открытых пользователем через `/whois` после Stage 12 — существующие
+  на момент апгрейда домены никогда бы не попали в очередь проверок.
+- **Расширена классификация `no_https`**: `ConnectionRefusedError` на :443
+  (порт закрыт) и OSError'ы вида "no address associated", "no such host",
+  "nodename nor servname" теперь корректно классифицируются как «у домена
+  нет HTTPS» вместо ложного `connection_refused → became_unreachable`.
+  Это убирает ложные уведомления `became_reachable` для доменов которые
+  никогда не имели HTTPS, но позже получили A-записи.
+
 ## [0.6.0] — 2026-05-17
 
 ### Added — SSL certificate monitoring (Stage 12, [ADR 030](docs/decisions.md#030-ssltls-сертификаты-как-параллельная-подсистема-мониторинга))

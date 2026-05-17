@@ -70,10 +70,12 @@ async def fetch_certificate(domain: str) -> SSLResult:
             message=f"TLS handshake timed out after {CONNECT_TIMEOUT}s",
         )
     except ConnectionRefusedError as exc:
+        # Connection refused на :443 = у домена нет HTTPS-сервиса.
+        # Семантически это no_https, а не «упал» — не алерт.
         return SSLError(
             domain=normalized,
-            error_type="connection_refused",
-            message=f"Connection refused on port 443: {exc}",
+            error_type="no_https",
+            message=f"Port 443 closed: {exc}",
         )
     except ssl_module.SSLError as exc:
         return SSLError(
@@ -82,15 +84,18 @@ async def fetch_certificate(domain: str) -> SSLResult:
             message=f"TLS handshake failed: {exc}",
         )
     except OSError as exc:
-        # «no route to host», «network is unreachable», «name resolution
-        # failure» — все классифицируем как ``no_https``. Это валидный
-        # кейс «сайт не отвечает на HTTPS», не повод для алерта.
+        # DNS-фейл / сеть недоступна / host без A-записей — у домена нет
+        # HTTPS-эндпоинта, не повод для алерта (домен может быть зоной
+        # email-only / parked / редиректом 80→404).
         msg = str(exc).lower()
         if (
             "unreachable" in msg
             or "no route" in msg
             or "name or service not known" in msg
             or "temporary failure in name resolution" in msg
+            or "no address associated" in msg
+            or "no such host" in msg
+            or "nodename nor servname" in msg
         ):
             return SSLError(
                 domain=normalized,

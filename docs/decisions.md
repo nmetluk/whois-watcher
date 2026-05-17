@@ -428,9 +428,18 @@ ADR 023 (`WHOIS_SERVER_OVERRIDES`) решил частный случай — п
 - Возвращает структурированный JSON с метаданными
   (`source`, `cached`, `fetched_at`, `ttl_remaining`).
 - Healthcheck через `/healthz`.
-- Прокси-сервис работает на хосте (не в Docker) — для доступа из
-  контейнеров используется `extra_hosts: host.docker.internal:host-gateway`
-  в `docker-compose.yml`. URL контейнеры читают из `WHOIS_PROXY_URL`
+- Прокси-сервис работает на хосте (не в Docker). Compose-сеть имеет
+  фиксированную subnet `172.28.0.0/16`, чтобы `host.docker.internal`
+  можно было захардкодить на её gateway (`172.28.0.1`). Magic-значение
+  Docker'а `host-gateway` тут не подходит — оно резолвится в gateway
+  default `docker0` (`172.17.0.1`), на котором наши compose-сервисы
+  не сидят; пакет уходит «в никуда».
+- На хосте требуется ufw allow для этой subnet:
+  `ufw allow from 172.28.0.0/16 to any port 8043 proto tcp` — без него
+  default `deny (incoming)` ufw блокирует входящий трафик `:8043`
+  на интерфейсе compose-bridge. Внешний `eth0` остаётся под default-deny,
+  публичной exposure не возникает.
+- URL контейнеры читают из `WHOIS_PROXY_URL`
   (в проде — `http://host.docker.internal:8043`).
 
 Бот теперь ходит ВСЕГДА в прокси через HTTP/JSON

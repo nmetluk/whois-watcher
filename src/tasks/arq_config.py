@@ -103,6 +103,7 @@ def _build_functions() -> list[Any]:
     from src.tasks.notify_changes import send_change_notice
     from src.tasks.notify_problem import send_problem_notice
     from src.tasks.notify_wishlist import send_wishlist_available_notice
+    from src.tasks.proxy_health import proxy_health_check
     from src.tasks.scheduler import scheduler_tick
     from src.tasks.send_reminders import send_expiry_reminder
 
@@ -117,6 +118,7 @@ def _build_functions() -> list[Any]:
         cleanup_orphan_cache,
         cleanup_old_events,
         send_wishlist_available_notice,
+        proxy_health_check,
     ]
 
 
@@ -124,6 +126,7 @@ def _build_cron_jobs() -> list[Any]:
     from src.tasks.cleanup import cleanup_old_events, cleanup_orphan_cache
     from src.tasks.daily_stats import send_daily_summary
     from src.tasks.expiry_scheduler import expiry_notification_scheduler
+    from src.tasks.proxy_health import proxy_health_check
     from src.tasks.scheduler import scheduler_tick
 
     return [
@@ -131,6 +134,13 @@ def _build_cron_jobs() -> list[Any]:
             scheduler_tick,
             name="scheduler_tick",
             minute={0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55},
+            run_at_startup=True,
+        ),
+        # ADR 028: каждые 15 мин пингуем /healthz WHOIS proxy.
+        cron(
+            proxy_health_check,
+            name="proxy_health_check",
+            minute={0, 15, 30, 45},
             run_at_startup=True,
         ),
         cron(

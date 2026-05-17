@@ -285,9 +285,15 @@
 
 ---
 
-## 023. WHOIS Server Overrides через ENV
+## 023. WHOIS Server Overrides per TLD (DEPRECATED in v0.4.0)
 
-**Решение:** возможность переопределять WHOIS-сервер для конкретных TLD через переменную окружения `WHOIS_SERVER_OVERRIDES` (JSON-объект `{tld: server}`).
+> **DEPRECATED:** механизм `WHOIS_SERVER_OVERRIDES` удалён в v0.4.0 (Этап 10).
+> Его роль играет WHOIS proxy gateway — см.
+> [ADR 028](#028-whois-proxy-gateway-as-primary-lookup). Запись оставлена
+> для истории, чтобы те, кто видел старый env-флаг, понимали почему его
+> больше нет.
+
+**Решение (историческое):** возможность переопределять WHOIS-сервер для конкретных TLD через переменную окружения `WHOIS_SERVER_OVERRIDES` (JSON-объект `{tld: server}`).
 
 **Почему:**
 - Дефолтные WHOIS-сервера регистраторов иногда недоступны с конкретных хостингов (блокировки, ACL, маршрутизация). Пример: `whois.tcinet.ru` для `.ru`/`.рф` блокируется с части провайдеров.
@@ -395,3 +401,67 @@ Bash-скрипт без зависимостей, ~80 строк, читаем�
 - Rollback-скрипт через `.last-deployed-commit`.
 - Алерт в admin-канал о начале/завершении деплоя.
 - Slack/Telegram-уведомления о падении healthcheck.
+
+
+## 028. WHOIS proxy gateway as primary lookup
+
+### Контекст
+
+ADR 023 (`WHOIS_SERVER_OVERRIDES`) решил частный случай — переключение на
+`whois.nic.ru` для `.ru` с зарубежных хостеров где `tcinet.ru` заблокирован.
+Но это не покрывало:
+
+- Все `.ru`-домены (`whois.nic.ru` — thin WHOIS только для своих).
+- Другие проблемные зоны (`.cn`, `.am`, `.in`, `.au` и т. п.).
+- Кэширование (был user-level cache, не глобальный).
+- RDAP-обработку (мы парсили JSON сами, дублируя работу).
+
+### Решение
+
+Развёрнут собственный WHOIS proxy gateway:
+
+- На основном сервере: `127.0.0.1:43` (WHOIS-протокол), `127.0.0.1:8043`
+  (HTTP/JSON).
+- Сам выбирает upstream: WHOIS, RDAP, или RU-proxy (отдельный VDS в РФ
+  для `.ru/.рф/.su`).
+- Кэширует 24 ч (positive) и 10 мин (negative).
+- Возвращает структурированный JSON с метаданными
+  (`source`, `cached`, `fetched_at`, `ttl_remaining`).
+- Healthcheck через `/healthz`.
+
+Бот теперь ходит ВСЕГДА в прокси через HTTP/JSON
+(`src.whois.proxy_client.lookup_via_proxy`). При недоступности прокси —
+fallback на `src.whois.client.lookup_direct` (прямой RDAP +
+WHOIS:43 lookup, сохранённая страховка из Этапов 3 и 7a).
+
+### Альтернативы
+
+**Использовать прокси только для `.ru`** → не задействует RDAP-парсинг и
+24h-кеш для остального.
+
+**Полная миграция без fallback** → бот вообще не работает если прокси упал;
+неприемлемо для single-server setup.
+
+**Прямая зависимость на python-библиотеку RU-relay** → проблемы с
+лицензиями / поддержкой; прокси даёт чистую сетевую границу.
+
+### Следствия
+
+- [ADR 023](#023-whois-server-overrides-per-tld-deprecated-in-v040)
+  помечен DEPRECATED — функционал заменён прокси, env-флаг удалён.
+- 24-часовой кеш на прокси: пользователь видит `fetched_at` в карточке,
+  при `/check` или кнопке «Обновить» получает то же из proxy-cache.
+  Принимаем; при жалобах попросим у proxy-команды добавить
+  `?refresh=1` параметр.
+- Новые значения `DataSource` в `WhoisData.source` для отличения путей:
+  `proxy_rdap`, `proxy_whois`, `proxy_whois_ru`, `proxy_none` —
+  оставляем `rdap`/`whois` для direct-пути.
+
+### Мониторинг
+
+ARQ cron `proxy_health_check` (каждые 15 минут) пингует `/healthz`
+прокси; при падении — `AlertService.send_critical` в админ-канал.
+Дедупликация AlertService подавит дубли в течение
+`Limits.alert_dedup_ttl_minutes` (10 мин по умолчанию). Sentry получает
+`warning` на каждый fallback на direct-lookup (через стандартное
+structlog-логирование).

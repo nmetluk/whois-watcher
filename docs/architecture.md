@@ -101,8 +101,13 @@ INSERT user_domains
   для каждого: enqueue check_domain
   ↓
 Воркер: check_domain
-  ↓ RDAP/WHOIS запрос
-  ↓ парсинг
+  ↓ lookup_domain (ADR 028):
+      ├── HTTP GET 127.0.0.1:8043/q/<domain>   ← WHOIS proxy gateway (primary)
+      │       └── прокси сам решает upstream: RDAP / WHOIS:43 / RU-relay
+      └── fallback (если /healthz упал): lookup_direct
+              ├── RDAP через whoisit
+              └── WHOIS:43 (raw socket + парсер)
+  ↓ парсинг (ответ прокси уже в виде dict/text)
   ↓ сравнение с текущими значениями (для notify_change)
   ↓ UPDATE whois_cache (новые expires_at, next_check_at и т.д.)
   ↓ если есть изменения и подписчики — enqueue send_change_notice

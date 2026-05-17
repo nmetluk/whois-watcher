@@ -19,7 +19,7 @@
 | RAM | 4 GB | Postgres + Redis + 3 Python-процесса. |
 | Диск | 40 GB SSD | Образы Docker + Postgres-данные + логи. |
 | Docker | 24+ | C Docker Compose v2 (плагин `docker compose`, не `docker-compose`). |
-| Сеть — исходящие | TCP/43 (WHOIS), TCP/443 (RDAP), TCP/53 (DNS) | Если хостер закрывает TCP/43 — см. [WHOIS server overrides](#whois-server-overrides). |
+| Сеть — исходящие | TCP/43 (WHOIS), TCP/443 (RDAP), TCP/53 (DNS) | По умолчанию весь WHOIS-трафик идёт через локальный proxy на 127.0.0.1:8043 (ADR 028). Если хостер закрывает TCP/43 и прокси упал — fallback на `lookup_direct` потеряет часть зон. |
 | Сеть — входящие | TCP/22 (SSH), TCP/80 (ACME), TCP/8443 (Telegram webhook), опц. TCP/443 | Telegram webhook принимает только порты 80, 88, 443, 8443. См. [почему 8443](#почему-8443-а-не-443). |
 | Домен | Любой, с возможностью настроить A-запись | Нужен для HTTPS-webhook. Let's Encrypt бесплатно даёт сертификат. |
 
@@ -218,7 +218,7 @@ unset WEBHOOK_SECRET POSTGRES_PASSWORD WEBHOOK_PATH
   Docker Compose парсит env-файл корректно и без кавычек, но `source .env` в
   bash сломается на пробеле — это вылазит при ручной диагностике через
   `curl ... ${BOT_TOKEN} ...`.
-- `WHOIS_SERVER_OVERRIDES` — см. [отдельный раздел](#whois-server-overrides).
+- `WHOIS_PROXY_*` — см. [WHOIS proxy gateway](#whois-proxy-gateway-adr-028).
 
 ### Безопасность
 
@@ -532,64 +532,44 @@ curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo" | python3 -m j
 
 ---
 
-## WHOIS server overrides
+## WHOIS proxy gateway (ADR 028)
 
-### Зачем нужно
+С Этапа 10 бот ходит за WHOIS-данными через локальный proxy-gateway
+(`WHOIS_PROXY_URL=http://127.0.0.1:8043`). Прокси сам выбирает upstream
+(RDAP / WHOIS:43 / выделенный RU-relay для `.ru/.рф/.su`) и кэширует
+ответы на 24 ч.
 
-Не все WHOIS-серверы доступны с любого хостинга. Например, официальный
-сервер `.ru`/`.рф` (`whois.tcinet.ru`) часто фильтруется на сетевом уровне
-у не-российских провайдеров. Аналогично `whois.ripn.net`, `whois.pinspb.ru`
-могут быть недоступны.
+Старый механизм `WHOIS_SERVER_OVERRIDES` (env с маппингом `tld → server`)
+**удалён** — см. DEPRECATED [ADR 023](decisions.md#023-whois-server-overrides-per-tld-deprecated-in-v040)
+и заменивший его [ADR 028](decisions.md#028-whois-proxy-gateway-as-primary-lookup).
 
-Если бот возвращает `network_error` / `timeout` для определённой зоны —
-скорее всего, дело в этом.
+### Если прокси упал
 
-### Как использовать
+Симптом — в админ-канал прилетел алерт **«WHOIS proxy is down»**
+(периодический cron `proxy_health_check` каждые 15 мин).
 
-В `.env` добавьте (или измените) переменную:
-
-```
-WHOIS_SERVER_OVERRIDES={"ru":"whois.nic.ru","xn--p1ai":"whois.nic.ru"}
-```
-
-Формат — JSON-объект `{tld: server}`. Ключи приводятся к lowercase
-автоматически. Значение полностью перекрывает встроенный mapping и
-IANA-discovery (см. приоритет в [ADR 023](decisions.md#023-whois-server-overrides-через-env)).
-
-Применить изменения:
+Диагностика:
 
 ```bash
-docker compose up -d bot worker scheduler   # НЕ restart — не подхватит env
+curl -s http://127.0.0.1:8043/healthz       # должен вернуть 200 ok
+systemctl status whoisd                      # если прокси крутится как сервис
+journalctl -u whoisd -n 30 --no-pager        # последние логи
 ```
 
-### Как проверить доступность WHOIS-серверов
+Что происходит с ботом, пока прокси лежит: автоматический fallback на
+прямой `lookup_direct` (RDAP + WHOIS:43). Функциональность сохранена,
+теряются только 24-часовой кеш и RU-relay (`.ru/.рф/.su` могут
+не отвечать с зарубежных хостеров).
 
-Из контейнера бота (та сеть, которая реально используется в проде):
+### Если бот собирается без прокси
 
-```bash
-docker compose exec bot python3 <<'EOF'
-import socket
-servers = [
-    "whois.nic.ru",       # RU-CENTER (часто работает)
-    "whois.tcinet.ru",    # официальный TCINET
-    "whois.ripn.net",
-    "whois.iana.org",     # IANA root — должен работать всегда
-    "whois.verisign-grs.com",  # .com/.net
-]
-for s in servers:
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.settimeout(5)
-    try:
-        sock.connect((s, 43))
-        print(f"OK    {s}")
-    except Exception as e:
-        print(f"FAIL  {s}: {type(e).__name__}")
-    finally:
-        sock.close()
-EOF
+В нестандартных деплоях (тесты, локалка без прокси) поставьте:
+
+```
+WHOIS_PROXY_ENABLED=false
 ```
 
-Подберите доступный сервер и пропишите его в override.
+— бот сразу пойдёт через `lookup_direct`, healthcheck отключится.
 
 ---
 
@@ -699,8 +679,9 @@ except Exception as e:
 "
 ```
 
-Если `FAIL` — настройте [WHOIS server overrides](#whois-server-overrides) на
-доступный сервер (обычно `whois.nic.ru` работает с большинства хостеров).
+Если `FAIL` — проверьте, что [WHOIS proxy gateway](#whois-proxy-gateway-adr-028)
+поднят и `/healthz` отвечает 200: прокси сам ходит через RU-relay и
+кэширует ответы.
 
 ### Контейнер не стартует
 
@@ -727,7 +708,7 @@ Compose пересоздаст контейнеры с актуальным `.en
 применился:
 
 ```bash
-docker compose exec bot env | grep WHOIS_SERVER_OVERRIDES
+docker compose exec bot env | grep WHOIS_PROXY
 ```
 
 ### Образ worker / scheduler устарел после `docker compose build bot`
@@ -850,8 +831,9 @@ RDAP — современный JSON-стандарт поверх HTTPS:443. Р
 `.app`, `.dev`).
 
 WHOIS:43 — старый текстовый протокол. Нужен для ccTLD, где RDAP пока не
-поддержан (`.ru`, `.рф`, `.de`, `.it` и др.). На некоторых сетях порт 43
-блокируется — отсюда возможность [WHOIS server overrides](#whois-server-overrides).
+поддержан (`.ru`, `.рф`, `.de`, `.it` и др.). Раньше блокировки портов
+решались через `WHOIS_SERVER_OVERRIDES`; теперь — через
+[WHOIS proxy gateway](#whois-proxy-gateway-adr-028).
 
 Подробности — в [ADR 008](decisions.md#008-rdap-как-основной-протокол-whois-как-fallback).
 

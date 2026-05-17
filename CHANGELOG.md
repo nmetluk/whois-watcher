@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **WHOIS lookups now route through internal proxy gateway**
+  (`WHOIS_PROXY_URL`, default `http://127.0.0.1:8043`) by default, with
+  automatic fallback to direct RDAP/WHOIS:43 when proxy is unreachable
+  (`ProxyUnreachable`). See [ADR 028](docs/decisions.md#028-whois-proxy-gateway-as-primary-lookup).
+- Proxy handles RU-zone lookups via dedicated RU-relay, fixing
+  reliability issues with `.ru`/`.рф`/`.su` domains from non-RU hosts.
+- Proxy provides 24-hour positive caching, reducing load on upstream
+  registries and improving response times.
+- New `DataSource` literal values: `proxy_rdap`, `proxy_whois`,
+  `proxy_whois_ru`, `proxy_none` — track which upstream the proxy used.
+
+### Added
+
+- `src/whois/proxy_client.py` — HTTP/JSON client for the proxy gateway
+  (`lookup_via_proxy`, `proxy_healthcheck`, `ProxyUnreachable`).
+- `src/tasks/proxy_health.py` — ARQ cron `proxy_health_check` runs every
+  15 minutes, pings `/healthz`, sends `send_critical` to the admin
+  channel if proxy is down.
+
+### Removed
+
+- `WHOIS_SERVER_OVERRIDES` env variable and its validator (replaced by
+  the proxy gateway). [ADR 023](docs/decisions.md#023-whois-server-overrides-per-tld-deprecated-in-v040)
+  is marked DEPRECATED for historical reference.
+- `server_overrides=` parameter of `whois_protocol.query_whois`.
+
 ## [0.3.0] — 2026-05-17
 
 ### Added

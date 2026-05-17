@@ -25,18 +25,17 @@ from src.utils.build_info import BuildInfo, get_build_info
 
 class TestBuildInfoFallback:
     def test_returns_placeholder_when_module_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        # Гарантируем что _build_info НЕ импортирован.
+        # Гарантируем что _build_info НЕ закэширован.
         monkeypatch.delitem(sys.modules, "src._build_info", raising=False)
 
-        # Подменяем __import__ так, чтобы import src._build_info всегда падал.
-        orig_import = __builtins__["__import__"] if isinstance(__builtins__, dict) else __import__
+        import src.utils.build_info as bi_module
 
-        def fake_import(name, *args, **kwargs):  # type: ignore[no-untyped-def]
+        def fake_import_module(name: str):  # type: ignore[no-untyped-def]
             if name == "src._build_info":
                 raise ImportError("simulated missing module")
-            return orig_import(name, *args, **kwargs)
+            raise AssertionError(f"unexpected import of {name}")
 
-        monkeypatch.setattr("builtins.__import__", fake_import)
+        monkeypatch.setattr(bi_module.importlib, "import_module", fake_import_module)
 
         info = get_build_info()
         assert info.git_commit == "unknown"

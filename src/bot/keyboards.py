@@ -51,7 +51,17 @@ class ListPage(CallbackData, prefix="list"):
 class ListFilter(CallbackData, prefix="lfilter"):
     """Выбор фильтра из подменю списка."""
 
-    name: str  # "all" | "expiring" | "no_data" | "muted"
+    name: str  # all | expiring | no_data | muted | critical | expired | wishlist
+
+
+class ListSearch(CallbackData, prefix="lsearch"):
+    """Кнопки поиска в ``/list`` (Этап 9).
+
+    - ``open`` — переключает в FSM ``ListSearchStates.waiting_for_query``
+    - ``clear`` — сбрасывает текущий поиск, остаётся текущий фильтр
+    """
+
+    action: str  # "open" | "clear"
 
 
 class SettingsAction(CallbackData, prefix="set"):
@@ -143,8 +153,13 @@ def list_pagination(
     total_pages: int,
     *,
     lang: str,
+    has_search: bool = False,
 ) -> InlineKeyboardMarkup:
-    """Пагинация и кнопки списка ``/list``."""
+    """Пагинация и кнопки списка ``/list``.
+
+    Если ``has_search=True`` — добавляем кнопку «❌ Сбросить поиск».
+    Иначе — обычная кнопка «🔍 Поиск».
+    """
     builder = InlineKeyboardBuilder()
     nav: list[InlineKeyboardButton] = []
     if current_page > 0:
@@ -163,6 +178,20 @@ def list_pagination(
         )
     if nav:
         builder.row(*nav)
+    if has_search:
+        builder.row(
+            InlineKeyboardButton(
+                text=t("list.search.clear", lang),
+                callback_data=ListSearch(action="clear").pack(),
+            )
+        )
+    else:
+        builder.row(
+            InlineKeyboardButton(
+                text=t("list.search.placeholder", lang),
+                callback_data=ListSearch(action="open").pack(),
+            )
+        )
     builder.row(
         InlineKeyboardButton(
             text=t("button.list_filter", lang),
@@ -182,6 +211,8 @@ def list_filters(lang: str) -> InlineKeyboardMarkup:
     for name, key in (
         ("all", "button.filter_all"),
         ("expiring", "button.filter_expiring"),
+        ("critical", "list.filter.critical"),
+        ("expired", "list.filter.expired"),
         ("no_data", "button.filter_no_data"),
         ("muted", "button.filter_muted"),
     ):
@@ -190,7 +221,7 @@ def list_filters(lang: str) -> InlineKeyboardMarkup:
         text=t("button.back", lang),
         callback_data=ListPage(action="prev", page=0).pack(),
     )
-    builder.adjust(1)
+    builder.adjust(2)
     return builder.as_markup()
 
 

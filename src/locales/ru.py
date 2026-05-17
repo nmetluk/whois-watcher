@@ -274,6 +274,15 @@ LOCALE: dict[str, str] = {
     "commands.list.row_unknown": "{emoji} {domain} — нет данных{muted}",
     "commands.list.muted_suffix": " 🔕",
     "commands.list.unknown_value": "—",
+    "commands.list.csv_hint": "📥 Используйте /csv для экспорта списка в файл.",
+    # Этап 9 — поиск/фильтры
+    "list.search.placeholder": "🔍 Поиск",
+    "list.search.prompt": "Введите подстроку для поиска или /cancel",
+    "list.search.current": "🔍 Поиск: <code>{query}</code>",
+    "list.search.clear": "❌ Сбросить поиск",
+    "list.search.empty": "По запросу <code>{query}</code> ничего не найдено.",
+    "list.filter.critical": "🚨 С проблемами",
+    "list.filter.expired": "💀 Истёкшие",
     # ------------------------------------------------------------------
     # /stats
     # ------------------------------------------------------------------

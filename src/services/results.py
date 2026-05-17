@@ -90,7 +90,14 @@ class RemoveDomainResult:
 # DomainService.list_for_user
 # ---------------------------------------------------------------------------
 
-ListFilter = Literal["all", "expiring", "no_data", "muted"]
+ListFilter = Literal[
+    "all",
+    "expiring",
+    "no_data",
+    "muted",
+    "critical",  # Этап 9 — есть critical-статусы (clientHold / pendingDelete / …)
+    "expired",  # Этап 9 — expires_at в прошлом
+]
 
 
 @dataclass(slots=True, kw_only=True)
@@ -102,6 +109,7 @@ class ListPage:
     page: int = 0  # 0-индексированная
     page_size: int = 50
     filter_type: ListFilter = "all"
+    search_query: str = ""  # Этап 9 — активный текстовый фильтр (пустой = неактивен)
 
     @property
     def total_pages(self) -> int:

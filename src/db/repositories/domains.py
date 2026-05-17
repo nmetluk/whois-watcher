@@ -7,11 +7,12 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import and_, delete, func, select, update
+from sqlalchemy import and_, delete, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from src.db.models import UserDomain, WhoisCache
 from src.db.repositories.base import BaseRepository
+from src.utils.idn import from_punycode, to_punycode
 
 # Дефолтные значения флагов уведомлений (ADR 012).
 DEFAULT_NOTIFICATION_FLAGS: dict[str, bool] = {
@@ -20,6 +21,17 @@ DEFAULT_NOTIFICATION_FLAGS: dict[str, bool] = {
     "notify_registrar_change": True,
     "notify_status_change": True,
 }
+
+# WHOIS-статусы, считающиеся «критическими» для фильтра ``/list critical``.
+# Список синхронен с severity="critical" в ``src.locales.{ru,en}.WHOIS_STATUSES``
+# — здесь продублирован, чтобы не дёргать UI-таблицы из SQL-уровня.
+_CRITICAL_STATUS_CODES: tuple[str, ...] = (
+    "clientHold",
+    "serverHold",
+    "pendingDelete",
+    "BLOCKED",
+    "failed",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -206,11 +218,13 @@ class DomainRepository(BaseRepository):
         user_id: int,
         *,
         filter_type: str = "all",
+        search_query: str = "",
+        include_wishlist: bool = False,
         limit: int = 50,
         offset: int = 0,
         now: datetime | None = None,
     ) -> tuple[list[tuple[UserDomain, WhoisCache | None]], int]:
-        """Версия ``list_with_whois`` с фильтрами (для ``/list``).
+        """Версия ``list_with_whois`` с фильтрами + поиском (для ``/list``).
 
         ``filter_type``:
 
@@ -218,9 +232,21 @@ class DomainRepository(BaseRepository):
         - ``"expiring"``  — ``expires_at`` в окне ближайших 30 дней
         - ``"no_data"``   — ``whois_cache.expires_at IS NULL`` (или нет записи)
         - ``"muted"``     — все 4 ``notify_*`` флага выключены
+        - ``"critical"``  — ``status &&`` ARRAY критических EPP-кодов
+        - ``"expired"``   — ``expires_at < now()``
 
-        Возвращает ``(rows, total)`` — страница и общее количество под фильтром.
+        ``search_query`` — подстрока имени домена (case-insensitive ILIKE).
+        Поиск делается и по punycode-форме, и по unicode-варианту (для
+        кириллических доменов: пользователь ищет «пример», находит
+        ``xn--e1afmkfd.xn--p1ai``).
+
+        ``include_wishlist`` — зарезервированный флаг для следующего
+        этапа; пока — no-op.
+
+        Возвращает ``(rows, total)`` — страница и общее количество под
+        фильтром+поиском.
         """
+        del include_wishlist  # used in a follow-up commit (wishlist)
         moment = now if now is not None else datetime.now(tz=UTC)
         in_30 = moment + timedelta(days=30)
 
@@ -229,10 +255,12 @@ class DomainRepository(BaseRepository):
             .outerjoin(WhoisCache, WhoisCache.domain == UserDomain.domain)
             .where(UserDomain.user_id == user_id)
         )
+
         if filter_type == "expiring":
             base = base.where(
                 WhoisCache.expires_at.is_not(None),
                 WhoisCache.expires_at <= in_30,
+                WhoisCache.expires_at >= moment,
             )
         elif filter_type == "no_data":
             base = base.where(WhoisCache.expires_at.is_(None))
@@ -243,7 +271,22 @@ class DomainRepository(BaseRepository):
                 UserDomain.notify_registrar_change.is_(False),
                 UserDomain.notify_status_change.is_(False),
             )
-        # else: filter_type=="all" — никаких дополнительных WHERE.
+        elif filter_type == "critical":
+            # Postgres array overlap: status && ARRAY['clientHold', ...].
+            # ``overlap`` — SQLAlchemy-метод ARRAY-колонки.
+            base = base.where(
+                WhoisCache.status.is_not(None),
+                WhoisCache.status.overlap(list(_CRITICAL_STATUS_CODES)),
+            )
+        elif filter_type == "expired":
+            base = base.where(
+                WhoisCache.expires_at.is_not(None),
+                WhoisCache.expires_at < moment,
+            )
+        # else: filter_type=="all" / "wishlist" — никаких доп. WHERE кроме wishlist.
+
+        if search_query:
+            base = base.where(_search_clause(search_query))
 
         # Считаем total отдельным запросом — пагинированный COUNT.
         count_stmt = select(func.count()).select_from(base.subquery())
@@ -397,3 +440,29 @@ class DomainRepository(BaseRepository):
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none() is not None
+
+# ---------------------------------------------------------------------------
+# Search-helper для /list (Этап 9)
+# ---------------------------------------------------------------------------
+
+
+def _search_clause(query: str) -> Any:
+    """ILIKE-условие по domain: ищет и по punycode, и по unicode.
+
+    Для русских доменов пользователь ввёл «пример» — без преобразования
+    он не нашёл бы ``xn--e1afmkfd.xn--p1ai``. Поэтому пытаемся получить
+    punycode-форму запроса, ищем по обоим вариантам через OR.
+    """
+    needle = query.strip().lower()
+    if not needle:
+        # Defensive fallback: пустой поиск возвращает «true»-условие.
+        return func.true()
+    like_unicode = f"%{from_punycode(needle)}%"
+    candidates = [UserDomain.domain.ilike(f"%{needle}%"), UserDomain.domain.ilike(like_unicode)]
+    try:
+        punycoded = to_punycode(needle)
+    except Exception:
+        punycoded = ""
+    if punycoded and punycoded != needle:
+        candidates.append(UserDomain.domain.ilike(f"%{punycoded}%"))
+    return or_(*candidates)

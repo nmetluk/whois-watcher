@@ -29,3 +29,14 @@ class SettingsStates(StatesGroup):
 
     waiting_for_timezone = State()
     waiting_for_notify_days = State()
+
+
+class ListSearchStates(StatesGroup):
+    """FSM для ввода подстроки поиска в ``/list`` (Этап 9).
+
+    После нажатия кнопки «🔍 Поиск» пользователь вводит подстроку, мы
+    сохраняем её в ``list_state:{user_id}`` (Redis) и возвращаем первую
+    страницу отфильтрованных результатов.
+    """
+
+    waiting_for_query = State()

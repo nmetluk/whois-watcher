@@ -149,13 +149,15 @@ class DomainService:
         page: int = 0,
         page_size: int = 50,
         filter_type: ListFilter = "all",
+        search_query: str = "",
     ) -> ListPage:
-        """Страница списка доменов с фильтром и пагинацией."""
+        """Страница списка доменов с фильтром, поиском и пагинацией."""
         page = max(0, page)
         page_size = max(1, page_size)
         rows, total = await self._domains.list_with_whois_filtered(
             user_id,
             filter_type=filter_type,
+            search_query=search_query,
             limit=page_size,
             offset=page * page_size,
         )
@@ -165,6 +167,7 @@ class DomainService:
             page=page,
             page_size=page_size,
             filter_type=filter_type,
+            search_query=search_query,
         )
 
     # ------------------------------------------------------------------

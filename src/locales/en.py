@@ -262,6 +262,15 @@ LOCALE: dict[str, str] = {
     "commands.list.row_unknown": "{emoji} {domain} — no data{muted}",
     "commands.list.muted_suffix": " 🔕",
     "commands.list.unknown_value": "—",
+    "commands.list.csv_hint": "📥 Use /csv to export the list as a file.",
+    # Stage 9 — search/filters
+    "list.search.placeholder": "🔍 Search",
+    "list.search.prompt": "Type a substring to search or /cancel",
+    "list.search.current": "🔍 Search: <code>{query}</code>",
+    "list.search.clear": "❌ Clear search",
+    "list.search.empty": "Nothing found for <code>{query}</code>.",
+    "list.filter.critical": "🚨 With problems",
+    "list.filter.expired": "💀 Expired",
     # ------------------------------------------------------------------
     # /stats
     # ------------------------------------------------------------------

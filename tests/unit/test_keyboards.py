@@ -71,20 +71,24 @@ class TestKeyboards:
 
     def test_list_pagination_hides_prev_on_first_page(self) -> None:
         kb = list_pagination(0, 5, lang="ru")
-        # Первый ряд: только «Вперёд» (на стр.0 нет «Назад»).
-        # При totals=5 будет ряд навигации и ряд с filter/csv.
-        assert len(kb.inline_keyboard) == 2
-        assert len(kb.inline_keyboard[0]) == 1
+        # Этап 9: ряды → [nav], [search], [filter, csv].
+        assert len(kb.inline_keyboard) == 3
+        assert len(kb.inline_keyboard[0]) == 1  # только «Вперёд»
 
     def test_list_pagination_hides_next_on_last_page(self) -> None:
         kb = list_pagination(4, 5, lang="ru")
-        assert len(kb.inline_keyboard) == 2
-        assert len(kb.inline_keyboard[0]) == 1
+        assert len(kb.inline_keyboard) == 3
+        assert len(kb.inline_keyboard[0]) == 1  # только «Назад»
 
     def test_list_pagination_no_nav_when_single_page(self) -> None:
         kb = list_pagination(0, 1, lang="ru")
-        # Один ряд (filter / csv), кнопок навигации нет.
-        assert len(kb.inline_keyboard) == 1
+        # Без навигации: [search], [filter, csv].
+        assert len(kb.inline_keyboard) == 2
+
+    def test_list_pagination_shows_clear_when_search_active(self) -> None:
+        kb = list_pagination(0, 1, lang="ru", has_search=True)
+        # has_search=True → первый ряд содержит «❌ Сбросить поиск».
+        assert any("Сбросить" in btn.text for btn in kb.inline_keyboard[0])
 
     def test_settings_time_has_24_hours(self) -> None:
         kb = settings_time("ru")

@@ -165,6 +165,25 @@ LOCALE: dict[str, str] = {
     "notify_config.days_saved_override": "✅ Сохранено: за {days}",
     "notify_config.days_saved_default": "✅ Возвращены глобальные настройки",
     "notify_config.days_unchanged": "Дни предупреждений оставлены без изменений.",
+    # SSL (Этап 12, ADR 030)
+    "notify_config.ssl_days_label_default": (
+        "🔒 <b>SSL — дни предупреждений</b> (глобальные): за {days} дн. до истечения"
+    ),
+    "notify_config.ssl_days_label_custom": (
+        "🔒 <b>SSL — дни предупреждений</b> (для домена): за {days} дн."
+    ),
+    "notify_config.edit_ssl_days": "🔒 Изменить дни SSL-предупреждений",
+    "notify_config.ssl_days_prompt": (
+        "Введите дни через запятую для SSL-сертификата (например: "
+        "<code>14,7,3,1</code>).\n\n"
+        "/default — использовать глобальные настройки\n"
+        "/cancel — оставить как есть"
+    ),
+    "notify_config.ssl_days_saved_override": "✅ SSL-дни сохранены: за {days}",
+    "notify_config.ssl_days_saved_default": "✅ SSL: возвращены глобальные настройки",
+    "notify_config.type.track_ssl": "Мониторинг SSL",
+    "notify_config.type.ssl_expiry": "Истечение SSL",
+    "notify_config.type.ssl_change_issuer": "Смена SSL-сертификата",
     "button.privacy": "📜 Политика конфиденциальности",
     "button.github": "💻 GitHub",
     "button.list_prev": "◀️ Назад",
@@ -307,6 +326,11 @@ LOCALE: dict[str, str] = {
     "commands.whois.owner_redacted_privacy": "Скрыт (приватность)",
     "commands.whois.section_status": "🔧 Статусы:",
     "commands.whois.section_ns": "🌍 NS-серверы:",
+    # SSL (Этап 12, ADR 030)
+    "commands.whois.ssl_section": "🔒 SSL-сертификат:",
+    "commands.whois.ssl_line_expires": "{emoji} Действителен до: {date} ({days_until})",
+    "commands.whois.ssl_line_issuer": "Издатель: {issuer}",
+    "commands.whois.ssl_unreachable": "🔒 SSL-сертификат: ⚠️ HTTPS не отвечает",
     "commands.whois.source_just_now": "ℹ️ Данные получены: только что",
     "commands.whois.source_cached": "ℹ️ Данные из кэша, обновлены {ago}",
     "commands.whois.free": "🌐 {domain} — не зарегистрирован\n\nДомен свободен для регистрации.",
@@ -513,6 +537,32 @@ LOCALE: dict[str, str] = {
     ),
     "notifications.problem.button_retry": "🔄 Попробовать сейчас",
     "notifications.problem.button_mute": "🔕 Не уведомлять о проблемах",
+    # ------------------------------------------------------------------
+    # Уведомления — SSL (Этап 12, ADR 030)
+    # ------------------------------------------------------------------
+    "notifications.ssl_expiry.body": (
+        "🔒 <b>{domain}</b> — скоро истечёт SSL-сертификат\n"
+        "\n"
+        "📅 Действителен до: {not_after} ({days_left})\n"
+        "🏛️ Издатель: {issuer}\n"
+        "\n"
+        "Если у вас auto-renewal — проверьте, что он отрабатывает."
+    ),
+    "notifications.ssl_expiry.button_renewed": "✅ Обновил",
+    "notifications.ssl_expiry.button_mute": "🔕 Не напоминать про этот сертификат",
+    "notifications.ssl_change.issuer": (
+        "🏛️ <b>{domain}</b> — сменился издатель SSL-сертификата\n\nТеперь: {issuer}"
+    ),
+    "notifications.ssl_change.not_after": (
+        "🔒 <b>{domain}</b> — SSL-сертификат перевыпущен\n\nНовая дата истечения: {not_after}"
+    ),
+    "notifications.ssl_change.unreachable": (
+        "⚠️ <b>{domain}</b> — HTTPS не отвечает\n\n"
+        "Сайт перестал отдавать SSL-сертификат. Проверьте, что веб-сервер работает."
+    ),
+    "notifications.ssl_change.reachable": (
+        "✅ <b>{domain}</b> — HTTPS снова работает"
+    ),
     "notifications.ack.muted": "🔕 Уведомления для этого домена выключены",
     "notifications.ack.refresh_started": "🔄 Запустил повторную проверку",
     "notifications.ack.no_access": "❌ Этот домен не в вашем списке",

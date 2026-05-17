@@ -240,6 +240,13 @@ def notify_config_keyboard(
             callback_data=NotifyConfig(action="edit_days", domain=domain).pack(),
         )
     )
+    # ADR 030: отдельная кнопка для SSL-дней — own override от WHOIS-days.
+    builder.row(
+        InlineKeyboardButton(
+            text=t("notify_config.edit_ssl_days", lang),
+            callback_data=NotifyConfig(action="edit_ssl_days", domain=domain).pack(),
+        )
+    )
     for field, label_key in _TOGGLE_FIELDS:
         flag = bool(getattr(user_domain, field, False))
         prefix = on if flag else off
@@ -277,6 +284,10 @@ _TOGGLE_FIELDS: tuple[tuple[str, str], ...] = (
     ("notify_status_change", "notify_config.type.status_change"),
     ("notify_registrant_change", "notify_config.type.registrant_change"),
     ("notify_problem", "notify_config.type.problem"),
+    # SSL (Этап 12, ADR 030)
+    ("track_ssl", "notify_config.type.track_ssl"),
+    ("notify_ssl_expiry", "notify_config.type.ssl_expiry"),
+    ("notify_ssl_change_issuer", "notify_config.type.ssl_change_issuer"),
 )
 
 
@@ -547,6 +558,21 @@ def problem_notification(domain: str, *, lang: str) -> InlineKeyboardMarkup:
     )
     builder.button(
         text=t("notifications.problem.button_mute", lang),
+        callback_data=NotifyAction(action="mute", domain=domain).pack(),
+    )
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def ssl_expiry_notification(domain: str, *, lang: str) -> InlineKeyboardMarkup:
+    """Кнопки под напоминанием об истечении SSL-сертификата (Этап 12)."""
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text=t("notifications.ssl_expiry.button_renewed", lang),
+        callback_data=NotifyAction(action="refresh", domain=domain).pack(),
+    )
+    builder.button(
+        text=t("notifications.ssl_expiry.button_mute", lang),
         callback_data=NotifyAction(action="mute", domain=domain).pack(),
     )
     builder.adjust(1)

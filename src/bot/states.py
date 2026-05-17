@@ -53,3 +53,16 @@ class NotifyDaysStates(StatesGroup):
     """
 
     waiting_for_days = State()
+
+
+class NotifySslDaysStates(StatesGroup):
+    """FSM для редактирования ``UserDomain.notify_ssl_days_override``
+    (Этап 12, ADR 030).
+
+    Аналог ``NotifyDaysStates`` для SSL-сертификатов: позволяет задать
+    свой набор дней «за сколько до истечения SSL предупреждать», или
+    сбросить override (``/default``) и использовать
+    ``User.notify_ssl_days_before``.
+    """
+
+    waiting_for_days = State()

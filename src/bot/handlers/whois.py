@@ -20,11 +20,11 @@ from redis.asyncio import Redis
 from src.bot.keyboards import WhoisAction, whois_actions
 from src.config.limits import Limits
 from src.db.models import User
-from src.db.repositories import DomainRepository, WhoisCacheRepository
+from src.db.repositories import DomainRepository, SSLCacheRepository, WhoisCacheRepository
 from src.db.session import get_session
 from src.locales import t
 from src.services.domains import DomainService
-from src.services.formatters import format_whois_response
+from src.services.formatters import format_ssl_block, format_whois_response
 from src.services.formatters_full import build_full_text_from_cache_row
 from src.services.whois_facade import WhoisFacade
 from src.utils.idn import from_punycode
@@ -99,8 +99,19 @@ async def _send_whois_card(
         # ``fetched_at`` для «откуда данные» — берём из самой свежей записи кэша.
         cached = await cache_repo.get(result.data.domain)
         fetched_at = cached.fetched_at if cached is not None else None
+        # ADR 030: SSL-блок берём из общего ssl_cache. Если данных ещё нет —
+        # планируем фоновую проверку, чтобы карточка в следующий раз показала
+        # сертификат. Сама задача защищена от задвоения redis-флагом.
+        ssl_repo = SSLCacheRepository(session)
+        ssl_cache = await ssl_repo.get(result.data.domain)
+        if ssl_cache is None:
+            await ssl_repo.upsert(result.data.domain)
+            await arq_redis.enqueue_job("check_ssl", result.data.domain)
 
     body = format_whois_response(result.data, lang=lang, fetched_at=fetched_at)
+    ssl_block = format_ssl_block(ssl_cache, lang=lang)
+    if ssl_block:
+        body = body + "\n\n" + ssl_block
     if result.is_stale:
         body = t("errors.whois_stale", lang, days=result.stale_age_days) + "\n\n" + body
     await message.answer(

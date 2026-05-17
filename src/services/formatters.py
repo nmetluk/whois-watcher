@@ -10,7 +10,7 @@ from __future__ import annotations
 import html
 from datetime import UTC, datetime
 
-from src.db.models import UserDomain, WhoisCache
+from src.db.models import SSLCache, UserDomain, WhoisCache
 from src.locales import t
 from src.utils.formatting import format_date, format_days_until, get_expiry_emoji
 from src.utils.idn import from_punycode
@@ -158,6 +158,52 @@ def format_list_row(
         date=format_date(cache.expires_at, lang=lang),
         muted=muted_suffix,
     )
+
+
+def format_ssl_block(
+    cache: SSLCache | None,
+    *,
+    lang: str,
+    now: datetime | None = None,
+) -> str | None:
+    """SSL-блок для карточки ``/whois`` (Этап 12, ADR 030).
+
+    Возвращает None, если данных нет или они нерелевантны (например,
+    у домена нет HTTPS — это не повод что-то показывать в карточке).
+    Иначе — компактный блок с датой истечения сертификата и издателем.
+    """
+    if cache is None or cache.last_checked_at is None:
+        # Совсем ничего не проверяли — лучше не показывать, чем показать
+        # бессмысленное «—».
+        return None
+
+    moment = now if now is not None else datetime.now(tz=UTC)
+
+    # has_certificate=False + is_reachable=False/None — TLS не отвечает.
+    if not cache.has_certificate:
+        if cache.is_reachable is False:
+            return t("commands.whois.ssl_unreachable", lang)
+        return None  # не оставляли отметки — нечего показывать
+
+    not_after = cache.not_after
+    if not_after is None:
+        return None
+
+    days_left, days_text = format_days_until(not_after, lang=lang, now=moment)
+    issuer = cache.issuer_o or cache.issuer_cn or "—"
+    lines = [
+        t("commands.whois.ssl_section", lang),
+        "├ "
+        + t(
+            "commands.whois.ssl_line_expires",
+            lang,
+            date=format_date(not_after, lang=lang),
+            days_until=days_text,
+            emoji=get_expiry_emoji(days_left),
+        ),
+        "└ " + t("commands.whois.ssl_line_issuer", lang, issuer=html.escape(issuer)),
+    ]
+    return "\n".join(lines)
 
 
 def format_add_success(

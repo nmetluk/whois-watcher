@@ -31,7 +31,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from src.bot.keyboards import NotifyConfig, notify_config_keyboard
-from src.bot.states import NotifyDaysStates
+from src.bot.states import NotifyDaysStates, NotifySslDaysStates
 from src.db.models import User, UserDomain
 from src.db.repositories import DomainRepository, UserRepository
 from src.db.session import get_session
@@ -68,6 +68,14 @@ async def _load_user_domain(user_id: int, domain: str) -> tuple[User, UserDomain
         return users[0], ud
 
 
+def _effective_ssl_days(user: User, ud: UserDomain) -> list[int]:
+    """SSL-аналог ``get_effective_notify_days``: override → user default."""
+    override = getattr(ud, "notify_ssl_days_override", None)
+    if override:
+        return list(override)
+    return list(getattr(user, "notify_ssl_days_before", []) or [])
+
+
 def _render_config_text(user: User, ud: UserDomain, lang: str) -> str:
     """Текст сообщения конфигуратора — заголовок + блок дней + статус mute."""
     display = from_punycode(ud.domain)
@@ -78,10 +86,18 @@ def _render_config_text(user: User, ud: UserDomain, lang: str) -> str:
         if ud.notify_days is not None
         else "notify_config.days_label_default"
     )
+    ssl_days = _effective_ssl_days(user, ud)
+    ssl_days_str = ", ".join(str(d) for d in ssl_days) if ssl_days else "—"
+    ssl_label_key = (
+        "notify_config.ssl_days_label_custom"
+        if getattr(ud, "notify_ssl_days_override", None) is not None
+        else "notify_config.ssl_days_label_default"
+    )
     parts = [
         t("notify_config.title", lang, domain=display),
         "",
         t(days_label_key, lang, days=days_str),
+        t(ssl_label_key, lang, days=ssl_days_str),
         "",
         t("notify_config.types_label", lang),
         "",
@@ -144,6 +160,14 @@ async def on_notify_config(
         await query.message.answer(t("notify_config.days_prompt", lang))
         return
 
+    if action == "edit_ssl_days":
+        # ADR 030: отдельная FSM для SSL-дней, чтобы пользователь не
+        # путал «WHOIS-дни» и «SSL-дни» — у них разные дефолты и смысл.
+        await state.set_state(NotifySslDaysStates.waiting_for_days)
+        await state.update_data(domain=domain)
+        await query.message.answer(t("notify_config.ssl_days_prompt", lang))
+        return
+
     loaded = await _load_user_domain(user.id, domain)
     if loaded is None:
         await query.message.answer(t("notify_config.not_tracked", lang))
@@ -201,6 +225,10 @@ _ALLOWED_TOGGLE_FIELDS: frozenset[str] = frozenset(
         "notify_status_change",
         "notify_registrant_change",
         "notify_problem",
+        # SSL (Этап 12, ADR 030)
+        "track_ssl",
+        "notify_ssl_expiry",
+        "notify_ssl_change_issuer",
     }
 )
 
@@ -274,6 +302,59 @@ async def _send_refreshed_config(message: Message, user: User, domain: str, lang
         _render_config_text(user_obj, ud, lang),
         reply_markup=notify_config_keyboard(ud, lang=lang),
     )
+
+
+# ---------------------------------------------------------------------------
+# FSM: редактирование notify_ssl_days_override (Этап 12, ADR 030)
+# ---------------------------------------------------------------------------
+
+
+@router.message(Command("default"), NotifySslDaysStates.waiting_for_days)
+async def on_ssl_default(
+    message: Message,
+    user: User,
+    lang: str,
+    state: FSMContext,
+) -> None:
+    """/default — сбросить SSL-override в NULL (использовать
+    ``User.notify_ssl_days_before``)."""
+    data = await state.get_data()
+    domain = str(data.get("domain") or "")
+    await state.clear()
+    if not domain:
+        return
+    await _persist(user.id, domain, notify_ssl_days_override=None)
+    await message.answer(t("notify_config.ssl_days_saved_default", lang))
+    await _send_refreshed_config(message, user, domain, lang)
+
+
+@router.message(NotifySslDaysStates.waiting_for_days)
+async def on_ssl_days_input(
+    message: Message,
+    user: User,
+    lang: str,
+    state: FSMContext,
+) -> None:
+    """Принимает CSV-список SSL-дней. /cancel перехватывается help_cancel."""
+    raw = (message.text or "").strip()
+    if not raw:
+        await message.answer(t("notify_config.ssl_days_prompt", lang))
+        return
+    days = _parse_days(raw)
+    if days is None:
+        await message.answer(t("notify_config.days_invalid", lang))
+        return
+
+    data = await state.get_data()
+    domain = str(data.get("domain") or "")
+    await state.clear()
+    if not domain:
+        return
+
+    await _persist(user.id, domain, notify_ssl_days_override=days)
+    days_str = ", ".join(str(d) for d in days)
+    await message.answer(t("notify_config.ssl_days_saved_override", lang, days=days_str))
+    await _send_refreshed_config(message, user, domain, lang)
 
 
 __all__ = ["router"]

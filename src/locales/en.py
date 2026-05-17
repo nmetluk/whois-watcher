@@ -151,6 +151,25 @@ LOCALE: dict[str, str] = {
     "notify_config.days_saved_override": "✅ Saved: warn at {days}",
     "notify_config.days_saved_default": "✅ Reverted to global settings",
     "notify_config.days_unchanged": "Warning days left unchanged.",
+    # SSL (Stage 12, ADR 030)
+    "notify_config.ssl_days_label_default": (
+        "🔒 <b>SSL warning days</b> (global): warn {days} day(s) before expiry"
+    ),
+    "notify_config.ssl_days_label_custom": (
+        "🔒 <b>SSL warning days</b> (for this domain): warn at {days} day(s)"
+    ),
+    "notify_config.edit_ssl_days": "🔒 Change SSL warning days",
+    "notify_config.ssl_days_prompt": (
+        "Type days separated by commas for SSL certificate (e.g. "
+        "<code>14,7,3,1</code>).\n\n"
+        "/default — use global settings\n"
+        "/cancel — keep current"
+    ),
+    "notify_config.ssl_days_saved_override": "✅ SSL days saved: warn at {days}",
+    "notify_config.ssl_days_saved_default": "✅ SSL: reverted to global settings",
+    "notify_config.type.track_ssl": "SSL monitoring",
+    "notify_config.type.ssl_expiry": "SSL expiry",
+    "notify_config.type.ssl_change_issuer": "SSL certificate change",
     "button.privacy": "📜 Privacy policy",
     "button.github": "💻 GitHub",
     "button.list_prev": "◀️ Prev",
@@ -295,6 +314,11 @@ LOCALE: dict[str, str] = {
     "commands.whois.owner_redacted_privacy": "Hidden (privacy protected)",
     "commands.whois.section_status": "🔧 Statuses:",
     "commands.whois.section_ns": "🌍 Nameservers:",
+    # SSL (Stage 12, ADR 030)
+    "commands.whois.ssl_section": "🔒 SSL certificate:",
+    "commands.whois.ssl_line_expires": "{emoji} Valid until: {date} ({days_until})",
+    "commands.whois.ssl_line_issuer": "Issuer: {issuer}",
+    "commands.whois.ssl_unreachable": "🔒 SSL certificate: ⚠️ HTTPS endpoint is down",
     "commands.whois.source_just_now": "ℹ️ Fetched: just now",
     "commands.whois.source_cached": "ℹ️ From cache, updated {ago}",
     "commands.whois.free": "🌐 {domain} — not registered\n\nThe domain is available for registration.",
@@ -497,6 +521,32 @@ LOCALE: dict[str, str] = {
     ),
     "notifications.problem.button_retry": "🔄 Retry now",
     "notifications.problem.button_mute": "🔕 Mute problem alerts",
+    # ------------------------------------------------------------------
+    # SSL notifications (Stage 12, ADR 030)
+    # ------------------------------------------------------------------
+    "notifications.ssl_expiry.body": (
+        "🔒 <b>{domain}</b> — SSL certificate expires soon\n"
+        "\n"
+        "📅 Valid until: {not_after} ({days_left})\n"
+        "🏛️ Issuer: {issuer}\n"
+        "\n"
+        "If you rely on auto-renewal, double-check that it's working."
+    ),
+    "notifications.ssl_expiry.button_renewed": "✅ Renewed",
+    "notifications.ssl_expiry.button_mute": "🔕 Mute SSL alerts for this domain",
+    "notifications.ssl_change.issuer": (
+        "🏛️ <b>{domain}</b> — SSL issuer changed\n\nNow: {issuer}"
+    ),
+    "notifications.ssl_change.not_after": (
+        "🔒 <b>{domain}</b> — SSL certificate was renewed\n\nNew expiry: {not_after}"
+    ),
+    "notifications.ssl_change.unreachable": (
+        "⚠️ <b>{domain}</b> — HTTPS endpoint is down\n\n"
+        "The site stopped serving an SSL certificate. Check that the web server is running."
+    ),
+    "notifications.ssl_change.reachable": (
+        "✅ <b>{domain}</b> — HTTPS is back online"
+    ),
     "notifications.ack.muted": "🔕 Notifications for this domain are off",
     "notifications.ack.refresh_started": "🔄 Refresh started",
     "notifications.ack.no_access": "❌ This domain isn't in your list",

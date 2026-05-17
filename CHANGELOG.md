@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — SSL certificate monitoring (Stage 12, [ADR 030](docs/decisions.md#030-ssltls-сертификаты-как-параллельная-подсистема-мониторинга))
+
+- **SSL certificate monitoring** для всех отслеживаемых доменов:
+  отдельная подсистема, параллельная WHOIS-стеку. Cron `ssl_scheduler_tick`
+  каждые 5 минут собирает due-домены, `check_ssl` делает TLS-handshake на
+  :443 и парсит peer-сертификат (без chain validation — мы мониторим,
+  а не проверяем доверие).
+- **Adaptive TTL** для SSL-проверок: > 30 дней до истечения → раз в сутки,
+  7–30 дней → каждые 6 ч, 1–7 дней → каждый час, ≤ 1 день / нет данных →
+  каждые 4 ч. ``fail_count ≥ 10`` фиксирует интервал в 24 ч.
+- **SSL reminders**: cron `ssl_reminders_scheduler` ежечасно ставит
+  `send_ssl_expiry_reminder` для пользователей, у которых
+  `(not_after - сегодня)` совпадает с одним из дней-предупреждения.
+  Дедупликация через `sent_notifications.notification_type='ssl_expiry'`.
+- **SSL change-уведомления**: смена issuer (CN или O), перевыпуск
+  сертификата (`not_after_changed`), переход HTTPS-эндпоинта в
+  unreachable / recoverable. Кейс `no_https` (DNS не резолвится, нет
+  port 443) не считается падением SSL и не шлёт уведомлений.
+- **Per-domain SSL toggles**: `track_ssl` (kill-switch, default true),
+  `notify_ssl_expiry`, `notify_ssl_change_issuer`,
+  `notify_ssl_days_override` (NULL → берём `User.notify_ssl_days_before`).
+  Все настройки в одном конфигураторе `/whois → ⚙️ Уведомления`.
+- **SSL-блок в карточке `/whois`**: дата истечения сертификата, дней до
+  истечения, эмодзи серьёзности, издатель. При первой проверке домена —
+  ставит `check_ssl` без ожидания cron-тика.
+- **Локали**: 12 новых ключей ru/en для SSL-карточки, уведомлений и
+  конфигуратора.
+
+### Database
+
+- Новая таблица **`ssl_cache`** (PK `domain`): scheduling-поля
+  (`last_checked_at`, `last_successful_check_at`, `next_check_at`),
+  reachability (`is_reachable`, `has_certificate`), cert-метаданные
+  (`not_before`, `not_after`, `issuer_cn/o`, `subject_cn/alt_names`,
+  `serial_number`, `fingerprint_sha256`, `signature_algorithm`),
+  failure-tracking (`fail_count`, `last_error`). Индексы
+  `ix_ssl_cache_next_check_at`, `ix_ssl_cache_not_after`.
+- 4 новые колонки в **`user_domains`**: `track_ssl` (bool, default true),
+  `notify_ssl_expiry` (bool, default true), `notify_ssl_change_issuer`
+  (bool, default true), `notify_ssl_days_override` (int[], nullable).
+- 1 новая колонка в **`users`**: `notify_ssl_days_before` (int[],
+  default `{14,7,3,1}`).
+- Миграция `20260517_ssl` (down_revision `20260517_pernotif`).
+
+### Dependencies
+
+- `cryptography >= 42.0, < 46.0` — парсинг X.509-сертификатов (был
+  транзитивной зависимостью, зафиксирован как прямая для ясности).
+
 ## [0.5.0] — 2026-05-17
 
 ### Added

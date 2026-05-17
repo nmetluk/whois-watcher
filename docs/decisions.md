@@ -559,3 +559,121 @@ toggle'ов были включены.
   напрямую — это не computed.
 - ``expiry_scheduler`` SQL получил дополнительный фильтр
   ``ud.is_muted = false``.
+
+## 030. SSL/TLS-сертификаты как параллельная подсистема мониторинга
+
+### Контекст
+
+Этапы 1–11 покрывали мониторинг WHOIS-данных: истечение регистрации,
+смена регистратора/NS/статусов/владельца. Но **истечение SSL-сертификата
+ломает сайт так же фатально, как истечение домена** — и происходит
+гораздо чаще: Let's Encrypt живёт 90 дней (а не год-три как WHOIS),
+auto-renewal иногда падает (DNS-вызов недоступен, certbot сломался,
+кончилось место на диске), и пользователь узнаёт об этом из жалоб
+клиентов.
+
+### Решение
+
+Полностью **параллельная подсистема** к WHOIS: ничего не переиспользуем
+в БД и тасках — слишком разная семантика (срок жизни на порядок короче,
+другие источники сбоев, другие adaptive-интервалы). Подсистема
+структурно отзеркаливает WHOIS-стек:
+
+| WHOIS                            | SSL                                          |
+|----------------------------------|----------------------------------------------|
+| ``whois_cache``                  | ``ssl_cache`` (новая таблица, PK = ``domain``) |
+| ``WhoisData`` / ``WhoisError``   | ``SSLCertificate`` / ``SSLError``            |
+| ``whois.client.lookup_domain``   | ``ssl.client.fetch_certificate``             |
+| ``whois.scheduler``              | ``ssl.scheduler`` (свои TTL-buckets)         |
+| ``whois.diff.compute_diff``      | ``ssl.diff.compute_ssl_diff``                |
+| ``tasks.check_domain``           | ``tasks.check_ssl``                          |
+| ``tasks.scheduler.scheduler_tick`` | ``tasks.ssl_scheduler.ssl_scheduler_tick`` |
+| ``tasks.expiry_scheduler``       | ``tasks.ssl_reminders_scheduler``            |
+| ``tasks.send_reminders``         | ``tasks.send_ssl_reminder``                  |
+| ``tasks.notify_changes``         | ``tasks.notify_ssl_changes``                 |
+
+Per-domain настройки (на ``UserDomain``):
+
+- ``track_ssl`` (bool, default **true**) — kill-switch на мониторинг
+  целиком. False → домен не попадает в ``ssl_scheduler_tick``-выборку
+  (экономим ресурсы и не плодим уведомлений). Opt-out по политике:
+  пользователи, добавившие домены ДО Этапа 12, получают SSL-мониторинг
+  по умолчанию.
+- ``notify_ssl_expiry`` (bool, default true) — напоминания об
+  истечении и became_unreachable/became_reachable.
+- ``notify_ssl_change_issuer`` (bool, default true) — смена CA или
+  ротация (issuer + not_after).
+- ``notify_ssl_days_override`` (int[] | NULL) — собственный набор дней
+  предупреждения. NULL → ``User.notify_ssl_days_before``
+  (default ``{14,7,3,1}`` — SSL живёт сильно короче WHOIS).
+
+### Технические инварианты
+
+- **chain validation отключён** (``verify_mode=CERT_NONE``,
+  ``check_hostname=False``). Мы парсим peer cert как есть, даже если он
+  истёк / самоподписан / выдан недоверенным CA. Цель — мониторинг,
+  не валидация TLS-доверия.
+- **CONNECT_TIMEOUT=10s обязателен** — иначе медленный хост вешает
+  worker.
+- **``no_https`` ≠ unreachable** — DNS-фейл, no route to host и т.п.
+  не считаются падением SSL, это валидное «у домена просто нет HTTPS».
+  Уведомлений не шлём.
+- **First fetch не триггерит change-уведомлений** (``compute_ssl_diff``
+  возвращает пустой diff при ``old=None``). Это покрывает кейс «только
+  что включили мониторинг» — иначе пользователь сразу получил бы
+  фантомное «issuer changed».
+- **``became_unreachable`` — это переход**, а не состояние. В diff
+  проверяем ``old.is_reachable``, иначе на каждом retry'е приходил бы
+  дубль уведомления.
+- **``is_muted`` имеет приоритет** — kill-switch гасит и SSL-уведомления.
+- **Сериализация fingerprint в hex** (str), не bytes — БД хранит
+  ``CHAR(64)``.
+
+### Adaptive TTL для SSL-проверок
+
+Шкала отличается от WHOIS (см. ``src.ssl.scheduler``):
+
+| Дней до истечения | Интервал |
+|-------------------|----------|
+| > 30              | 1 день   |
+| 7 – 30            | 6 часов  |
+| 1 – 7             | 1 час    |
+| ≤ 0 / нет данных  | 4 часа   |
+
+``fail_count ≥ 10`` фиксирует интервал в 24 часа — не долбим мёртвый
+хост. Это короче чем у WHOIS: LE-сертификаты ротируются раз в 90 дней,
+любая просадка частоты проверок повышает риск пропустить ротацию.
+
+### Альтернативы
+
+**Расширить ``whois_cache``** колонками ``ssl_*`` — отказались: разный
+жизненный цикл (LE 90 дней vs WHOIS 1+ год), разные intervals, разные
+источники сбоев. Сводить в одну таблицу = усложнение SQL без выигрыша.
+
+**Использовать ``ssl.SSLContext`` через ``ssl.create_default_context``
+с дефолтным CA-bundle** — отказались. У нас задача мониторинга, а не
+проверки доверия. С дефолтным trust-store fetch падал бы на каждом
+домене с истёкшим или самоподписанным сертификатом — а это как раз те
+случаи, которые мы хотим показать пользователю.
+
+**Опираться на сторонние API (sslmate, ssl-checker)** — отказались.
+Зависимость от сервиса, rate limits, payable, не нужны нам для
+прямого TLS-handshake'а на стандартном порту 443.
+
+### Следствия
+
+- ``UserDomain`` получил 4 новые колонки. ``User`` — одну
+  (``notify_ssl_days_before``). Миграция ``20260517_ssl``
+  (down_revision ``20260517_pernotif``).
+- ARQ-воркер регистрирует 5 новых тасок + 2 новых cron-расписания
+  (см. ``src.tasks.arq_config``). Cron `ssl_scheduler_tick` идёт по
+  той же сетке что и WHOIS-scheduler — каждые 5 минут.
+- ``/whois`` карточка дополнена SSL-блоком (``format_ssl_block``);
+  при первой проверке домена ставится `check_ssl` без ожидания тика,
+  чтобы карточка в следующем открытии уже показала сертификат.
+- Конфигуратор уведомлений (``notify_config_keyboard``) расширен
+  3 toggle'ами и отдельной кнопкой «Изменить дни SSL-предупреждений»
+  с собственной FSM (``NotifySslDaysStates``) — UX-разделение,
+  чтобы пользователь не путал WHOIS-дни и SSL-дни.
+- Privacy: SSL-данные публичные (любой получит их тем же TLS-handshake),
+  логируем без redaction-правил, в отличие от WHOIS-контактов.

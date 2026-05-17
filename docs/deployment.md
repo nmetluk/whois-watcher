@@ -595,27 +595,45 @@ EOF
 
 ## Обновление до новой версии
 
+Одна команда — `bash scripts/deploy.sh` — выполняет всё, что нужно:
+
 ```bash
 cd ~/projects/whois-watcher
-git fetch
-git log --oneline HEAD..origin/main   # посмотреть, что прилетит
+bash scripts/deploy.sh
+```
+
+Что делает скрипт по порядку:
+
+1. **Проверка чистоты working tree** — отказ, если есть uncommitted-изменения.
+2. **Сохранение текущего commit** в `.last-deployed-commit` (для будущего
+   rollback).
+3. **`git pull origin main`** — если HEAD не изменился, выходит с
+   «Already up to date» (идемпотентный no-op).
+4. **`scripts/generate_build_info.sh`** — пишет `src/_build_info.py`
+   с новым commit/branch/tag/timestamp.
+5. **`docker compose build bot worker scheduler`** — пересборка образа
+   (кэш слоёв ускоряет если изменения локализованы).
+6. **`alembic upgrade head`** — накат миграций (идемпотентно).
+7. **`docker compose up -d bot worker scheduler`** — пересоздание трёх
+   сервисов; postgres/redis не трогает.
+8. **Wait for healthy** — поллит `docker compose ps` до 30с, пока
+   healthcheck'и не позеленеют.
+9. **HTTP-проверка** `/health` через `curl` — гарантирует, что бот
+   реально отвечает на запросы.
+10. **Финальный статус** — `docker compose ps` + последние 10 строк
+    логов бота.
+
+Скрипт `set -euo pipefail` — на любой ошибке прерывается с ненулевым кодом
+возврата (удобно для cron / CI).
+
+### Ручной режим (если деплой нужно сделать пошагово)
+
+```bash
 git pull origin main
-
-# Сгенерировать build info (Этап 9). Файл src/_build_info.py
-# гитнорируется и попадает в образ ТОЛЬКО если выполнить этот шаг до
-# `docker compose build`. Без него /version покажет "unknown/dev".
-bash scripts/generate_build_info.sh
-
-# Пересборка образа (быстро благодаря кэшу слоёв)
+bash scripts/generate_build_info.sh   # без этого /version покажет "unknown/dev"
 docker compose build
-
-# Пересоздание контейнеров
-docker compose up -d
-
-# Накат миграций, если есть новые
 docker compose run --rm bot alembic upgrade head
-
-# Проверка
+docker compose up -d
 docker compose ps
 docker compose logs bot --tail 30
 ```

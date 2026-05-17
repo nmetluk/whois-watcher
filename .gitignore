@@ -89,3 +89,8 @@ dmypy.json
 # before docker build; intentionally not committed — it pins each build
 # to a specific git revision and timestamp).
 src/_build_info.py
+
+# Runtime-marker от scripts/deploy.sh — хранит SHA коммита, на котором
+# крутится сервер до текущего деплоя (для будущего rollback). Меняется
+# на каждый деплой, в репо не нужен.
+.last-deployed-commit

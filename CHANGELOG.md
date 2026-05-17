@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Per-domain notification toggle for owner (registrant) changes** —
+  ``notify_registrant_change`` (раньше шёл через
+  ``notify_registrar_change``-mapping, см. ADR 029).
+- **Per-domain notification toggle for fetch problems** — ``notify_problem``.
+- **Per-domain kill-switch** — ``is_muted`` boolean. Заменяет computed
+  «все toggle'ы выключены»; при unmute индивидуальные настройки
+  сохраняются.
+- **Inline notification configurator UI** в карточке /whois: кнопка
+  «⚙️ Уведомления» открывает интерактивный конфигуратор с toggle'ами
+  всех 6 типов уведомлений, mute/unmute, и FSM-редактором списка дней
+  предупреждения. Toggle перерисовывает клавиатуру через
+  ``edit_message_reply_markup`` — без флуда в чат.
+
+### Changed
+
+- «Muted»-индикатор в /list теперь читает поле ``is_muted`` напрямую
+  (раньше вычислялся как «все 4 toggle'а выключены»).
+- Уведомления о смене владельца отделены от уведомлений о смене
+  регистратора — пользователи, выключившие registrar_change, продолжат
+  получать registrant-уведомления (default включён).
+- ``expiry_scheduler`` SQL: добавлен фильтр ``ud.is_muted = false``.
+
+### Database
+
+- 3 новые колонки в ``user_domains``: ``is_muted`` (bool, default false),
+  ``notify_registrant_change`` (bool, default true), ``notify_problem``
+  (bool, default true). Миграция ``20260517_pernotif``, дефолты
+  backwards-compat: поведение для существующих пользователей
+  не меняется.
+
+### Documentation
+
+- Новый ADR 029 (per-domain notification settings — extended) +
+  обновление CHANGELOG.
+
 ## [0.4.0] — 2026-05-17
 
 ### Changed

@@ -40,7 +40,7 @@ router = Router(name="list_domains")
 
 _PAGE_SIZE = 50
 _VALID_FILTERS: frozenset[str] = frozenset(
-    {"all", "expiring", "no_data", "muted", "critical", "expired"}
+    {"all", "expiring", "no_data", "muted", "critical", "expired", "wishlist"}
 )
 _SEARCH_QUERY_MAX_LEN = 64
 _LIST_STATE_TTL_SECONDS = 30 * 60

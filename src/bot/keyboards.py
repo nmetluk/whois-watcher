@@ -37,7 +37,14 @@ class WhoisAction(CallbackData, prefix="whois"):
     (для Этапа 2 это не критично — заглушки и так не используют).
     """
 
-    action: str  # "follow" | "unfollow" | "refresh" | "raw"
+    action: str  # follow | unfollow | refresh | raw | wishlist (Этап 9)
+    domain: str
+
+
+class WishlistAction(CallbackData, prefix="wish"):
+    """Кнопки в уведомлении «домен освободился» (Этап 9)."""
+
+    action: str  # "track" | "dismiss"
     domain: str
 
 
@@ -123,8 +130,18 @@ def start_keyboard(lang: str) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def whois_actions(domain: str, *, is_tracked: bool, lang: str) -> InlineKeyboardMarkup:
-    """Кнопки под карточкой ``/whois``."""
+def whois_actions(
+    domain: str,
+    *,
+    is_tracked: bool,
+    lang: str,
+    show_wishlist: bool = True,
+) -> InlineKeyboardMarkup:
+    """Кнопки под карточкой ``/whois``.
+
+    ``show_wishlist`` (Этап 9) — выводить ли кнопку «🎯 Хочу когда
+    освободится». По умолчанию ``True``; хэндлер может скрыть в спец-случаях.
+    """
     builder = InlineKeyboardBuilder()
     if is_tracked:
         builder.button(
@@ -144,7 +161,29 @@ def whois_actions(domain: str, *, is_tracked: bool, lang: str) -> InlineKeyboard
         text=t("button.raw", lang),
         callback_data=WhoisAction(action="raw", domain=domain).pack(),
     )
-    builder.adjust(1, 2)
+    if show_wishlist:
+        builder.button(
+            text=t("button.wishlist_add", lang),
+            callback_data=WhoisAction(action="wishlist", domain=domain).pack(),
+        )
+        builder.adjust(1, 2, 1)
+    else:
+        builder.adjust(1, 2)
+    return builder.as_markup()
+
+
+def wishlist_available_actions(domain: str, *, lang: str) -> InlineKeyboardMarkup:
+    """Кнопки под уведомлением «домен освободился»."""
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text=t("notifications.wishlist.available.button_track", lang),
+        callback_data=WishlistAction(action="track", domain=domain).pack(),
+    )
+    builder.button(
+        text=t("notifications.wishlist.available.button_dismiss", lang),
+        callback_data=WishlistAction(action="dismiss", domain=domain).pack(),
+    )
+    builder.adjust(1)
     return builder.as_markup()
 
 
@@ -215,6 +254,7 @@ def list_filters(lang: str) -> InlineKeyboardMarkup:
         ("expired", "list.filter.expired"),
         ("no_data", "button.filter_no_data"),
         ("muted", "button.filter_muted"),
+        ("wishlist", "list.filter.wishlist"),
     ):
         builder.button(text=t(key, lang), callback_data=ListFilter(name=name).pack())
     builder.button(

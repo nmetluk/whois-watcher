@@ -148,6 +148,7 @@ LOCALE: dict[str, str] = {
     "button.confirm_no": "❌ Отмена",
     "button.delete": "🗑 Удалить",
     "button.notify_settings": "⚙️ Настроить уведомления",
+    "button.wishlist_add": "🎯 Хочу когда освободится",
     "button.download_add": "✅ Добавить {count}",
     "button.download_show_invalid": "📄 Показать невалидные",
     # ------------------------------------------------------------------
@@ -272,10 +273,11 @@ LOCALE: dict[str, str] = {
     # ------------------------------------------------------------------
     "commands.list.row_known": "{emoji} {domain} — {days_until} ({date}){muted}",
     "commands.list.row_unknown": "{emoji} {domain} — нет данных{muted}",
+    "commands.list.row_wishlist": "🎯 {domain} — жду освобождения",
     "commands.list.muted_suffix": " 🔕",
     "commands.list.unknown_value": "—",
     "commands.list.csv_hint": "📥 Используйте /csv для экспорта списка в файл.",
-    # Этап 9 — поиск/фильтры
+    # Этап 9 — поиск/фильтры/wishlist
     "list.search.placeholder": "🔍 Поиск",
     "list.search.prompt": "Введите подстроку для поиска или /cancel",
     "list.search.current": "🔍 Поиск: <code>{query}</code>",
@@ -283,6 +285,7 @@ LOCALE: dict[str, str] = {
     "list.search.empty": "По запросу <code>{query}</code> ничего не найдено.",
     "list.filter.critical": "🚨 С проблемами",
     "list.filter.expired": "💀 Истёкшие",
+    "list.filter.wishlist": "🎯 Wishlist",
     # ------------------------------------------------------------------
     # /stats
     # ------------------------------------------------------------------
@@ -474,8 +477,29 @@ LOCALE: dict[str, str] = {
     "notifications.ack.no_access": "❌ Этот домен не в вашем списке",
     "notifications.value.unknown": "—",
     "notifications.value.never": "никогда",
+    "notifications.wishlist.available.title": "🎉 Домен <b>{domain}</b> освободился!",
+    "notifications.wishlist.available.body": (
+        "Можете зарегистрировать через любого регистратора.\n\n"
+        "<i>Помните: автоматизированные drop-catchers могут оказаться быстрее "
+        "ручного захвата популярных доменов.</i>"
+    ),
+    "notifications.wishlist.available.button_track": "📌 Начать отслеживать",
+    "notifications.wishlist.available.button_dismiss": "OK",
     "notify.on": "🔔 Уведомления для {domain} включены",
     "notify.off": "🔕 Уведомления для {domain} выключены",
+    # Этап 9 — /wishlist
+    "commands.wishlist.empty": (
+        "🎯 Wishlist пуст.\n\nДобавьте через /wishlist <code>example.com</code> "
+        "или кнопку «Хочу когда освободится» в карточке /whois."
+    ),
+    "commands.wishlist.header": "🎯 Ваш wishlist ({total})\n\nСтраница {page}/{total_pages}",
+    "commands.wishlist.added": (
+        "🎯 <b>{domain}</b> добавлен в wishlist.\n"
+        "Пришлю одно уведомление, когда домен освободится."
+    ),
+    "commands.wishlist.tracked_now": (
+        "✅ <b>{domain}</b> теперь у вас в обычном /list. Удачной регистрации!"
+    ),
     # ------------------------------------------------------------------
     # Inline-кнопки приветствия (callbacks из start_keyboard)
     # ------------------------------------------------------------------

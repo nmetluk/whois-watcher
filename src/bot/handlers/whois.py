@@ -163,6 +163,15 @@ async def on_whois_action(
         )
     elif action == "raw":
         await _send_raw(query.message, lang=lang, domain=domain)
+    elif action == "wishlist":
+        await _add_to_wishlist_shortcut(
+            query.message,
+            user=user,
+            lang=lang,
+            domain=domain,
+            arq_redis=arq_redis,
+            limits=limits,
+        )
 
 
 async def _track(
@@ -286,6 +295,34 @@ async def _send_raw(message: Message, *, lang: str, domain: str) -> None:
     buffer = io.BytesIO(text.encode("utf-8"))
     await message.answer_document(
         BufferedInputFile(buffer.getvalue(), filename=f"{domain}.whois.txt")
+    )
+
+
+async def _add_to_wishlist_shortcut(
+    message: Message,
+    *,
+    user: User,
+    lang: str,
+    domain: str,
+    arq_redis: ArqRedis,
+    limits: Limits,
+) -> None:
+    """Shortcut из карточки /whois: добавить домен в wishlist одним нажатием.
+
+    Делегирует в ``wishlist._add_to_wishlist`` чтобы не дублировать
+    лимиты/проверки. Локальный импорт — wishlist.router зависит от
+    keyboards, которая зависит от t() — путь через __init__ всё равно
+    прогревается, разрыв цикла достаточен на уровне функций.
+    """
+    from src.bot.handlers.wishlist import _add_to_wishlist
+
+    await _add_to_wishlist(
+        message=message,
+        user=user,
+        lang=lang,
+        domain_input=domain,
+        arq_redis=arq_redis,
+        limits=limits,
     )
 
 

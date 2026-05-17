@@ -234,19 +234,20 @@ class DomainRepository(BaseRepository):
         - ``"muted"``     — все 4 ``notify_*`` флага выключены
         - ``"critical"``  — ``status &&`` ARRAY критических EPP-кодов
         - ``"expired"``   — ``expires_at < now()``
+        - ``"wishlist"``  — только ``is_wishlist=True`` записи
 
         ``search_query`` — подстрока имени домена (case-insensitive ILIKE).
         Поиск делается и по punycode-форме, и по unicode-варианту (для
         кириллических доменов: пользователь ищет «пример», находит
         ``xn--e1afmkfd.xn--p1ai``).
 
-        ``include_wishlist`` — зарезервированный флаг для следующего
-        этапа; пока — no-op.
+        ``include_wishlist`` — по умолчанию ``False``: обычный ``/list`` не
+        показывает wishlist-домены (у них свой раздел). Только
+        ``filter_type="wishlist"`` или явное ``include_wishlist=True``.
 
         Возвращает ``(rows, total)`` — страница и общее количество под
         фильтром+поиском.
         """
-        del include_wishlist  # used in a follow-up commit (wishlist)
         moment = now if now is not None else datetime.now(tz=UTC)
         in_30 = moment + timedelta(days=30)
 
@@ -255,6 +256,12 @@ class DomainRepository(BaseRepository):
             .outerjoin(WhoisCache, WhoisCache.domain == UserDomain.domain)
             .where(UserDomain.user_id == user_id)
         )
+
+        # Wishlist: либо строго wishlist (фильтр), либо строго обычные.
+        if filter_type == "wishlist":
+            base = base.where(UserDomain.is_wishlist.is_(True))
+        elif not include_wishlist:
+            base = base.where(UserDomain.is_wishlist.is_(False))
 
         if filter_type == "expiring":
             base = base.where(
@@ -417,6 +424,74 @@ class DomainRepository(BaseRepository):
             muted=int(row.muted),
             added_month=int(row.added_month),
         )
+
+    # ------------------------------------------------------------------
+    # Wishlist (Этап 9)
+    # ------------------------------------------------------------------
+
+    async def add_to_wishlist(self, user_id: int, domain: str) -> UserDomain:
+        """Добавляет домен в wishlist пользователя или конвертирует
+        существующую обычную подписку в wishlist.
+
+        UPSERT через ON CONFLICT: если такая user_domains-запись уже есть,
+        ставим ``is_wishlist=True`` поверх (и выключаем notify_*, чтобы не
+        дублировать с tracking).
+        """
+        stmt = (
+            pg_insert(UserDomain)
+            .values(
+                user_id=user_id,
+                domain=domain,
+                is_wishlist=True,
+                notify_expiry=False,
+                notify_ns_change=False,
+                notify_registrar_change=False,
+                notify_status_change=False,
+            )
+            .on_conflict_do_update(
+                constraint="uq_user_domains_user_domain",
+                set_={
+                    "is_wishlist": True,
+                    "notify_expiry": False,
+                    "notify_ns_change": False,
+                    "notify_registrar_change": False,
+                    "notify_status_change": False,
+                },
+            )
+            .returning(UserDomain.id)
+        )
+        await self.session.execute(stmt)
+        await self.session.flush()
+        row = await self.get_for_user(user_id, domain)
+        assert row is not None  # invariant: только что upsert'нули
+        return row
+
+    async def remove_wishlist(self, user_id: int, domain: str) -> bool:
+        """Удаляет запись wishlist (точный UNIQUE на (user_id, domain)).
+
+        Возвращает True, если строка существовала и была удалена. Не
+        фильтруем по ``is_wishlist`` — это идемпотентный DELETE на пару.
+        """
+        stmt = (
+            delete(UserDomain)
+            .where(
+                UserDomain.user_id == user_id,
+                UserDomain.domain == domain,
+                UserDomain.is_wishlist.is_(True),
+            )
+            .returning(UserDomain.id)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none() is not None
+
+    async def get_wishlist_subscribers_for_domain(self, domain: str) -> Sequence[UserDomain]:
+        """Только wishlist-подписчики домена — для ``send_wishlist_available_notice``."""
+        stmt = select(UserDomain).where(
+            UserDomain.domain == domain,
+            UserDomain.is_wishlist.is_(True),
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
 
     async def update_notification_settings(
         self,

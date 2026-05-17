@@ -126,11 +126,18 @@ def format_list_row(
     lang: str,
     now: datetime | None = None,
 ) -> str:
-    """Одна строка списка ``/list``: эмодзи + домен + дни до истечения + 🔕."""
+    """Одна строка списка ``/list``: эмодзи + домен + дни до истечения + 🔕.
+
+    Wishlist-домены (Этап 9) рендерятся отдельным шаблоном — иконка 🎯
+    и подпись «жду освобождения», без дней до истечения.
+    """
     moment = now if now is not None else datetime.now(tz=UTC)
+    display = _display_domain(user_domain.domain)
+    if getattr(user_domain, "is_wishlist", False):
+        return t("commands.list.row_wishlist", lang, domain=display)
+
     muted = _is_muted(user_domain)
     muted_suffix = t("commands.list.muted_suffix", lang) if muted else ""
-    display = _display_domain(user_domain.domain)
 
     if cache is None or cache.expires_at is None:
         emoji = get_expiry_emoji(None)

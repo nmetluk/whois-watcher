@@ -121,6 +121,11 @@ class UserDomain(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
+    # Wishlist-режим (Этап 9). Если True — пользователь ждёт когда домен
+    # станет available; в обычном /list не показываем, проверяем раз в сутки,
+    # одноразовое уведомление по освобождению (см. tasks/notify_wishlist).
+    is_wishlist: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+
     user: Mapped[User] = relationship("User", back_populates="domains")
 
     def __repr__(self) -> str:  # pragma: no cover

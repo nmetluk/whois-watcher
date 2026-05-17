@@ -25,6 +25,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -129,9 +130,20 @@ async def _handle_success(
     ctx: dict[str, Any],
     bot: Bot,
 ) -> None:
-    """UPSERT в кэш, diff, постановка уведомлений, followup."""
+    """UPSERT в кэш, diff, постановка уведомлений, followup, wishlist-trigger."""
     now = datetime.now(tz=UTC)
-    next_check = calculate_next_check(new_data.expires_at, now=now)
+
+    # Прочитаем подписчиков один раз: нужны и для wishlist-определения
+    # частоты проверок (Этап 9), и для рассылки change-notice.
+    async with get_session() as session:
+        subscribers = await DomainRepository(session).get_subscribers_for_domain(domain)
+    only_wishlist = bool(subscribers) and all(s.is_wishlist for s in subscribers)
+
+    next_check = calculate_next_check(
+        new_data.expires_at,
+        now=now,
+        is_wishlist=only_wishlist,
+    )
 
     registrant = new_data.registrant
     fields: dict[str, Any] = {
@@ -163,8 +175,34 @@ async def _handle_success(
     if diff.has_any_changes and old_data is not None:
         await _enqueue_change_notices(domain, diff, ctx)
 
+    # Wishlist (Этап 9): зарегистрированный → освободился → уведомить.
+    # Триггер только при явном переходе (old.is_registered=True → new=False),
+    # чтобы при добавлении в wishlist уже свободного домена не было ложного
+    # «домен освободился».
+    if old_data is not None and old_data.is_registered and not new_data.is_registered:
+        await _enqueue_wishlist_notices(domain, ctx, subscribers)
+
     # Followup для тех, кто только что сделал /add и ждёт первого ответа.
     await _flush_pending_followups(domain, new_data, ctx, bot)
+
+
+async def _enqueue_wishlist_notices(
+    domain: str,
+    ctx: dict[str, Any],
+    subscribers: Iterable[UserDomain],
+) -> None:
+    """Шлём ``send_wishlist_available_notice`` всем wishlist-подписчикам.
+
+    Сам task удаляет user_domain-запись после успешной отправки — так
+    реализована «одноразовость» уведомления.
+    """
+    from arq import ArqRedis
+
+    arq_redis: ArqRedis = ctx["redis"]
+    for sub in subscribers:
+        if not sub.is_wishlist:
+            continue
+        await arq_redis.enqueue_job("send_wishlist_available_notice", sub.user_id, domain)
 
 
 async def _enqueue_change_notices(

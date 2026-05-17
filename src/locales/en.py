@@ -134,6 +134,7 @@ LOCALE: dict[str, str] = {
     "button.confirm_no": "❌ Cancel",
     "button.delete": "🗑 Delete",
     "button.notify_settings": "⚙️ Notification settings",
+    "button.wishlist_add": "🎯 Watch for drop",
     "button.download_add": "✅ Add {count}",
     "button.download_show_invalid": "📄 Show invalid",
     # ------------------------------------------------------------------
@@ -260,10 +261,11 @@ LOCALE: dict[str, str] = {
     # ------------------------------------------------------------------
     "commands.list.row_known": "{emoji} {domain} — {days_until} ({date}){muted}",
     "commands.list.row_unknown": "{emoji} {domain} — no data{muted}",
+    "commands.list.row_wishlist": "🎯 {domain} — waiting for it to drop",
     "commands.list.muted_suffix": " 🔕",
     "commands.list.unknown_value": "—",
     "commands.list.csv_hint": "📥 Use /csv to export the list as a file.",
-    # Stage 9 — search/filters
+    # Stage 9 — search/filters/wishlist
     "list.search.placeholder": "🔍 Search",
     "list.search.prompt": "Type a substring to search or /cancel",
     "list.search.current": "🔍 Search: <code>{query}</code>",
@@ -271,6 +273,7 @@ LOCALE: dict[str, str] = {
     "list.search.empty": "Nothing found for <code>{query}</code>.",
     "list.filter.critical": "🚨 With problems",
     "list.filter.expired": "💀 Expired",
+    "list.filter.wishlist": "🎯 Wishlist",
     # ------------------------------------------------------------------
     # /stats
     # ------------------------------------------------------------------
@@ -458,8 +461,29 @@ LOCALE: dict[str, str] = {
     "notifications.ack.no_access": "❌ This domain isn't in your list",
     "notifications.value.unknown": "—",
     "notifications.value.never": "never",
+    "notifications.wishlist.available.title": "🎉 <b>{domain}</b> is now available!",
+    "notifications.wishlist.available.body": (
+        "You can register it through any registrar.\n\n"
+        "<i>Remember: automated drop-catchers may be faster than manual "
+        "registration for popular domains.</i>"
+    ),
+    "notifications.wishlist.available.button_track": "📌 Start tracking",
+    "notifications.wishlist.available.button_dismiss": "OK",
     "notify.on": "🔔 Notifications for {domain} enabled",
     "notify.off": "🔕 Notifications for {domain} disabled",
+    # Stage 9 — /wishlist
+    "commands.wishlist.empty": (
+        "🎯 Wishlist is empty.\n\nAdd a domain with /wishlist <code>example.com</code> "
+        "or the «Watch for drop» button in a /whois card."
+    ),
+    "commands.wishlist.header": "🎯 Your wishlist ({total})\n\nPage {page}/{total_pages}",
+    "commands.wishlist.added": (
+        "🎯 <b>{domain}</b> added to wishlist.\n"
+        "I'll send one alert when it becomes available."
+    ),
+    "commands.wishlist.tracked_now": (
+        "✅ <b>{domain}</b> is now in your normal /list. Good luck with registration!"
+    ),
     # ------------------------------------------------------------------
     # Inline buttons from the welcome screen (start_keyboard callbacks)
     # ------------------------------------------------------------------

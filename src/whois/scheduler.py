@@ -38,6 +38,7 @@ def calculate_next_check(
     *,
     now: datetime | None = None,
     limits: Limits | None = None,
+    is_wishlist: bool = False,
 ) -> datetime | None:
     """Возвращает момент следующей плановой проверки или ``None``.
 
@@ -46,9 +47,17 @@ def calculate_next_check(
 
     ``expires_at`` тоже может быть ``None`` (мы ещё не знаем дату):
     запланируем повтор через 1 день, чтобы дозаполнить.
+
+    ``is_wishlist=True`` (Этап 9) — все подписчики этого домена ждут
+    его освобождения. Используем фиксированный 24-часовой TTL, не
+    adaptive: для wishlist'а ``expires_at`` нерелевантен (нас интересует
+    переход registered → available), а проверять чаще нет смысла.
     """
-    cfg = limits if limits is not None else get_limits()
     moment = _now(now)
+    if is_wishlist:
+        return moment + timedelta(hours=24)
+
+    cfg = limits if limits is not None else get_limits()
 
     if expires_at is None:
         return moment + timedelta(days=1)

@@ -97,6 +97,7 @@ ListFilter = Literal[
     "muted",
     "critical",  # Этап 9 — есть critical-статусы (clientHold / pendingDelete / …)
     "expired",  # Этап 9 — expires_at в прошлом
+    "wishlist",  # Этап 9 — режим «ждём освобождения»
 ]
 
 

@@ -102,6 +102,7 @@ def _build_functions() -> list[Any]:
     from src.tasks.expiry_scheduler import expiry_notification_scheduler
     from src.tasks.notify_changes import send_change_notice
     from src.tasks.notify_problem import send_problem_notice
+    from src.tasks.notify_wishlist import send_wishlist_available_notice
     from src.tasks.scheduler import scheduler_tick
     from src.tasks.send_reminders import send_expiry_reminder
 
@@ -115,6 +116,7 @@ def _build_functions() -> list[Any]:
         send_daily_summary,
         cleanup_orphan_cache,
         cleanup_old_events,
+        send_wishlist_available_notice,
     ]
 
 

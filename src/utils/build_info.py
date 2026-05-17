@@ -17,6 +17,7 @@ from typing import Any
 class BuildInfo:
     """Снимок git-состояния, на котором собирался образ."""
 
+    app_version: str  # из pyproject.toml на момент сборки
     git_commit: str
     git_commit_short: str
     git_branch: str
@@ -30,6 +31,10 @@ def get_build_info() -> BuildInfo:
     Импорт ``src._build_info`` отложенный — модуля может не быть.
     Любая иная ошибка (например, кривое содержимое) тоже даёт fallback,
     чтобы /version хотя бы что-то отдал.
+
+    Поля читаются через ``getattr`` с дефолтами — на случай если кто-то
+    держит в образе старую версию ``_build_info.py`` без новых полей
+    (например, до Этапа 9.1, когда добавили ``APP_VERSION``).
     """
     try:
         bi: Any = importlib.import_module("src._build_info")
@@ -37,6 +42,7 @@ def get_build_info() -> BuildInfo:
         return _placeholder()
     try:
         return BuildInfo(
+            app_version=str(getattr(bi, "APP_VERSION", "") or "unknown"),
             git_commit=str(bi.GIT_COMMIT),
             git_commit_short=str(bi.GIT_COMMIT_SHORT),
             git_branch=str(bi.GIT_BRANCH),
@@ -49,6 +55,7 @@ def get_build_info() -> BuildInfo:
 
 def _placeholder() -> BuildInfo:
     return BuildInfo(
+        app_version="unknown",
         git_commit="unknown",
         git_commit_short="dev",
         git_branch="unknown",

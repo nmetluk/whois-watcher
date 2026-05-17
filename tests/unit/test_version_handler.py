@@ -105,6 +105,7 @@ class TestVersionHandler:
         from src.bot.handlers.version import cmd_version
 
         info = BuildInfo(
+            app_version="0.3.0",
             git_commit="abcdef1234567890",
             git_commit_short="abcdef1",
             git_branch="main",
@@ -139,6 +140,7 @@ class TestVersionHandler:
         from src.bot.handlers.version import cmd_version
 
         info = BuildInfo(
+            app_version="0.3.0",
             git_commit="abcdef1234567890",
             git_commit_short="abcdef1",
             git_branch="main",
@@ -193,6 +195,7 @@ class TestVersionHandler:
         from src.bot.handlers.version import cmd_version
 
         info = BuildInfo(
+            app_version="0.3.0",
             git_commit="abcdef1234567890",
             git_commit_short="abcdef1",
             git_branch="main",

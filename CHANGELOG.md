@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — /version, search/filter, wishlist (Stage 9)
+
+- **Hidden `/version` command** for build diagnostics. Minimal output
+  for everyone (version + commit + build time); full report for
+  `ADMIN_USER_IDS` (uptime, component checks, storage stats, stack
+  versions, GitHub commit link). NOT registered in the BotFather menu
+  and not mentioned in `/help` — accessible only to people who know.
+- **Search in `/list` by substring** via the new `🔍 Поиск` button and
+  FSM input. Supports both punycode and Unicode variants (search
+  «пример», find `xn--…`). Active search adds a `❌ Сбросить поиск`
+  button and a `🔍 Поиск: <query>` line in the header.
+- **New `/list` filters:** `🚨 С проблемами` (critical EPP statuses
+  — `clientHold`, `pendingDelete`, `serverHold`, `BLOCKED`, `failed`)
+  and `💀 Истёкшие` (`expires_at < now()`).
+- **Wishlist feature:** `/wishlist <domain>` or the new
+  `🎯 Хочу когда освободится` button in the `/whois` card. The bot
+  re-checks wishlist domains every 24 hours and sends a **one-shot**
+  notification when the domain becomes available, then automatically
+  removes the wishlist subscription. Filter `🎯 Wishlist` in `/list`
+  shows the active wishlist.
+
+### Fixed
+
+- `/list` pagination no longer resets the active filter when paging
+  prev/next (state is now persisted in Redis `list_state:{user_id}`
+  for 30 minutes).
+
+### Database
+
+- `user_domains.is_wishlist BOOLEAN NOT NULL DEFAULT false` (migration
+  `20260517_wishlist`). Existing rows are unaffected.
+- New `notification_type='wishlist_available'` value used in
+  `sent_notifications` for audit logging.
+
+### Build & deployment
+
+- `scripts/generate_build_info.sh` writes `src/_build_info.py` before
+  `docker compose build`. The generated file is gitignored — each
+  build pins its own git revision and timestamp. `docs/deployment.md`
+  updates the «Обновление до новой версии» runbook accordingly.
+
 ## [0.2.0] — 2026-05-17
 
 ### Added — Enhanced WHOIS display (Stage 8)

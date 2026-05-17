@@ -48,6 +48,7 @@ LEFT JOIN sent_notifications sn
       AND sn.days_before = day_before
       AND sn.expires_at = wc.expires_at
 WHERE ud.notify_expiry = true
+  AND ud.is_muted = false  -- Этап 11 (ADR 029): kill-switch
   AND wc.expires_at IS NOT NULL
   AND ((wc.expires_at AT TIME ZONE u.timezone)::date
        - (now() AT TIME ZONE u.timezone)::date) = day_before

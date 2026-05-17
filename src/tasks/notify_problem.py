@@ -4,9 +4,11 @@
 WHOIS. Шлёт пользователю одно сообщение про проблемный домен с кнопками
 «Попробовать сейчас» и «🔕 Не уведомлять».
 
-Логика тишины: если у user_domain выключены ВСЕ четыре ``notify_*`` флага
-(пользователь сделал ``/unnotify``), problem-уведомление не шлём — раз он
-не хочет слышать про этот домен, значит и про проблемы тоже.
+Логика тишины (Этап 11, ADR 029):
+
+- ``UserDomain.is_muted=True`` — kill-switch, ничего не шлём.
+- ``UserDomain.notify_problem=False`` — конкретно problem-уведомления
+  выключены для этого домена.
 """
 
 from __future__ import annotations
@@ -28,14 +30,16 @@ from src.locales import t
 logger = logging.getLogger(__name__)
 
 
-def _user_wants_any_notifications(user_domain: Any) -> bool:
-    """True если у пары user_domain включён хотя бы один notify_* флаг."""
-    return bool(
-        user_domain.notify_expiry
-        or user_domain.notify_ns_change
-        or user_domain.notify_registrar_change
-        or user_domain.notify_status_change
-    )
+def _user_wants_problem_notice(user_domain: Any) -> bool:
+    """True, если для пары user_domain разрешено problem-уведомление.
+
+    Этап 11 (ADR 029): отдельный per-domain toggle ``notify_problem``
+    + kill-switch ``is_muted``. Раньше использовалось «есть ли хоть один
+    включённый notify_* флаг» — это была эвристика, теперь явный флаг.
+    """
+    if user_domain.is_muted:
+        return False
+    return bool(user_domain.notify_problem)
 
 
 def _format_dt_or_never(value: datetime | None, lang: str) -> str:
@@ -63,7 +67,7 @@ async def send_problem_notice(ctx: dict[str, Any], user_id: int, domain: str) ->
         cache_repo = WhoisCacheRepository(session)
 
         user_domain = await domain_repo.get_for_user(user_id, domain)
-        if user_domain is None or not _user_wants_any_notifications(user_domain):
+        if user_domain is None or not _user_wants_problem_notice(user_domain):
             return
 
         # Cooldown: не чаще раза в N дней

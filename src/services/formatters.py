@@ -249,13 +249,13 @@ def _format_owner_line(contact: WhoisContact | None, *, lang: str) -> str | None
 
 
 def _is_muted(domain: UserDomain) -> bool:
-    """True, если все 4 типа уведомлений выключены."""
-    return not (
-        domain.notify_expiry
-        or domain.notify_ns_change
-        or domain.notify_registrar_change
-        or domain.notify_status_change
-    )
+    """True если домен полностью замьючен через kill-switch (Этап 11).
+
+    Раньше это вычислялось как «все 4 toggle'а выключены»; теперь
+    ``UserDomain.is_muted`` — настоящее поле (ADR 029). При unmute
+    индивидуальные настройки сохраняются.
+    """
+    return bool(getattr(domain, "is_muted", False))
 
 
 def _within_minutes(a: datetime, b: datetime, *, minutes: int) -> bool:

@@ -282,12 +282,14 @@ async def _enqueue_change_notices(
 
 
 def _is_user_subscribed_to(sub: UserDomain, change_type: str, _default: bool) -> bool:
-    """Маппинг типа diff'а на ``UserDomain.notify_*`` флаги (ADR 012).
+    """Маппинг типа diff'а на ``UserDomain.notify_*`` флаги (ADR 029).
 
-    Регистрант (и privacy-варианты) использует тот же флаг, что и регистратор:
-    отдельный per-domain выключатель «уведомлять о смене владельца» не вводим
-    — это та же категория «административных изменений» для пользователя.
+    Этап 11: ``is_muted`` — kill-switch, гасит всё; registrant получил
+    собственный toggle ``notify_registrant_change`` (раньше шёл через
+    ``notify_registrar_change``).
     """
+    if sub.is_muted:
+        return False
     if change_type == "expires_at":
         return bool(sub.notify_expiry)
     if change_type == "ns":
@@ -301,7 +303,7 @@ def _is_user_subscribed_to(sub: UserDomain, change_type: str, _default: bool) ->
         "registrant_privacy_revealed",
         "registrant_privacy_hidden",
     ):
-        return bool(sub.notify_registrar_change)
+        return bool(sub.notify_registrant_change)
     return False
 
 

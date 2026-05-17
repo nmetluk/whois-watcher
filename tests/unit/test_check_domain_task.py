@@ -203,10 +203,13 @@ class TestFirstFetchAfterAdd:
         sub = MagicMock()
         sub.user_id = 100
         sub.is_wishlist = False
+        sub.is_muted = False  # Этап 11: kill-switch
         sub.notify_expiry = True
         sub.notify_registrar_change = True
         sub.notify_ns_change = True
         sub.notify_status_change = True
+        sub.notify_registrant_change = True
+        sub.notify_problem = True
         domain_repo_mock.get_subscribers_for_domain.return_value = [sub]
 
         monkeypatch.setattr("src.tasks.check_domain.get_session", _fake_session_factory)
@@ -270,10 +273,13 @@ class TestFirstFetchAfterAdd:
         sub = MagicMock()
         sub.user_id = 100
         sub.is_wishlist = False
+        sub.is_muted = False  # Этап 11: kill-switch
         sub.notify_expiry = True
         sub.notify_registrar_change = True
         sub.notify_ns_change = True
         sub.notify_status_change = True
+        sub.notify_registrant_change = True
+        sub.notify_problem = True
         domain_repo_mock.get_subscribers_for_domain.return_value = [sub]
 
         monkeypatch.setattr("src.tasks.check_domain.get_session", _fake_session_factory)

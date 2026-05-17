@@ -134,7 +134,35 @@ class Settings(BaseSettings):
     bot_username: str = Field("", description="Username без '@'. Опционально.")
 
     # ------------------------------------------------------------------
-    # WHOIS
+    # WHOIS proxy gateway (Этап 10, ADR 028) — primary lookup path
+    # ------------------------------------------------------------------
+    # При ``whois_proxy_enabled=True`` бот ходит за WHOIS-данными через
+    # HTTP/JSON API локального прокси (``WHOIS_PROXY_URL``). Прокси сам
+    # выбирает upstream (RDAP / WHOIS:43 / выделенный RU-relay для
+    # .ru/.рф/.su), кэширует положительные ответы 24ч. При недоступности
+    # прокси (5xx / network / timeout) бот делает fallback на прямой
+    # RDAP+WHOIS:43 lookup из ``src.whois.client.lookup_direct``.
+    whois_proxy_enabled: bool = Field(
+        True,
+        description="Использовать ли локальный WHOIS proxy gateway (ADR 028).",
+    )
+    whois_proxy_url: str = Field(
+        "http://127.0.0.1:8043",
+        description="Base URL прокси без trailing slash. Внутренний адрес.",
+    )
+    whois_proxy_timeout_seconds: int = Field(
+        15,
+        ge=1,
+        description="Таймаут одного запроса к прокси (включая ожидание upstream).",
+    )
+    whois_proxy_health_check_interval_seconds: int = Field(
+        60,
+        ge=10,
+        description="Интервал для periodic /healthz-проверки (использует cron).",
+    )
+
+    # ------------------------------------------------------------------
+    # WHOIS — direct fallback (используется когда прокси недоступен)
     # ------------------------------------------------------------------
     # ``NoDecode`` нужен, чтобы env-источник передал сырую строку нашему
     # ``mode='before'`` валидатору. Так мы сами нормализуем ключи к lowercase

@@ -14,9 +14,23 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Literal
 
-# Откуда получены данные. ``"rdap"`` — RDAP-запрос через ``whoisit``,
-# ``"whois"`` — текстовый WHOIS на 43 порту.
-DataSource = Literal["rdap", "whois"]
+# Откуда получены данные.
+# Прямые пути (через ``lookup_direct``):
+#   - ``"rdap"`` — RDAP через ``whoisit``
+#   - ``"whois"`` — текстовый WHOIS на 43 порту
+# Через прокси-gateway (ADR 028, ``lookup_via_proxy``):
+#   - ``"proxy_rdap"``     — upstream RDAP
+#   - ``"proxy_whois"``    — обычный upstream WHOIS:43
+#   - ``"proxy_whois_ru"`` — выделенный RU-relay (TCI для .ru/.рф/.su)
+#   - ``"proxy_none"``     — прокси вернул «нет данных»
+DataSource = Literal[
+    "rdap",
+    "whois",
+    "proxy_rdap",
+    "proxy_whois",
+    "proxy_whois_ru",
+    "proxy_none",
+]
 
 
 # Категории ошибок WHOIS-запроса. Используются в логике повторов и алертов.

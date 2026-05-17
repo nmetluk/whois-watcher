@@ -498,19 +498,20 @@ class DomainRepository(BaseRepository):
         user_id: int,
         domain: str,
         /,
-        **flags: bool,
+        **values: Any,
     ) -> bool:
-        """Частичное обновление флагов уведомлений (для ``/settings`` → домен).
+        """Частичное обновление настроек уведомлений (для конфигуратора).
 
-        Принимает любое подмножество из ``DEFAULT_NOTIFICATION_FLAGS``.
-        Неизвестные ключи пробрасываются как ошибка SQL — это намеренно.
+        Принимает любые поля ``UserDomain``: boolean toggle'ы
+        (``notify_*``, ``is_muted``) или ``notify_days: list[int] | None``.
+        Неизвестные ключи пробрасываются как SQL-ошибка — намеренно.
         """
-        if not flags:
+        if not values:
             return False
         stmt = (
             update(UserDomain)
             .where(and_(UserDomain.user_id == user_id, UserDomain.domain == domain))
-            .values(**flags)
+            .values(**values)
             .returning(UserDomain.id)
         )
         result = await self.session.execute(stmt)

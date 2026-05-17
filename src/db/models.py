@@ -112,6 +112,17 @@ class UserDomain(Base):
     notify_status_change: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="true"
     )
+    # Этап 11: смена владельца — отдельный toggle (раньше шло через
+    # notify_registrar_change-mapping, см. ADR 029).
+    notify_registrant_change: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="true"
+    )
+    # Этап 11: проблемы с проверкой WHOIS — отдельный toggle.
+    notify_problem: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    # Этап 11: kill-switch (replaces computed _is_muted из formatters).
+    # True → подавляет ВСЕ уведомления независимо от индивидуальных
+    # ``notify_*`` флагов. При unmute индивидуальные настройки сохраняются.
+    is_muted: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
 
     last_problem_notified_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

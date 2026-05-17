@@ -12,11 +12,16 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from src.locales import t
+
+if TYPE_CHECKING:
+    from src.db.models import UserDomain
 
 # ---------------------------------------------------------------------------
 # CallbackData-фабрики
@@ -46,6 +51,29 @@ class WishlistAction(CallbackData, prefix="wish"):
 
     action: str  # "track" | "dismiss"
     domain: str
+
+
+class NotifyConfig(CallbackData, prefix="ncfg"):
+    """Кнопки inline-конфигуратора уведомлений (Этап 11, ADR 029).
+
+    ``action``:
+      - ``open`` — открыть конфигуратор (из карточки /whois / списка)
+      - ``toggle`` — переключить ``field`` (notify_*) на противоположное
+      - ``mute_toggle`` — переключить ``is_muted``
+      - ``edit_days`` — запустить FSM редактирования notify_days
+      - ``reset_days`` — сбросить override в NULL (использовать user-level)
+      - ``close`` — убрать клавиатуру (для inline-embedded use-cases)
+
+    ``domain`` — punycode-имя. ``field`` — имя поля в БД для action=toggle
+    (``notify_expiry``, ``notify_registrar_change``, ...).
+
+    callback_data Telegram режет до 64 байт; поэтому ``field`` опционален
+    и используется только в toggle-action.
+    """
+
+    action: str
+    domain: str
+    field: str = ""
 
 
 class ListPage(CallbackData, prefix="list"):
@@ -141,6 +169,10 @@ def whois_actions(
 
     ``show_wishlist`` (Этап 9) — выводить ли кнопку «🎯 Хочу когда
     освободится». По умолчанию ``True``; хэндлер может скрыть в спец-случаях.
+
+    Кнопка «⚙️ Уведомления» (Этап 11) показывается только если домен
+    отслеживается (``is_tracked=True``) — для нетрекаемых доменов
+    конфигурировать нечего.
     """
     builder = InlineKeyboardBuilder()
     if is_tracked:
@@ -161,15 +193,91 @@ def whois_actions(
         text=t("button.raw", lang),
         callback_data=WhoisAction(action="raw", domain=domain).pack(),
     )
+    if is_tracked:
+        builder.button(
+            text=t("notify_config.button", lang),
+            callback_data=NotifyConfig(action="open", domain=domain).pack(),
+        )
     if show_wishlist:
         builder.button(
             text=t("button.wishlist_add", lang),
             callback_data=WhoisAction(action="wishlist", domain=domain).pack(),
         )
-        builder.adjust(1, 2, 1)
-    else:
-        builder.adjust(1, 2)
+    # Раскладка: первая кнопка (follow/unfollow) одна, потом по 2 в ряд.
+    rows: list[int] = [1]
+    extras = 2  # refresh + raw
+    if is_tracked:
+        extras += 1
+    if show_wishlist:
+        extras += 1
+    while extras > 0:
+        take = 2 if extras >= 2 else 1
+        rows.append(take)
+        extras -= take
+    builder.adjust(*rows)
     return builder.as_markup()
+
+
+def notify_config_keyboard(
+    user_domain: UserDomain,
+    *,
+    lang: str,
+) -> InlineKeyboardMarkup:
+    """Inline-конфигуратор уведомлений (Этап 11, ADR 029).
+
+    7 переключателей по одной кнопке на ряд (легче тапать на мобиле).
+    Каждая кнопка показывает текущее состояние (✅/❌); тап — toggle и
+    перерисовка клавиатуры через ``edit_message_reply_markup``.
+    """
+    builder = InlineKeyboardBuilder()
+    on = t("notify_config.toggle.on", lang)
+    off = t("notify_config.toggle.off", lang)
+    domain = user_domain.domain
+
+    builder.row(
+        InlineKeyboardButton(
+            text=t("notify_config.edit_days", lang),
+            callback_data=NotifyConfig(action="edit_days", domain=domain).pack(),
+        )
+    )
+    for field, label_key in _TOGGLE_FIELDS:
+        flag = bool(getattr(user_domain, field, False))
+        prefix = on if flag else off
+        builder.row(
+            InlineKeyboardButton(
+                text=f"{prefix} {t(label_key, lang)}",
+                callback_data=NotifyConfig(action="toggle", domain=domain, field=field).pack(),
+            )
+        )
+    is_muted = bool(getattr(user_domain, "is_muted", False))
+    builder.row(
+        InlineKeyboardButton(
+            text=t(
+                "notify_config.unmute_all" if is_muted else "notify_config.mute_all",
+                lang,
+            ),
+            callback_data=NotifyConfig(action="mute_toggle", domain=domain).pack(),
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text=t("button.back", lang),
+            callback_data=NotifyConfig(action="close", domain=domain).pack(),
+        )
+    )
+    return builder.as_markup()
+
+
+# (field-name в БД, ключ локали для подписи).
+# Порядок отражает порядок в /whois карточке.
+_TOGGLE_FIELDS: tuple[tuple[str, str], ...] = (
+    ("notify_expiry", "notify_config.type.expiry"),
+    ("notify_registrar_change", "notify_config.type.registrar_change"),
+    ("notify_ns_change", "notify_config.type.ns_change"),
+    ("notify_status_change", "notify_config.type.status_change"),
+    ("notify_registrant_change", "notify_config.type.registrant_change"),
+    ("notify_problem", "notify_config.type.problem"),
+)
 
 
 def wishlist_available_actions(domain: str, *, lang: str) -> InlineKeyboardMarkup:

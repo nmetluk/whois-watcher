@@ -35,6 +35,7 @@ from src.bot.handlers import (
     help_cancel,
     list_domains,
     notifications,
+    notify_config,
     settings,
     start,
     stats,
@@ -56,6 +57,7 @@ ROUTERS: tuple[Router, ...] = (
     check.router,
     list_domains.router,
     notifications.router,
+    notify_config.router,  # Этап 11 — inline-конфигуратор уведомлений
     csv_export.router,
     download.router,
     admin.router,

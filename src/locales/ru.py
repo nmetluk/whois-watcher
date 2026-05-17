@@ -123,6 +123,48 @@ LOCALE: dict[str, str] = {
     "button.notify_on": "🔔 Включить обратно",
     "button.cancel": "❌ Отмена",
     "button.back": "◀️ Назад",
+    # Этап 11 — конфигуратор уведомлений
+    "notify_config.button": "⚙️ Уведомления",
+    "notify_config.title": "⚙️ <b>Настройки уведомлений</b> для {domain}",
+    "notify_config.days_label_default": (
+        "🔔 <b>Дни предупреждений:</b> {days}\n" "   <i>(используются глобальные настройки)</i>"
+    ),
+    "notify_config.days_label_custom": (
+        "🔔 <b>Дни предупреждений:</b> {days}\n" "   <i>(per-domain override)</i>"
+    ),
+    "notify_config.types_label": "<b>Типы уведомлений:</b>",
+    "notify_config.muted_yes": "🔇 <b>Полное отключение:</b> включено",
+    "notify_config.muted_no": "🔇 <b>Полное отключение:</b> выключено",
+    "notify_config.edit_days": "📅 Изменить дни предупреждений",
+    "notify_config.mute_all": "🔇 Заглушить всё",
+    "notify_config.unmute_all": "🔔 Снять заглушение",
+    "notify_config.toggle.on": "✅",
+    "notify_config.toggle.off": "❌",
+    "notify_config.type.expiry": "Истечение срока",
+    "notify_config.type.registrar_change": "Смена регистратора",
+    "notify_config.type.ns_change": "Смена NS-серверов",
+    "notify_config.type.status_change": "Смена статусов",
+    "notify_config.type.registrant_change": "Смена владельца",
+    "notify_config.type.problem": "Проблемы с проверкой",
+    "notify_config.feedback_on": "✅ Включено: {type}",
+    "notify_config.feedback_off": "❌ Отключено: {type}",
+    "notify_config.feedback_muted": "🔇 Все уведомления заглушены",
+    "notify_config.feedback_unmuted": "🔔 Заглушение снято",
+    "notify_config.not_tracked": (
+        "❌ Этот домен не отслеживается. Добавьте его через /add или кнопку «👁 Следить»."
+    ),
+    "notify_config.days_prompt": (
+        "Введите дни через запятую (например: <code>60,30,14,7,3,1</code>).\n\n"
+        "/default — использовать глобальные настройки\n"
+        "/cancel — оставить как есть"
+    ),
+    "notify_config.days_invalid": (
+        "❌ Неверный формат. Используйте числа через запятую (1–365, "
+        "не более 10 значений). Например: <code>30,7,1</code>"
+    ),
+    "notify_config.days_saved_override": "✅ Сохранено: за {days}",
+    "notify_config.days_saved_default": "✅ Возвращены глобальные настройки",
+    "notify_config.days_unchanged": "Дни предупреждений оставлены без изменений.",
     "button.privacy": "📜 Политика конфиденциальности",
     "button.github": "💻 GitHub",
     "button.list_prev": "◀️ Назад",

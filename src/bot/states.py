@@ -40,3 +40,16 @@ class ListSearchStates(StatesGroup):
     """
 
     waiting_for_query = State()
+
+
+class NotifyDaysStates(StatesGroup):
+    """FSM для редактирования ``UserDomain.notify_days`` (Этап 11, ADR 029).
+
+    После нажатия «📅 Изменить дни» в конфигураторе уведомлений
+    пользователь вводит список через запятую. ``/default`` — сбросить
+    override в NULL (использовать user-level настройки). ``/cancel`` —
+    вернуться к конфигуратору без изменений. ``state.data`` хранит
+    ``domain`` для возврата.
+    """
+
+    waiting_for_days = State()

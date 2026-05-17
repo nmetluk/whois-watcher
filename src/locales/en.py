@@ -109,6 +109,48 @@ LOCALE: dict[str, str] = {
     "button.notify_on": "🔔 Turn back on",
     "button.cancel": "❌ Cancel",
     "button.back": "◀️ Back",
+    # Stage 11 — notification configurator
+    "notify_config.button": "⚙️ Notifications",
+    "notify_config.title": "⚙️ <b>Notification settings</b> for {domain}",
+    "notify_config.days_label_default": (
+        "🔔 <b>Warning days:</b> {days}\n" "   <i>(using global settings)</i>"
+    ),
+    "notify_config.days_label_custom": (
+        "🔔 <b>Warning days:</b> {days}\n" "   <i>(per-domain override)</i>"
+    ),
+    "notify_config.types_label": "<b>Notification types:</b>",
+    "notify_config.muted_yes": "🔇 <b>Fully muted:</b> on",
+    "notify_config.muted_no": "🔇 <b>Fully muted:</b> off",
+    "notify_config.edit_days": "📅 Change warning days",
+    "notify_config.mute_all": "🔇 Mute all",
+    "notify_config.unmute_all": "🔔 Unmute",
+    "notify_config.toggle.on": "✅",
+    "notify_config.toggle.off": "❌",
+    "notify_config.type.expiry": "Expiry warnings",
+    "notify_config.type.registrar_change": "Registrar change",
+    "notify_config.type.ns_change": "NS change",
+    "notify_config.type.status_change": "Status change",
+    "notify_config.type.registrant_change": "Owner change",
+    "notify_config.type.problem": "Check problems",
+    "notify_config.feedback_on": "✅ Enabled: {type}",
+    "notify_config.feedback_off": "❌ Disabled: {type}",
+    "notify_config.feedback_muted": "🔇 All notifications muted",
+    "notify_config.feedback_unmuted": "🔔 Unmuted",
+    "notify_config.not_tracked": (
+        "❌ This domain is not tracked. Add it via /add or the «👁 Track» button."
+    ),
+    "notify_config.days_prompt": (
+        "Type days separated by commas (e.g. <code>60,30,14,7,3,1</code>).\n\n"
+        "/default — use global settings\n"
+        "/cancel — keep current"
+    ),
+    "notify_config.days_invalid": (
+        "❌ Invalid format. Use numbers separated by commas (1–365, "
+        "no more than 10 values). Example: <code>30,7,1</code>"
+    ),
+    "notify_config.days_saved_override": "✅ Saved: warn at {days}",
+    "notify_config.days_saved_default": "✅ Reverted to global settings",
+    "notify_config.days_unchanged": "Warning days left unchanged.",
     "button.privacy": "📜 Privacy policy",
     "button.github": "💻 GitHub",
     "button.list_prev": "◀️ Prev",

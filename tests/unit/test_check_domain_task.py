@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -160,3 +160,152 @@ class TestFailedFetch:
         # ``next_check_at`` для fail_count=2 = +1 час (по нашей лестнице).
         kwargs = cache_repo_mock.update_fail.call_args.kwargs
         assert kwargs["next_check_at"] is not None
+
+
+# ---------------------------------------------------------------------------
+# Регрессия: первый fetch после /add — НЕ шлёт change-notice
+# ---------------------------------------------------------------------------
+
+
+class TestFirstFetchAfterAdd:
+    """Реальный сценарий /add:
+
+    1. ``DomainService.add_for_user`` делает upsert пустой строки
+       ``whois_cache`` (только PK, expires_at=None, registrar=None).
+    2. Воркер берёт задачу ``check_domain``.
+    3. ``lookup_domain`` возвращает реальные данные.
+
+    Ожидание: UPSERT данных сделан, но change-notice НЕ ставится в
+    очередь — это первый fetch для домена, никаких «было/стало» нет.
+
+    До фикса (guard'а на ``old_data.is_registered``) бот слал фейковые
+    "registrar changed" и "expires_at changed" при каждом /add.
+    """
+
+    async def test_no_change_notice_when_placeholder_was_previous_state(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        sync_redis = AsyncMock()
+        sync_redis.set.return_value = True
+        sync_redis.smembers.return_value = set()
+        arq_redis = AsyncMock()
+        ctx = _ctx(sync_redis=sync_redis)
+        ctx["redis"] = arq_redis  # ArqRedis с enqueue_job
+
+        # Placeholder в кэше: PK заполнен, остальное NULL — как после
+        # ``DomainService.add_for_user → self._cache.upsert(normalized)``.
+        placeholder = WhoisCache(domain="example.com")
+        cache_repo_mock = AsyncMock()
+        cache_repo_mock.get.return_value = placeholder
+
+        domain_repo_mock = AsyncMock()
+        # Подписчик есть, но мы не должны до него дойти из-за guard'а.
+        sub = MagicMock()
+        sub.user_id = 100
+        sub.is_wishlist = False
+        sub.notify_expiry = True
+        sub.notify_registrar_change = True
+        sub.notify_ns_change = True
+        sub.notify_status_change = True
+        domain_repo_mock.get_subscribers_for_domain.return_value = [sub]
+
+        monkeypatch.setattr("src.tasks.check_domain.get_session", _fake_session_factory)
+        monkeypatch.setattr(
+            "src.tasks.check_domain.WhoisCacheRepository", lambda _s: cache_repo_mock
+        )
+        monkeypatch.setattr("src.tasks.check_domain.DomainRepository", lambda _s: domain_repo_mock)
+
+        fresh = WhoisData(
+            domain="example.com",
+            is_registered=True,
+            expires_at=datetime(2027, 3, 15, tzinfo=UTC),
+            registrar="Example Inc.",
+            status=["clientTransferProhibited"],
+            name_servers=["ns1.example.com"],
+        )
+        with patch("src.tasks.check_domain.lookup_domain", new=AsyncMock(return_value=fresh)):
+            from src.tasks.check_domain import check_domain
+
+            await check_domain(ctx, "example.com")
+
+        # UPSERT всё равно сделан — данные записались в кэш.
+        cache_repo_mock.upsert.assert_awaited_once()
+
+        # КЛЮЧЕВОЕ: enqueue_job НЕ был вызван с "send_change_notice".
+        send_change_calls = [
+            call
+            for call in arq_redis.enqueue_job.await_args_list
+            if call.args and call.args[0] == "send_change_notice"
+        ]
+        assert send_change_calls == [], (
+            f"Expected NO send_change_notice on first fetch after /add, "
+            f"got {len(send_change_calls)} call(s): {send_change_calls}"
+        )
+
+    async def test_change_notice_sent_when_real_change_after_fetched_data(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Обратный кейс: у нас УЖЕ были реальные данные, теперь они
+        изменились — change-notice должен прийти как раньше."""
+        sync_redis = AsyncMock()
+        sync_redis.set.return_value = True
+        sync_redis.smembers.return_value = set()
+        arq_redis = AsyncMock()
+        ctx = _ctx(sync_redis=sync_redis)
+        ctx["redis"] = arq_redis
+
+        # Старая запись с РЕАЛЬНЫМИ данными — is_registered=True
+        # (expires_at и registrar не None).
+        old = WhoisCache(
+            domain="example.com",
+            expires_at=datetime(2027, 3, 15, tzinfo=UTC),
+            registrar="OldRegistrar",
+            status=["clientTransferProhibited"],
+            name_servers=["ns1.example.com"],
+        )
+        cache_repo_mock = AsyncMock()
+        cache_repo_mock.get.return_value = old
+
+        domain_repo_mock = AsyncMock()
+        sub = MagicMock()
+        sub.user_id = 100
+        sub.is_wishlist = False
+        sub.notify_expiry = True
+        sub.notify_registrar_change = True
+        sub.notify_ns_change = True
+        sub.notify_status_change = True
+        domain_repo_mock.get_subscribers_for_domain.return_value = [sub]
+
+        monkeypatch.setattr("src.tasks.check_domain.get_session", _fake_session_factory)
+        monkeypatch.setattr(
+            "src.tasks.check_domain.WhoisCacheRepository", lambda _s: cache_repo_mock
+        )
+        monkeypatch.setattr("src.tasks.check_domain.DomainRepository", lambda _s: domain_repo_mock)
+
+        # Новые данные: тот же expires, но СМЕНИЛСЯ регистратор.
+        fresh = WhoisData(
+            domain="example.com",
+            is_registered=True,
+            expires_at=datetime(2027, 3, 15, tzinfo=UTC),
+            registrar="NewRegistrar",  # ← изменение
+            status=["clientTransferProhibited"],
+            name_servers=["ns1.example.com"],
+        )
+        with patch("src.tasks.check_domain.lookup_domain", new=AsyncMock(return_value=fresh)):
+            from src.tasks.check_domain import check_domain
+
+            await check_domain(ctx, "example.com")
+
+        # send_change_notice вызван хотя бы один раз с change_type="registrar".
+        registrar_calls = [
+            call
+            for call in arq_redis.enqueue_job.await_args_list
+            if call.args
+            and call.args[0] == "send_change_notice"
+            and len(call.args) >= 4
+            and call.args[3] == "registrar"
+        ]
+        assert len(registrar_calls) == 1, (
+            f"Expected exactly 1 send_change_notice(registrar) call, "
+            f"got {len(registrar_calls)}: {arq_redis.enqueue_job.await_args_list}"
+        )

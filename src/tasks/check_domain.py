@@ -172,7 +172,12 @@ async def _handle_success(
         await cache_repo.upsert(domain, **fields)
 
     diff = compute_diff(old_data, new_data)
-    if diff.has_any_changes and old_data is not None:
+    # old_data.is_registered=False означает, что в кэше была placeholder-запись
+    # (создана через ``DomainService.add_for_user`` при ``/add`` до первого
+    # успешного fetch'а), а не настоящие данные. В этом случае не считаем
+    # переход NULL → реальные значения «изменением» — иначе сразу после /add
+    # пользователь получает фейковые «registrar changed»/«expires_at changed».
+    if diff.has_any_changes and old_data is not None and old_data.is_registered:
         await _enqueue_change_notices(domain, diff, ctx)
 
     # Wishlist (Этап 9): зарегистрированный → освободился → уведомить.

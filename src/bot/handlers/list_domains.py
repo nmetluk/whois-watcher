@@ -3,8 +3,8 @@
 Filter и search-query сохраняются в Redis HASH ``list_state:{user_id}``
 с TTL 30 минут — иначе пагинация prev/next теряла бы выбранный фильтр.
 
-CSV-кнопка делегирует в ``csv_export`` через `/csv` (тот хэндлер уже
-существует и не зависит от состояния списка).
+CSV-кнопка делегирует в общий helper ``csv_export.send_user_csv_file`` —
+тот же путь, что и для команды ``/csv``.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from aiogram.types import CallbackQuery, Message
 from arq import ArqRedis
 from redis.asyncio import Redis
 
+from src.bot.handlers.csv_export import send_user_csv_file
 from src.bot.keyboards import ListFilter as ListFilterCb
 from src.bot.keyboards import ListPage as ListPageCb
 from src.bot.keyboards import ListSearch as ListSearchCb
@@ -129,8 +130,8 @@ async def on_list_page(
     limits: Limits,
     redis: Redis[str],
 ) -> None:
-    """Пагинация ``/list``. На ``filter`` показываем submenu, на ``csv`` —
-    подсказку перейти в /csv (Этап 9 — отдельная команда, кнопка-ярлык)."""
+    """Пагинация ``/list``. ``filter`` показывает submenu, ``csv`` —
+    выгружает CSV-файл (то же, что команда ``/csv``)."""
     await query.answer()
     if not isinstance(query.message, Message):
         return
@@ -138,7 +139,8 @@ async def on_list_page(
         await query.message.edit_reply_markup(reply_markup=list_filters(lang))
         return
     if callback_data.action == "csv":
-        await query.message.answer(t("commands.list.csv_hint", lang))
+        async with get_session() as session:
+            await send_user_csv_file(query.message, user, lang, session)
         return
     filter_type, search_query = await _read_state(redis, user.id)
     await _send_page(

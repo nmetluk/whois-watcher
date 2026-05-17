@@ -276,7 +276,6 @@ LOCALE: dict[str, str] = {
     "commands.list.row_wishlist": "🎯 {domain} — жду освобождения",
     "commands.list.muted_suffix": " 🔕",
     "commands.list.unknown_value": "—",
-    "commands.list.csv_hint": "📥 Используйте /csv для экспорта списка в файл.",
     # Этап 9 — поиск/фильтры/wishlist
     "list.search.placeholder": "🔍 Поиск",
     "list.search.prompt": "Введите подстроку для поиска или /cancel",

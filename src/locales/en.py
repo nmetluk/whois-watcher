@@ -264,7 +264,6 @@ LOCALE: dict[str, str] = {
     "commands.list.row_wishlist": "🎯 {domain} — waiting for it to drop",
     "commands.list.muted_suffix": " 🔕",
     "commands.list.unknown_value": "—",
-    "commands.list.csv_hint": "📥 Use /csv to export the list as a file.",
     # Stage 9 — search/filters/wishlist
     "list.search.placeholder": "🔍 Search",
     "list.search.prompt": "Type a substring to search or /cancel",

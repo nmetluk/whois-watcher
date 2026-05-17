@@ -53,6 +53,19 @@ uv run python -m src.worker         # worker + scheduler
 
 Full VPS deployment guide: [docs/deployment.md](docs/deployment.md).
 
+## 🔄 Updates
+
+For an already-deployed bot — one command:
+
+```bash
+bash scripts/deploy.sh
+```
+
+The script handles everything: clean working tree check, git pull, build
+info regeneration, Docker image rebuild, Alembic migrations, service
+recreation, and healthchecks. See [docs/deployment.md](docs/deployment.md)
+for details.
+
 ## Bot commands
 
 | Command | What it does |

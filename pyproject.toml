@@ -160,6 +160,15 @@ module = [
 ]
 ignore_missing_imports = true
 
+# ``src._build_info`` генерируется ``scripts/generate_build_info.sh``
+# перед docker build и присутствует в образе, но отсутствует в репо
+# (gitignored) и в CI-чекауте. ``src/utils/version.py`` уже оборачивает
+# импорт в try/except, но mypy анализирует импорт статически — поэтому
+# глушим missing-imports именно для этого модуля.
+[[tool.mypy.overrides]]
+module = ["src._build_info"]
+ignore_missing_imports = true
+
 [tool.pydantic-mypy]
 init_forbid_extra = true
 init_typed = true

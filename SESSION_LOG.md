@@ -9,6 +9,111 @@
 
 ---
 
+## Session 2026-05-19 02:30 — Подэтап 3: v0.7 RIR/ASN lookup client
+
+**Задача:** Этап 13 — универсальный HTTP-клиент к rir2localdb для будущего 
+DNS-мониторинга в v0.8. Инфраструктурный этап, без user-facing изменений.
+
+**Выполнено:**
+- Новый модуль `src/rir_client/` с 4 файлами (`__init__`, `types`, 
+  `errors`, `client`). Pydantic-модели `IPAllocation` / `ASNAllocation` 
+  / `RIRStatus` / `SyncRun` / `Source` (мирор реальных JSON из 
+  подэтапа 3a). Двухуровневая error model: `RIRError` (returned для 
+  `lookup_*`) и `RIRUnreachable` (raised из `healthcheck`/`get_status`). 
+  Async aiohttp с session-injection как в `proxy_client.py`.
+- Новая ARQ cron-задача `rir_health_check` каждые 30 минут (`{0, 30}`, 
+  `run_at_startup=False`) — пингует `/v1/healthz`, проверяет 
+  `latest_sync_run.started_at` свежее 26h и `status == "success"`. 
+  Пять distinct title-констант для дедупа разных failure modes 
+  (`AlertService` хеширует по title).
+- Зарегистрирована в обоих местах `src/tasks/arq_config.py` — 
+  `_build_functions()` и `_build_cron_jobs()`.
+- 4 новых settings: `RIR2LOCALDB_ENABLED`, `RIR2LOCALDB_URL` (default 
+  `http://host.docker.internal:18000`), `RIR2LOCALDB_TIMEOUT_SECONDS`, 
+  `RIR2LOCALDB_CONNECT_TIMEOUT_SECONDS`.
+- ADR 031 (113 строк) — двухуровневая error model, network topology 
+  reuse из ADR 028, deliberate decision держать RPSL untyped в v0.7.
+- CHANGELOG `[Unreleased]` секция — описание стейджа + note о том, 
+  что это инфраструктурный релиз.
+- Тесты: `test_rir_client.py` (28 case'ов: success/404/400/500/timeout/
+  connect_error/invalid_json/disabled для каждого lookup + healthcheck + 
+  get_status) и `test_rir_health_task.py` (10 case'ов: все ветки 
+  cron-логики + проверка distinct titles).
+
+**Изменённые/новые файлы:**
+- `src/config/settings.py` (4 новых поля)
+- `src/rir_client/__init__.py` (новый)
+- `src/rir_client/client.py` (новый)
+- `src/rir_client/errors.py` (новый)
+- `src/rir_client/types.py` (новый)
+- `src/tasks/rir_health.py` (новый)
+- `src/tasks/arq_config.py` (2 импорта + 1 cron + 1 entry в functions)
+- `tests/unit/test_rir_client.py` (новый)
+- `tests/unit/test_rir_health_task.py` (новый)
+- `docs/decisions.md` (+ADR 031, файл вырос с 679 до 812 строк)
+- `CHANGELOG.md` (наполнена секция `[Unreleased]`)
+
+**Коммиты:**
+- `2636dc3` — feat: add src/rir_client/ — HTTP client for rir2localdb API
+- `3d73391` — feat: add rir_health_check ARQ cron task
+- `85f4f0b` — docs: ADR 031 — RIR client architecture + tests + CHANGELOG
+- `<этот коммит>` — docs(session): подэтап 3 — v0.7 RIR client
+
+**Проверки:**
+- ruff: clean
+- black: clean (3 файла прошли через `uv run black src tests` до коммита)
+- mypy strict: clean (103 source files)
+- pytest: **532 passed** (было 494, +38 новых case'ов)
+- CI run `26066012445` на `85f4f0b`: ✅ **success** (все 10 шагов 
+  зелёные)
+- Deploy: `scripts/deploy.sh` сообщил "Already up to date" (известный 
+  edge-case — diff'ит pre/post-pull, локально уже было запушено); 
+  ребилд + recreate сделан вручную теми же командами что в скрипте
+- Smoke-test из контейнера бота — все 4 endpoint'а работают:
+  - `healthcheck()` → True
+  - `lookup_ip("8.8.8.8")` → `IPAllocation(rir=arin, cc=US, ...)` 
+    с `rpsl` блоком
+  - `lookup_asn(15169)` → `ASNAllocation(rir=arin, cc=US)`
+  - `lookup_ip("0.0.0.1")` → `RIRError(kind=not_found)`
+  - `get_status()` → `db_alive=True`, latest_sync_run.status=success, 
+    29 sources
+- ARQ scheduler стартанул со всеми 17 функциями включая 
+  `rir_health_check`. Первый запуск cron — в ближайшие `:00`/`:30` 
+  (run_at_startup=False намеренно)
+
+**Архитектурные решения:**
+- **RPSL block оставлен `dict[str, Any]`** — типизация отложена в 
+  v0.8 когда DNS-мониторинг реально применит RPSL. Сейчас rir2localdb 
+  v0.1.1 имеет known limitations в RPSL ETL (APNIC IANA placeholder'ы 
+  доминируют).
+- **aiohttp, не httpx** — consistency с `proxy_client.py` (ADR 028).
+- **Двухуровневая error model** — `lookup_*` возвращают `RIRError` 
+  для предсказуемого pattern-matching у callers, `healthcheck`/
+  `get_status` raise `RIRUnreachable` (cron-таска ловит исключения).
+- **Distinct title-константы для каждого failure mode** — обходим 
+  отсутствие `dedup_key` kwarg у `AlertService.send_critical` (он 
+  хеширует по `(severity, title, details[:200])`). 5 уникальных 
+  title'ов = 5 независимых dedup-ключей.
+
+**Открытые вопросы:**
+- Известный баг `scripts/send-session-log.sh` всё ещё не починен — 
+  awk вставляет skeleton между `# H1` и intro-абзацами. Layout этой 
+  записи выровнен через `Edit` вручную. Стоит закрыть в следующей 
+  сессии: заменить awk на «вставить после первого `---`».
+- v0.7.0 release (bump version, tag, GitHub Release page) — отдельным 
+  подэтапом после стабильного прогона cron 24-48 часов.
+- v0.8 — DNS A/AAAA monitoring с ASN-фильтрацией — следующий крупный 
+  этап.
+- rir2localdb-sync.service на сервере был в `failed` state на момент 
+  подэтапа 3 (signal=TERM ~5h назад). Не блокер для v0.7 (данные 
+  свежие, sync_run.status=success), но стоит разобраться у владельца 
+  rir2local чтобы daily sync продолжал тикать.
+
+**Затраченное время:** ~45 минут (включая чтение существующего 
+кода через subagent для матчинга стиля)
+
+---
+
 ## Session 2026-05-19 00:45 — Подэтап 2b: fix CI — black 24.x + mypy override
 
 **Задача:** Разблокировать CI который падал 8 раз подряд на step 

@@ -1,74 +1,100 @@
 # Roadmap
 
-История изменений по релизам — в [CHANGELOG.md](CHANGELOG.md). Этот файл
-описывает план следующих версий.
+История релизов — в [CHANGELOG.md](CHANGELOG.md). Этот файл описывает 
+план следующих версий.
 
-## v0.1.0 — released 2026-05-16
+## Released
 
-MVP. Полный функционал см. в [CHANGELOG.md](CHANGELOG.md). Этапы 0–7
-из исходного плана разработки завершены.
+| Версия | Тема | Дата |
+|--------|------|------|
+| v0.1.0 | MVP | 2026-05-16 |
+| v0.2.0 | Enhanced WHOIS display | 2026-05-17 |
+| v0.3.0 | Diagnostics, search, wishlist | 2026-05-17 |
+| v0.4.0 | Own WHOIS proxy gateway | 2026-05-17 |
+| v0.5.0 | Per-domain notification settings | 2026-05-17 |
+| v0.6.0 | SSL Certificate Monitoring | 2026-05-17 |
+| v0.6.1 | SSL patches (bootstrap + no_https classification) | 2026-05-17 |
 
-## v0.2 — UX & polish (planned)
+Полный лог фич каждого релиза — в CHANGELOG.md.
 
-Уточняющая итерация по UX и краевым случаям после первых пользователей.
+## v0.7 — RIR/ASN lookup integration (planned)
 
-- [ ] Гранулярная настройка типов уведомлений на домен через `/settings`
-  → выбор домена → меню переключателей (`notify_expiry`,
-  `notify_ns_change`, `notify_registrar_change`, `notify_status_change`)
-- [ ] Поиск и фильтр по имени в `/list` (`/find <pattern>` или текстовый
-  поиск из подменю фильтров)
-- [ ] «Wishlist»: уведомлять о появлении домена в свободном пуле (для
-  истёкших доменов, за которыми хочется поохотиться)
-- [ ] Лучший UX для реестров, не публикующих expiry (DENIC и т. п.):
-  отдельный значок в `/list` вместо обычного «нет данных»
-- [ ] Подсказки в `/help` по edge-cases: что значит каждый эмодзи,
-  как ведёт себя бот при WHOIS-ошибках
+Универсальный HTTP-клиент к сервису `rir2localdb` 
+(https://github.com/nmetluk/rir2localdb), который зеркалит данные 
+пяти RIR (AFRINIC, APNIC, ARIN, LACNIC, RIPE NCC) и отдаёт 
+whois-подобную информацию по IP и ASN через REST API.
 
-## v0.3 — Coverage & data quality
+Это **инфраструктурный** этап — закладывает фундамент для ASN-aware 
+фич в v0.8. Сам по себе нигде в UI/мониторинге пока не используется.
 
-Расширение охвата TLD и дополнительные источники данных о домене.
+- [ ] Новый модуль `src/rir_client/` — HTTP/JSON клиент
+  - `lookup_ip(addr)` → IPAllocation | IPError
+  - `lookup_asn(num)` → ASNAllocation | ASNError
+  - `healthcheck()` → bool
+- [ ] Настройки: `RIR2LOCALDB_URL`, `RIR2LOCALDB_TIMEOUT`, 
+  `RIR2LOCALDB_ENABLED`
+- [ ] Docker network `extra_hosts` для подключения к host-side 
+  `rir2localdb` (по аналогии с whois proxy в ADR 028)
+- [ ] ARQ cron `rir_health_check` — алерты в admin-канал при падении
+- [ ] ADR 031 — universal RIR client design
+- [ ] Тесты (unit + smoke против реального сервиса на хосте)
 
-- [ ] WHOIS-парсер для большего числа ccTLD (`.uk`, `.nl`, `.es`, `.br`,
-  `.pl`, `.cz`, `.au`, `.ca`, `.jp` — фикстуры на основе реальных ответов)
-- [ ] Альтернативные WHOIS-маршруты для заблокированных `.ru`-источников
-  (SOCKS/HTTP-прокси через env или внешний whois-relay)
-- [ ] Мониторинг SSL-сертификатов отслеживаемых доменов (ACME-renewal
-  трекинг по `expires_at` сертификата)
-- [ ] Уведомления об изменении A/AAAA-записей (опционально, как
-  отдельный флаг `notify_dns_change`)
+**Out of scope для v0.7:** использование RIR-данных где-либо в UI 
+или change-уведомлениях. Применение в v0.8.
+
+## v0.8 — DNS A/AAAA monitoring (planned)
+
+Опирается на RIR client из v0.7 — DNS-мониторинг с ASN-фильтрацией 
+для устранения шума от CDN round-robin.
+
+- [ ] Новая таблица `dns_cache` (A/AAAA/NS, ASN per IP, TTL, adaptive 
+  scheduling)
+- [ ] 5 новых полей на `user_domains`: `track_dns`, 
+  `notify_dns_a_change`, `notify_dns_aaaa_change`, 
+  `notify_dns_ns_change`, `notify_dns_unreachable`
+- [ ] Модуль `src/dns_monitor/` — async DNS resolver + ASN enrichment 
+  через rir_client
+- [ ] Cron `dns_scheduler_tick`, `dns_reminders_scheduler`
+- [ ] Уведомления: смена ASN A/AAAA (фильтр от CDN-шума), смена NS, 
+  became unresolvable, расхождение DNS-NS vs WHOIS-NS
+- [ ] `/whois` карточка — DNS-блок с подсветкой DNS-NS vs WHOIS-NS 
+  расхождения (critical security signal)
+- [ ] ADR 032 — DNS monitoring rationale
 
 ## v1.0 — Public stable
 
 Стабилизация публичного API и интерфейса для долговременной поддержки.
 
-- [ ] Веб-дашборд (read-only): список доменов, графики истечения,
-  фильтры — отдельный процесс рядом с ботом
-- [ ] Публичная HTTP API для интеграций (read-only начало)
+- [ ] Веб-дашборд (read-only): список доменов, графики, фильтры
+- [ ] Публичная HTTP API для интеграций (read-only)
 - [ ] Командные / организационные аккаунты — общий портфель на группу
-  Telegram-пользователей
 - [ ] Метрики Prometheus exporter и health-эндпойнты для k8s probes
+- [ ] Парсер для большего числа ccTLD (.uk, .nl, .es, .br, .pl, .cz, 
+  .au, .ca, .jp) — фикстуры на основе реальных ответов
 
 ## Tech debt
 
 Накопленные пометки «сделать лучше», без жёстких дат.
 
-- [ ] DENIC: отдельный «expiry hidden by registry»-значок и подсказка
-  в `/list` (см. v0.2). Сейчас `.de` показывается как «нет данных»,
-  что вводит в заблуждение — фактически данные есть, кроме expiry.
-- [ ] Больше интеграционных тестов для ARQ-тасок (сейчас покрыты
-  юнит-тестами с моками; нужны проходы через настоящие Postgres+Redis
-  через `pytest-docker`)
-- [ ] Бенчмарк `scheduler_tick` на 100 K доменов — проверить, что выборка
-  `next_check_at <= now()` остаётся быстрой
+- [ ] DENIC: отдельный «expiry hidden by registry»-значок в `/list` 
+  и подсказка. Сейчас `.de` показывается как «нет данных», что 
+  вводит в заблуждение
+- [ ] Больше интеграционных тестов для ARQ-тасок (сейчас покрыты 
+  юнит-тестами с моками; нужны проходы через настоящие 
+  Postgres+Redis через `pytest-docker`)
+- [ ] Бенчмарк `scheduler_tick` на 100K доменов — проверить, что 
+  выборка `next_check_at <= now()` остаётся быстрой
 - [ ] `MIGRATIONS.md` — гайд по созданию и проверке новых миграций
-- [ ] Полная конвертация локальной разработки на uv (часть скриптов
-  ещё имеет смешанные команды pip/uv в комментариях)
-- [ ] Документировать ADR 019 «дедупликация алертов»: какие severity и
-  частоту мы считаем нормальными — сейчас только в коде
+- [ ] Документировать ADR 019 (дедупликация алертов): какие severity 
+  и частоту считаем нормальными — сейчас только в коде
+- [ ] Release page для v0.6.1 на GitHub UI (сейчас только tag, без 
+  оформления). Не критично — для patch-релиза tag достаточно
 
 ## Идеи на потом (не запланировано)
 
 - Регистрация домена через бот (партнёрка с регистраторами)
-- Поддержка whois-конкретного-регистратора с авторизацией (для частных
-  TLD-зон, например `.cm` через NSI)
+- Поддержка whois-конкретного-регистратора с авторизацией (для 
+  частных TLD-зон, например `.cm` через NSI)
 - Мониторинг репутации (RBL / SpamHaus)
+- Алерты при появлении домена в Certificate Transparency логах 
+  (для wishlist)

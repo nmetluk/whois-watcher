@@ -560,9 +560,7 @@ LOCALE: dict[str, str] = {
         "⚠️ <b>{domain}</b> — HTTPS не отвечает\n\n"
         "Сайт перестал отдавать SSL-сертификат. Проверьте, что веб-сервер работает."
     ),
-    "notifications.ssl_change.reachable": (
-        "✅ <b>{domain}</b> — HTTPS снова работает"
-    ),
+    "notifications.ssl_change.reachable": ("✅ <b>{domain}</b> — HTTPS снова работает"),
     "notifications.ack.muted": "🔕 Уведомления для этого домена выключены",
     "notifications.ack.refresh_started": "🔄 Запустил повторную проверку",
     "notifications.ack.no_access": "❌ Этот домен не в вашем списке",

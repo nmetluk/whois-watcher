@@ -169,9 +169,7 @@ def _parse_x509(domain: str, der_bytes: bytes) -> SSLCertificate:
 
     sans: list[str] = []
     try:
-        san_ext = cert.extensions.get_extension_for_oid(
-            ExtensionOID.SUBJECT_ALTERNATIVE_NAME
-        )
+        san_ext = cert.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
         # ext.value — SubjectAlternativeName: знаем тип, но mypy видит
         # только ExtensionType-базу. Явный get_values_for_type обходит это.
         san_value = san_ext.value

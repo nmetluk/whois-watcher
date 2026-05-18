@@ -89,9 +89,7 @@ class TestParseX509:
         assert "sha256" in cert.signature_algorithm.lower()
 
     def test_subject_alt_names_extracted(self) -> None:
-        der = _generate_self_signed(
-            sans=["example.com", "www.example.com", "api.example.com"]
-        )
+        der = _generate_self_signed(sans=["example.com", "www.example.com", "api.example.com"])
         cert = _parse_x509("example.com", der)
         assert cert.subject_alt_names == [
             "example.com",
@@ -138,8 +136,10 @@ class TestFetchCertificate:
         async def hanging(*_args, **_kwargs):  # type: ignore[no-untyped-def]
             await asyncio.sleep(100)
 
-        with patch("src.ssl.client.asyncio.open_connection", side_effect=hanging), \
-             patch("src.ssl.client.CONNECT_TIMEOUT", 0.01):
+        with (
+            patch("src.ssl.client.asyncio.open_connection", side_effect=hanging),
+            patch("src.ssl.client.CONNECT_TIMEOUT", 0.01),
+        ):
             result = await fetch_certificate("example.com")
         assert isinstance(result, SSLError)
         assert result.error_type == "connection_timeout"

@@ -133,9 +133,7 @@ class UserDomain(Base):
 
     # Этап 12 (ADR 030): SSL-мониторинг. ``track_ssl=False`` исключает
     # домен из ssl_scheduler — экономим ресурсы и не плодим уведомлений.
-    track_ssl: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    track_ssl: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     notify_ssl_expiry: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("true")
     )
@@ -357,9 +355,7 @@ class SSLCache(Base):
     domain: Mapped[str] = mapped_column(Text, primary_key=True)
 
     # Scheduling
-    last_checked_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_successful_check_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

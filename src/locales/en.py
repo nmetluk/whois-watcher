@@ -534,9 +534,7 @@ LOCALE: dict[str, str] = {
     ),
     "notifications.ssl_expiry.button_renewed": "✅ Renewed",
     "notifications.ssl_expiry.button_mute": "🔕 Mute SSL alerts for this domain",
-    "notifications.ssl_change.issuer": (
-        "🏛️ <b>{domain}</b> — SSL issuer changed\n\nNow: {issuer}"
-    ),
+    "notifications.ssl_change.issuer": ("🏛️ <b>{domain}</b> — SSL issuer changed\n\nNow: {issuer}"),
     "notifications.ssl_change.not_after": (
         "🔒 <b>{domain}</b> — SSL certificate was renewed\n\nNew expiry: {not_after}"
     ),
@@ -544,9 +542,7 @@ LOCALE: dict[str, str] = {
         "⚠️ <b>{domain}</b> — HTTPS endpoint is down\n\n"
         "The site stopped serving an SSL certificate. Check that the web server is running."
     ),
-    "notifications.ssl_change.reachable": (
-        "✅ <b>{domain}</b> — HTTPS is back online"
-    ),
+    "notifications.ssl_change.reachable": ("✅ <b>{domain}</b> — HTTPS is back online"),
     "notifications.ack.muted": "🔕 Notifications for this domain are off",
     "notifications.ack.refresh_started": "🔄 Refresh started",
     "notifications.ack.no_access": "❌ This domain isn't in your list",

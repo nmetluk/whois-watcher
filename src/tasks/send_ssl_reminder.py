@@ -107,7 +107,9 @@ async def send_ssl_expiry_reminder(
         if already:
             return
 
-        issuer = cache.issuer_o or cache.issuer_cn or t("notifications.value.unknown", user.language)
+        issuer = (
+            cache.issuer_o or cache.issuer_cn or t("notifications.value.unknown", user.language)
+        )
         text_body = t(
             "notifications.ssl_expiry.body",
             user.language,

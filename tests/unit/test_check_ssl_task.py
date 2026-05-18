@@ -113,9 +113,7 @@ class TestSuccessfulFetch:
         cache_repo.upsert = AsyncMock()
 
         monkeypatch.setattr("src.tasks.check_ssl.get_session", _fake_session)
-        monkeypatch.setattr(
-            "src.tasks.check_ssl.SSLCacheRepository", lambda _session: cache_repo
-        )
+        monkeypatch.setattr("src.tasks.check_ssl.SSLCacheRepository", lambda _session: cache_repo)
         monkeypatch.setattr(
             "src.tasks.check_ssl.fetch_certificate",
             AsyncMock(return_value=_make_cert()),
@@ -155,12 +153,8 @@ class TestSuccessfulFetch:
         domain_repo.get_subscribers_for_domain.return_value = [sub]
 
         monkeypatch.setattr("src.tasks.check_ssl.get_session", _fake_session)
-        monkeypatch.setattr(
-            "src.tasks.check_ssl.SSLCacheRepository", lambda _session: cache_repo
-        )
-        monkeypatch.setattr(
-            "src.tasks.check_ssl.DomainRepository", lambda _session: domain_repo
-        )
+        monkeypatch.setattr("src.tasks.check_ssl.SSLCacheRepository", lambda _session: cache_repo)
+        monkeypatch.setattr("src.tasks.check_ssl.DomainRepository", lambda _session: domain_repo)
         monkeypatch.setattr(
             "src.tasks.check_ssl.fetch_certificate",
             AsyncMock(return_value=new_cert),
@@ -203,12 +197,8 @@ class TestSuccessfulFetch:
         domain_repo.get_subscribers_for_domain.return_value = [sub]
 
         monkeypatch.setattr("src.tasks.check_ssl.get_session", _fake_session)
-        monkeypatch.setattr(
-            "src.tasks.check_ssl.SSLCacheRepository", lambda _session: cache_repo
-        )
-        monkeypatch.setattr(
-            "src.tasks.check_ssl.DomainRepository", lambda _session: domain_repo
-        )
+        monkeypatch.setattr("src.tasks.check_ssl.SSLCacheRepository", lambda _session: cache_repo)
+        monkeypatch.setattr("src.tasks.check_ssl.DomainRepository", lambda _session: domain_repo)
         monkeypatch.setattr(
             "src.tasks.check_ssl.fetch_certificate",
             AsyncMock(return_value=new_cert),
@@ -252,12 +242,8 @@ class TestFailedFetch:
         domain_repo.get_subscribers_for_domain.return_value = [sub]
 
         monkeypatch.setattr("src.tasks.check_ssl.get_session", _fake_session)
-        monkeypatch.setattr(
-            "src.tasks.check_ssl.SSLCacheRepository", lambda _session: cache_repo
-        )
-        monkeypatch.setattr(
-            "src.tasks.check_ssl.DomainRepository", lambda _session: domain_repo
-        )
+        monkeypatch.setattr("src.tasks.check_ssl.SSLCacheRepository", lambda _session: cache_repo)
+        monkeypatch.setattr("src.tasks.check_ssl.DomainRepository", lambda _session: domain_repo)
         monkeypatch.setattr(
             "src.tasks.check_ssl.fetch_certificate",
             AsyncMock(return_value=error),
@@ -300,12 +286,8 @@ class TestFailedFetch:
         domain_repo.get_subscribers_for_domain.return_value = []
 
         monkeypatch.setattr("src.tasks.check_ssl.get_session", _fake_session)
-        monkeypatch.setattr(
-            "src.tasks.check_ssl.SSLCacheRepository", lambda _session: cache_repo
-        )
-        monkeypatch.setattr(
-            "src.tasks.check_ssl.DomainRepository", lambda _session: domain_repo
-        )
+        monkeypatch.setattr("src.tasks.check_ssl.SSLCacheRepository", lambda _session: cache_repo)
+        monkeypatch.setattr("src.tasks.check_ssl.DomainRepository", lambda _session: domain_repo)
         monkeypatch.setattr(
             "src.tasks.check_ssl.fetch_certificate",
             AsyncMock(return_value=error),
@@ -319,9 +301,7 @@ class TestFailedFetch:
         # Никакого нового became_unreachable: уже зафиксировано.
         arq_redis.enqueue_job.assert_not_called()
 
-    async def test_no_https_does_not_enqueue(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_no_https_does_not_enqueue(self, monkeypatch: pytest.MonkeyPatch) -> None:
         sync_redis = AsyncMock()
         sync_redis.set.return_value = True
         arq_redis = AsyncMock()
@@ -342,12 +322,8 @@ class TestFailedFetch:
         domain_repo.get_subscribers_for_domain.return_value = []
 
         monkeypatch.setattr("src.tasks.check_ssl.get_session", _fake_session)
-        monkeypatch.setattr(
-            "src.tasks.check_ssl.SSLCacheRepository", lambda _session: cache_repo
-        )
-        monkeypatch.setattr(
-            "src.tasks.check_ssl.DomainRepository", lambda _session: domain_repo
-        )
+        monkeypatch.setattr("src.tasks.check_ssl.SSLCacheRepository", lambda _session: cache_repo)
+        monkeypatch.setattr("src.tasks.check_ssl.DomainRepository", lambda _session: domain_repo)
         monkeypatch.setattr(
             "src.tasks.check_ssl.fetch_certificate",
             AsyncMock(return_value=error),

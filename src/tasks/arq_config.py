@@ -106,6 +106,7 @@ def _build_functions() -> list[Any]:
     from src.tasks.notify_ssl_changes import send_ssl_change_notice
     from src.tasks.notify_wishlist import send_wishlist_available_notice
     from src.tasks.proxy_health import proxy_health_check
+    from src.tasks.rir_health import rir_health_check
     from src.tasks.scheduler import scheduler_tick
     from src.tasks.send_reminders import send_expiry_reminder
     from src.tasks.send_ssl_reminder import send_ssl_expiry_reminder
@@ -124,6 +125,8 @@ def _build_functions() -> list[Any]:
         cleanup_old_events,
         send_wishlist_available_notice,
         proxy_health_check,
+        # RIR/ASN lookup (Этап 13, ADR 031)
+        rir_health_check,
         # SSL (Этап 12, ADR 030)
         check_ssl,
         ssl_scheduler_tick,
@@ -138,6 +141,7 @@ def _build_cron_jobs() -> list[Any]:
     from src.tasks.daily_stats import send_daily_summary
     from src.tasks.expiry_scheduler import expiry_notification_scheduler
     from src.tasks.proxy_health import proxy_health_check
+    from src.tasks.rir_health import rir_health_check
     from src.tasks.scheduler import scheduler_tick
     from src.tasks.ssl_reminders_scheduler import ssl_reminders_scheduler
     from src.tasks.ssl_scheduler import ssl_scheduler_tick
@@ -155,6 +159,14 @@ def _build_cron_jobs() -> list[Any]:
             name="proxy_health_check",
             minute={0, 15, 30, 45},
             run_at_startup=True,
+        ),
+        # ADR 031: каждые 30 мин пингуем rir2localdb + проверяем свежесть
+        # данных (последний sync_run не старше 26h, status == "success").
+        cron(
+            rir_health_check,
+            name="rir_health_check",
+            minute={0, 30},
+            run_at_startup=False,
         ),
         cron(
             expiry_notification_scheduler,

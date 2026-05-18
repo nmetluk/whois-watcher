@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-05-19
+
 ### Added — RIR/ASN lookup integration (Stage 13, [ADR 031](docs/decisions.md#031-universal-rirasn-lookup-client-rir2localdb-integration))
 
 - **Universal HTTP client to rir2localdb** (`src/rir_client/`) для

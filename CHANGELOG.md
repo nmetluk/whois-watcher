@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — RIR/ASN lookup integration (Stage 13, [ADR 031](docs/decisions.md#031-universal-rirasn-lookup-client-rir2localdb-integration))
+
+- **Universal HTTP client to rir2localdb** (`src/rir_client/`) для
+  определения allocation и RPSL информации по IP-адресам и ASN.
+  Работает через `rir2localdb-serve.service` на этом же хосте
+  (`host.docker.internal:18000`).
+- **Pydantic-модели** для ответов API: `IPAllocation`, `ASNAllocation`,
+  `RIRStatus` (с `latest_sync_run` и per-source freshness),
+  `SyncRun`, `Source`. RPSL-блок оставлен `dict[str, Any]` — типизация
+  отложена до v0.8.
+- **Двухуровневая error model**: `RIRError` (returned) для
+  `lookup_ip`/`lookup_asn`, `RIRUnreachable` (raised) для
+  `healthcheck`/`get_status` — последние две используются в cron-задаче.
+- **ARQ cron `rir_health_check`** каждые 30 минут — мониторит
+  доступность сервиса и свежесть данных (`latest_sync_run.started_at`
+  не старше 26 часов, `status == "success"`). При недоступности или
+  stale data — critical alert в admin-канал с дедупликацией по
+  title-константе (5 distinct failure modes, каждый дедуплится
+  независимо).
+- **Settings:** `RIR2LOCALDB_ENABLED`, `RIR2LOCALDB_URL`,
+  `RIR2LOCALDB_TIMEOUT_SECONDS`, `RIR2LOCALDB_CONNECT_TIMEOUT_SECONDS`.
+
+### Architectural
+
+- Новый ADR 031 — universal RIR client. См.
+  `docs/decisions.md#031`.
+- Network topology — переиспользует extra_hosts из ADR 028 (тот же
+  `host.docker.internal:172.28.0.1`). На хосте требуется ufw allow
+  от `172.28.0.0/16` на порт 18000 (зеркало правила для 8043) —
+  добавлено системой перед этим этапом.
+
+### Note
+
+Этот релиз **инфраструктурный**: RIR-клиент не используется в UI или
+мониторинге бота. Закладывает фундамент для v0.8 (DNS A/AAAA monitoring
+с ASN-фильтрацией для устранения шума от CDN round-robin).
+
 ## [0.6.1] — 2026-05-17
 
 ### Fixed

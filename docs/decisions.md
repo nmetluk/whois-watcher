@@ -677,3 +677,136 @@ Per-domain настройки (на ``UserDomain``):
   чтобы пользователь не путал WHOIS-дни и SSL-дни.
 - Privacy: SSL-данные публичные (любой получит их тем же TLS-handshake),
   логируем без redaction-правил, в отличие от WHOIS-контактов.
+
+
+## 031. Universal RIR/ASN lookup client (rir2localdb integration)
+
+### Контекст
+
+Для будущего DNS-мониторинга (v0.8, см. ``TODO.md``) нужна возможность
+определять «какой ASN/организация владеет данным IP». WHOIS-прокси из
+ADR 028 эту задачу не решает — он работает с доменными WHOIS-серверами,
+не с RIR-данными по IP/ASN. Прямой WHOIS на RIR (RIPE, ARIN, APNIC,
+LACNIC, AFRINIC) медленный (1–2 секунды на запрос) и имеет жёсткие
+rate limits — батч-операции упрутся в throttling.
+
+Параллельно с этим проектом разработан ``rir2localdb`` — отдельный
+сервис, который ежедневно зеркалит публичные данные пяти RIR
+(delegated-extended + RPSL bulk), парсит в PostgreSQL и отдаёт
+whois-подобную информацию по IP и ASN через REST API. Развёрнут на
+том же сервере, listen ``172.28.0.1:18000`` (gateway compose-сети
+бота), v0.1.1 на момент написания ADR.
+
+### Решение
+
+В v0.7.0 добавлен **универсальный HTTP-клиент** к rir2localdb (модуль
+``src/rir_client/``). Этап **инфраструктурный** — клиент никак не
+используется в UI или мониторинге сам по себе. Применение — в v0.8
+(DNS A/AAAA мониторинг с ASN-фильтрацией для устранения шума от CDN
+round-robin).
+
+**Структура модуля:**
+
+- ``src/rir_client/types.py`` — pydantic-модели ответов
+  (``IPAllocation``, ``ASNAllocation``, ``RIRStatus``, ``SyncRun``,
+  ``Source``)
+- ``src/rir_client/errors.py`` — ``RIRError`` (returned) и
+  ``RIRUnreachable`` (raised) — двухуровневая модель ошибок
+- ``src/rir_client/client.py`` — async HTTP функции на aiohttp
+- ``src/rir_client/__init__.py`` — публичное API
+
+**Публичный API:**
+
+- ``lookup_ip(addr, *, include_rpsl=True, session=None)``
+  → ``IPAllocation | RIRError``
+- ``lookup_asn(num, *, include_rpsl=True, session=None)``
+  → ``ASNAllocation | RIRError``
+- ``healthcheck(*, session=None)`` → ``bool``
+  (raises ``RIRUnreachable`` на network failure)
+- ``get_status(*, session=None)`` → ``RIRStatus``
+  (raises ``RIRUnreachable``)
+
+**Settings (``src/config/settings.py``):**
+
+- ``RIR2LOCALDB_ENABLED`` (default ``true``, kill-switch для maintenance)
+- ``RIR2LOCALDB_URL`` (default ``http://host.docker.internal:18000``)
+- ``RIR2LOCALDB_TIMEOUT_SECONDS`` (default ``5.0``)
+- ``RIR2LOCALDB_CONNECT_TIMEOUT_SECONDS`` (default ``1.0``)
+
+**Health monitoring:**
+
+ARQ cron ``rir_health_check`` каждые 30 минут проверяет:
+
+1. ``/v1/healthz`` отдаёт ``{"status":"ok"}``
+2. ``latest_sync_run.started_at`` свежее ``MAX_SYNC_AGE`` (26 часов —
+   покрывает суточный каденс + ~2h slack на randomized delays)
+3. ``latest_sync_run.status == "success"``
+
+Дедупликация alert'ов через ``AlertService`` (Redis-based, TTL из
+``Limits.alert_dedup_ttl_minutes``). Поскольку текущий API
+``AlertService.send_critical(title, details)`` дедуплицирует по
+``(severity, title, details[:200])`` — каждый failure mode получил
+собственную title-константу, чтобы соседние режимы не перетирали
+друг друга в одном TTL-окне.
+
+### Технические инварианты
+
+- **Error policy — двухуровневая.** ``lookup_*`` возвращают
+  ``RIRError`` (не raise) для предсказуемого pattern-matching у
+  callers (``case RIRError(kind="not_found"): ...``). ``healthcheck``
+  и ``get_status`` raise ``RIRUnreachable`` для использования в
+  cron-задаче, где исключение идиоматичнее булевого сентинеля.
+- **``ErrorKind`` — закрытый Literal**: ``unreachable``, ``not_found``,
+  ``bad_request``, ``server_error``, ``invalid_response``, ``disabled``.
+  Расширение списка — breaking change для callers с exhaustive
+  match — оставляем на v0.8.
+- **Session injection** — все 4 функции принимают
+  ``session: aiohttp.ClientSession | None = None``. Если ``None`` —
+  создаём и закрываем сами; если передана — caller владеет жизненным
+  циклом. Тот же паттерн что и в ``proxy_client.py``.
+- **RPSL block — untyped** (``dict[str, Any]``) в v0.7. rir2localdb
+  v0.1.1 имеет known limitations: APNIC IANA-NETBLOCK placeholder'ы
+  доминируют в RPSL для не-RIPE блоков, ARIN RPSL pending. Полная
+  типизация оправдается в v0.8 когда DNS-мониторинг реально применит
+  ``rpsl.organisation.org_name`` в карточке ``/whois``.
+- **``ValidationError`` от pydantic → ``RIRError(invalid_response)``**.
+  Это сигнал что rir2localdb выкатил несовместимый schema-bump —
+  caller должен зафейлить операцию, а не пытаться приспособиться.
+
+### Альтернативы
+
+**Прямой WHOIS-сервер RIR через TCP:43.** Медленно (1-2 секунды на
+IP), rate limits, не подходит для batch операций.
+
+**Внешний сервис (Team Cymru, ipinfo.io).** Зависимость от внешнего
+SaaS, бесплатные лимиты не покрывают наш профиль использования,
+privacy considerations для пользовательских IP — отдавать наружу
+IP'шники пользователей не хотим.
+
+**Локальная база MaxMind GeoIP/ASN.** Требует регулярного обновления
++ лицензионных условий. rir2localdb даёт более полные данные
+(allocation + RPSL) из публичных источников без лицензионных
+ограничений.
+
+**``httpx`` вместо ``aiohttp``.** Отказались для consistency с
+``src/whois/proxy_client.py`` (ADR 028) — тот же async API, та же
+накопленная экспертиза проекта.
+
+### Следствия
+
+- Один новый ADR (этот), один новый модуль ``src/rir_client/``,
+  одна новая ARQ cron-задача (``src/tasks/rir_health.py``).
+- ``src/tasks/arq_config.py`` — два новых импорта (по одному в
+  ``_build_functions`` и ``_build_cron_jobs``), один новый ``cron(...)``
+  блок (``minute={0, 30}``, ``run_at_startup=False``).
+- Появляется поверхностная зависимость от внешнего HTTP-сервиса
+  (rir2localdb), но при его недоступности lookup'ы возвращают
+  ``RIRError(unreachable)``, не падают. Бот продолжает работать без
+  ASN-данных.
+- На хосте нужен ufw rule allow от ``172.28.0.0/16`` на порт ``18000``
+  (зеркало правила #5 для ``8043`` из ADR 028) — добавлен системой
+  перед этим этапом.
+- Migration нет — etap инфраструктурный, schema не меняется.
+- В v0.7 client нигде не используется — это намеренно. v0.8
+  применит его для DNS monitoring (новая таблица ``dns_cache``, новые
+  per-domain toggles, новый scheduler с ASN-aware фильтрацией).

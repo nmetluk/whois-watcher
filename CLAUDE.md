@@ -1,184 +1,231 @@
 # CLAUDE.md
 
-Этот файл — инструкция для Claude Code при работе с репозиторием `whois-watcher`. Прочитай его перед началом любой сессии.
+Этот файл — инструкция для Claude Code при работе с репозиторием 
+`whois-watcher`. Прочитай его перед началом любой сессии.
 
 ## О проекте
 
-**Whois Watcher** — публичный бесплатный Telegram-бот для проверки WHOIS-данных доменов и автоматических напоминаний об их истечении. Открытый исходный код, MIT-лицензия.
+**Whois Watcher** — публичный бесплатный Telegram-бот для проверки 
+WHOIS-данных доменов и автоматических напоминаний об их истечении. 
+Открытый исходный код, MIT-лицензия. Public repository.
 
-Целевая аудитория: владельцы доменов (от одного до десятков тысяч в портфеле), системные администраторы, домейнеры.
+Текущая версия — см. `pyproject.toml`. История релизов — `CHANGELOG.md`.
+
+Целевая аудитория: владельцы доменов (от одного до десятков тысяч в 
+портфеле), системные администраторы, домейнеры.
 
 ## Технологический стек
 
-- **Python 3.11+** (async везде, синхронных вызовов в горячем пути быть не должно)
+- **Python 3.11+** (async везде, синхронных вызовов в горячем пути 
+  быть не должно)
 - **aiogram 3.x** — Telegram-бот через **webhook** (не long polling)
 - **SQLAlchemy 2.0 async** + **asyncpg** — работа с БД
 - **Alembic** — миграции
 - **ARQ** — очередь задач на Redis
-- **whoisit** — RDAP-клиент (основной путь)
-- **python-whois** или прямые TCP-запросы — fallback для TLD без RDAP
+- **whoisit** — RDAP-клиент (через proxy gateway)
+- **cryptography** — парсинг X.509-сертификатов (SSL monitoring)
 - **idna** — поддержка IDN-доменов
 - **pydantic v2** + **pydantic-settings** — конфиг и валидация
-- **structlog** — логирование
-- **Sentry SDK** — отлов ошибок (опционально)
+- **structlog** — логирование (JSON в production, ConsoleRenderer в dev)
+- **Sentry SDK** — отлов ошибок (опционально), с фильтром секретов 
+  в `before_send`
 
 **Инфраструктура:**
+
 - PostgreSQL 16, Redis 7
-- Docker + docker-compose
+- Docker + docker-compose (включая `docker-compose.dev.yml` для 
+  локальной разработки)
 - Nginx как reverse proxy, Let's Encrypt для SSL
+- WHOIS proxy gateway на хосте (см. ADR 028)
+- Pre-commit hooks (`.pre-commit-config.yaml`)
 
-## Архитектурные принципы
+## Архитектурные подсистемы
 
-См. `docs/architecture.md` для деталей. Кратко:
+Бот состоит из нескольких независимых подсистем. Каждая описана 
+в соответствующем ADR (`docs/decisions.md`).
 
-1. **Три независимых процесса:** бот (webhook-сервер), воркеры ARQ, планировщик
-2. **Webhook**, не long polling — для масштабирования
-3. **Общий кэш WHOIS** на всех пользователей через таблицу `whois_cache` — один домен = один запрос для всех
-4. **Адаптивный TTL** проверок: чем ближе истечение, тем чаще проверяем (30 / 7 / 2 / 1 день)
-5. **RDAP как основной протокол**, WHOIS на 43 порту как fallback
-6. **Уведомления о смене статусов** доменов (регистратор, NS, status-флаги) заложены в архитектуру
-7. **Админский канал** в Telegram для алертов и аномалий, с дедупликацией через Redis
+### WHOIS Lookup (ADR 028)
+
+Основной путь: HTTP-клиент к собственному proxy gateway на хосте 
+(`host.docker.internal:8043`). Proxy решает — RDAP, прямой WHOIS:43, 
+или RU-relay через VDS в РФ для `.ru/.рф/.su`. Кэширует 24h.
+
+Fallback при падении proxy: прямой RDAP + WHOIS:43 через 
+`src.whois.client.lookup_direct`.
+
+Модули:
+- `src/whois/proxy_client.py` — клиент к proxy
+- `src/whois/client.py` — direct fallback (RDAP + WHOIS:43)
+- `src/whois/rdap.py`, `whois_protocol.py`, `parser.py`
+- `src/whois/scheduler.py` — adaptive TTL
+- `src/whois/diff.py` — сравнение для уведомлений
+
+### SSL Certificate Monitoring (ADR 030)
+
+**Параллельная** подсистема к WHOIS-стеку. Своя таблица `ssl_cache`, 
+свои cron-задачи, свой scheduler с TTL отличным от WHOIS (короче — 
+LE-сертификаты живут 90 дней).
+
+Технические инварианты (защищены тестами):
+- `verify_mode=CERT_NONE` — мониторим, не валидируем доверие
+- `CONNECT_TIMEOUT=10s` обязателен
+- `no_https` ≠ unreachable (DNS-фейлы не считаются падением)
+- `compute_ssl_diff(old=None, ...)` → пустой diff
+- `became_unreachable` — только переход, не повтор
+- `is_muted` гасит и SSL-уведомления
+
+Модули:
+- `src/ssl/{client,types,scheduler,diff}.py`
+- `src/tasks/{check_ssl,ssl_scheduler,ssl_reminders_scheduler,send_ssl_reminder,notify_ssl_changes}.py`
+
+### Per-domain notifications (ADR 029)
+
+6 toggle'ов на каждый `UserDomain` + `is_muted` kill-switch. Inline-
+конфигуратор `⚙️ Уведомления` в карточке `/whois` с FSM для 
+редактирования списка дней. SSL имеет собственные toggle'ы 
+(`track_ssl`, `notify_ssl_*`) и собственный FSM для SSL-дней.
+
+Per-user defaults: `notify_days_before` (WHOIS, default `{30,7,1}`), 
+`notify_ssl_days_before` (SSL, default `{14,7,3,1}`).
+
+### Admin alerts (ADR 019)
+
+Приватный Telegram-канал для критических ошибок и аномалий. 
+Дедупликация через Redis. См. `src/services/alerts.py`.
 
 ## Структура проекта
 
 ```
 whois-watcher/
-├── CLAUDE.md                   # этот файл
-├── README.md / README.en.md
-├── LICENSE                     # MIT
-├── CONTRIBUTING.md
-├── PRIVACY.md
-├── TODO.md                     # план этапов
-├── .env.example
-├── .gitignore
-├── .pre-commit-config.yaml
-├── pyproject.toml
-├── docker-compose.yml
-├── docker-compose.dev.yml
-├── Dockerfile
-├── alembic.ini
+├── CLAUDE.md, README.md, README.en.md, LICENSE, CONTRIBUTING.md
+├── PRIVACY.md, TODO.md, CHANGELOG.md
+├── SESSION_LOG.md                   # журнал сессий Claude Code
+├── PROMPT_FOR_CLAUDE.md             # workflow-инструкция
+├── .env.example, .gitignore, .pre-commit-config.yaml
+├── pyproject.toml, uv.lock, alembic.ini
+├── Dockerfile, docker-compose.yml, docker-compose.dev.yml
+│
+├── .github/workflows/               # CI + Telegram-нотификации
 │
 ├── docs/
-│   ├── architecture.md         # архитектура
-│   ├── commands.md             # спецификация команд бота
-│   ├── decisions.md            # лог принятых решений (ADR)
-│   └── deployment.md
+│   └── architecture.md, commands.md, decisions.md, deployment.md
 │
-├── migrations/versions/        # Alembic миграции
+├── migrations/versions/             # Alembic
+│
+├── scripts/
+│   ├── deploy.sh                    # однокомандный деплой
+│   ├── send-session-log.sh          # helper для SESSION_LOG.md
+│   └── generate_build_info.sh
 │
 ├── src/
-│   ├── main.py                 # entrypoint бота (webhook server)
-│   ├── worker.py               # entrypoint воркеров ARQ
-│   ├── config/
-│   │   ├── settings.py         # pydantic-settings
-│   │   └── limits.py           # лимиты
-│   ├── db/
-│   │   ├── models.py
-│   │   ├── session.py
-│   │   └── repositories/       # паттерн репозитория
+│   ├── main.py                      # entrypoint бота (webhook)
+│   ├── worker.py                    # entrypoint ARQ-воркеров
+│   ├── observability.py             # Sentry + structlog setup
+│   ├── _build_info.py               # auto-generated, gitignored
+│   │
+│   ├── config/{settings,limits}.py
+│   ├── db/{models,session}.py
+│   ├── db/repositories/             # паттерн репозитория
+│   │
 │   ├── bot/
-│   │   ├── app.py
-│   │   ├── webhook.py
-│   │   ├── handlers/           # один файл = одна или несколько связанных команд
-│   │   ├── keyboards.py
-│   │   ├── middlewares/
-│   │   ├── states.py           # FSM
-│   │   └── validators.py
-│   ├── whois/
-│   │   ├── client.py           # фасад: RDAP → WHOIS fallback
-│   │   ├── rdap.py
-│   │   ├── whois_protocol.py
-│   │   ├── parser.py
-│   │   ├── scheduler.py        # расчёт next_check_at
-│   │   └── diff.py             # сравнение для уведомлений
-│   ├── tasks/
+│   │   ├── app.py, webhook.py
+│   │   ├── handlers/                # /whois, /add, /list, etc.
+│   │   ├── keyboards.py, states.py, validators.py
+│   │   └── middlewares/
+│   │
+│   ├── whois/                       # WHOIS lookup (см. подсистемы)
+│   ├── ssl/                         # SSL monitoring (см. подсистемы)
+│   │
+│   ├── tasks/                       # ARQ-задачи
 │   │   ├── arq_config.py
-│   │   ├── check_domain.py
-│   │   ├── send_reminders.py
-│   │   ├── send_change_notices.py
-│   │   ├── cleanup.py
-│   │   └── daily_stats.py
+│   │   ├── check_domain.py, check_ssl.py
+│   │   ├── scheduler.py, ssl_scheduler.py
+│   │   ├── expiry_scheduler.py, ssl_reminders_scheduler.py
+│   │   ├── send_reminders.py, send_ssl_reminder.py
+│   │   ├── send_change_notices.py, notify_changes.py
+│   │   ├── notify_ssl_changes.py, notify_problem.py
+│   │   ├── notify_wishlist.py, daily_stats.py, cleanup.py
+│   │   └── proxy_health.py
+│   │
 │   ├── services/
-│   │   ├── users.py
-│   │   ├── domains.py
-│   │   ├── notifications.py
-│   │   ├── csv_io.py
-│   │   └── alerts.py           # отправка в админ-канал
-│   ├── locales/
-│   │   ├── ru.py
-│   │   └── en.py
-│   └── utils/
-│       ├── idn.py
-│       ├── timezone.py
-│       └── formatting.py
+│   │   ├── users.py, domains.py, notifications.py
+│   │   ├── whois_facade.py, formatters.py, formatters_full.py
+│   │   ├── results.py, csv_io.py, alerts.py
+│   │
+│   ├── locales/{ru,en}.py
+│   └── utils/{idn,timezone,formatting,build_info,version}.py
 │
-├── tests/
-│   ├── conftest.py
-│   ├── unit/
-│   └── integration/
-│
-└── scripts/
+└── tests/{unit,integration,conftest.py}
 ```
 
 ## Соглашения о коде
 
 ### Стиль
+
 - **Форматирование:** `black` (line-length 100)
 - **Линтер:** `ruff`
 - **Type hints везде**, проверяется `mypy --strict` для `src/`
-- **Docstrings:** Google-style, обязательны для публичных функций модулей `services/`, `whois/`, `tasks/`
+- **Pre-commit hooks** через `.pre-commit-config.yaml`
 
 ### Async
-- Все I/O-операции **только async**. Никаких `requests`, `time.sleep`, синхронных запросов к БД
-- Если нужна CPU-bound операция — `asyncio.to_thread` или executor
-- Не блокируем event loop никогда
+
+- Все I/O — async. Никаких `requests`, `time.sleep`, sync-запросов к БД
+- CPU-bound через `asyncio.to_thread`
+- Не блокируем event loop
 
 ### База данных
-- Доступ к БД **только через репозитории** в `src/db/repositories/`. В хэндлерах и сервисах не должно быть прямого SQL или прямых ORM-запросов
+
+- Доступ к БД **только через репозитории** в `src/db/repositories/`
+- Никаких прямых SQL/ORM в хэндлерах
 - Миграции через Alembic, никаких `CREATE TABLE` в коде
-- Foreign keys и индексы — обязательны
-- `ON DELETE CASCADE` где уместно (например, `user_domains.user_id`)
+- FK и индексы — обязательны
+- `ON DELETE CASCADE` где уместно
 
 ### Telegram-бот
+
 - Хэндлеры — тонкие, бизнес-логика в `services/`
-- Все тексты сообщений — через локали (`src/locales/`), не хардкодить
-- Inline-клавиатуры собирать в `src/bot/keyboards.py`
-- FSM-состояния — в `src/bot/states.py`
-- Валидация доменов — через `src/bot/validators.py`, не дублировать
+- Все тексты — через локали, не хардкодить
+- Inline-клавиатуры в `src/bot/keyboards.py`
+- FSM — в `src/bot/states.py`
+- Валидация доменов — через `src/bot/validators.py`
 
 ### Логирование
+
 - Через `structlog`
-- Никогда не логировать: `BOT_TOKEN`, содержимое личных заметок пользователей, полные WHOIS-ответы с контактными данными
-- Логировать: команды и их параметры (без чувствительного), ID пользователя, время операций, ошибки
+- НИКОГДА не логировать: `BOT_TOKEN`, personal notes пользователей, 
+  полные WHOIS-ответы с контактами, runtime IP сервера
+- Логировать: команды (без чувствительного), user_id, время операций, 
+  ошибки
 
 ### Конфиг
+
 - Все настройки — через `pydantic-settings` в `src/config/settings.py`
-- Лимиты — отдельный класс в `src/config/limits.py`, можно переопределять через env
-- Никаких magic numbers в коде — выносить в конфиг
+- Лимиты — в `src/config/limits.py`, переопределяемые через env
+- Никаких magic numbers — выносить в конфиг
 
 ## Что НЕ делать
 
 - ❌ Не коммитить `.env` (только `.env.example`)
-- ❌ Не использовать синхронные библиотеки в хэндлерах и тасках
+- ❌ Не использовать синхронные библиотеки в хэндлерах/тасках
 - ❌ Не писать SQL в хэндлерах — только через репозитории
-- ❌ Не хардкодить тексты сообщений — только через локали
+- ❌ Не хардкодить тексты — только через локали
 - ❌ Не использовать long polling — только webhook
-- ❌ Не делать прямые HTTP-запросы к Telegram API — только через `aiogram.Bot`
+- ❌ Не делать прямые HTTP-запросы к Telegram API — только через 
+  `aiogram.Bot`
 - ❌ Не использовать `print()` — только `structlog`
 - ❌ Не игнорировать type hints, не использовать `Any` без причины
 - ❌ Не реализовывать платные тарифы — проект полностью бесплатный
-- ❌ Не делать long polling даже временно для тестов — поднимать webhook через ngrok локально
-- ❌ Не передавать `Bot` или `Dispatcher` через глобальные переменные — через DI
+- ❌ Не передавать `Bot`/`Dispatcher` через глобальные переменные — DI
 
 ## Команды для разработки
 
 ```bash
-# Установка зависимостей (включая dev-группу)
+# Зависимости
 uv sync
 
-# Запуск окружения
-docker-compose up -d postgres redis
-docker-compose --profile dev up
+# Окружение
+docker compose up -d postgres redis
+docker compose --profile dev up
 
 # Миграции
 alembic revision --autogenerate -m "описание"
@@ -195,23 +242,53 @@ ruff check src tests
 black src tests
 mypy src
 
-# Pre-commit на все файлы
+# Pre-commit
 pre-commit run --all-files
+
+# Деплой на сервер
+bash scripts/deploy.sh
 ```
 
-## Полезные ссылки в проекте
+## Workflow с двумя Claude'ами
+
+Проект ведётся **двумя Claude'ами** через публичный git:
+
+- **Планирующий Claude** — в Claude.ai чате с пользователем. 
+  Анализирует, проектирует, пишет промпты с детальными 
+  спецификациями. Читает репо через web_fetch.
+- **Исполняющий Claude Code** — на сервере. Получает промпт, 
+  выполняет задачи, пишет код, запускает тесты, коммитит, пушит.
+
+После каждой задачи **Claude Code добавляет запись в `SESSION_LOG.md`** 
+по шаблону из `PROMPT_FOR_CLAUDE.md`. Push в `SESSION_LOG.md` 
+триггерит GitHub Action, который шлёт уведомление в Telegram-канал.
+
+Пользователь видит уведомление → шлёт точку в чат → планирующий 
+Claude фетчит SESSION_LOG.md и анализирует.
+
+Детали — см. `PROMPT_FOR_CLAUDE.md`.
+
+## Полезные ссылки
 
 - **Архитектура:** `docs/architecture.md`
 - **Команды бота:** `docs/commands.md`
-- **Принятые решения и почему:** `docs/decisions.md`
+- **Принятые решения (30 ADR):** `docs/decisions.md`
+- **Развёртывание:** `docs/deployment.md`
 - **План этапов:** `TODO.md`
+- **Workflow:** `PROMPT_FOR_CLAUDE.md`
 
-Прочитай эти файлы при первой сессии. В них зафиксированы все договорённости, которых надо придерживаться.
+Прочитай эти файлы при первой сессии. В них зафиксированы все 
+договорённости.
 
 ## Стиль работы
 
-- Один промпт — одна логическая единица (хэндлер, миграция, сервис), не "сделай всё"
-- Перед изменением — прочитай существующий код, не пиши с нуля если уже есть
-- Тесты — обязательно для парсеров, валидаторов, расчёта `next_check_at`, бизнес-логики в сервисах
-- После значимых изменений — запускай линтер и тесты, прежде чем считать задачу выполненной
-- Если архитектурный вопрос возник — не решай молча, спроси
+- Один промпт — одна логическая единица, не "сделай всё"
+- Перед изменением — прочитай существующий код, не пиши с нуля 
+  если уже есть
+- Тесты обязательны для парсеров, валидаторов, schedule-расчётов, 
+  бизнес-логики в сервисах
+- После значимых изменений — `ruff`, `mypy`, `pytest`
+- Если архитектурный вопрос возник — не решай молча, спроси 
+  в SESSION_LOG.md как открытый вопрос
+- Real-world тесты в Telegram критически важны — UX-баги часто 
+  не ловятся unit-тестами

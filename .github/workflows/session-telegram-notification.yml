@@ -1,0 +1,36 @@
+name: Session Log → Telegram
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'SESSION_LOG.md'
+
+jobs:
+  notify-telegram:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get latest session
+        id: get_log
+        run: |
+          LOG=$(head -n 35 SESSION_LOG.md)
+          echo "log<<EOF" >> $GITHUB_OUTPUT
+          echo "$LOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Send notification to Telegram
+        uses: appleboy/telegram-action@v1.0.0
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            <b>✅ Новая сессия Claude Code</b>
+
+            ${{ steps.get_log.outputs.log }}
+
+            <a href="https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/SESSION_LOG.md">Открыть полный журнал</a>
+          format: html

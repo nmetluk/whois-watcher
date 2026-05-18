@@ -177,6 +177,38 @@ class Settings(BaseSettings):
     )
 
     # ------------------------------------------------------------------
+    # RIR/ASN lookup gateway (Этап 13, ADR 031)
+    # ------------------------------------------------------------------
+    # HTTP-клиент к локальному rir2localdb (отдельный сервис на хосте,
+    # зеркалит данные пяти RIR — AFRINIC, APNIC, ARIN, LACNIC, RIPE NCC).
+    # В v0.7 модуль ``src.rir_client`` определён, но нигде не используется
+    # в UI/мониторинге. Применение — в v0.8 (DNS A/AAAA мониторинг с
+    # ASN-фильтрацией для устранения шума от CDN round-robin).
+    rir2localdb_enabled: bool = Field(
+        True,
+        description=(
+            "Master kill-switch. False — rir_client возвращает RIRError"
+            " без HTTP-запросов (для maintenance/тестов)."
+        ),
+    )
+    rir2localdb_url: str = Field(
+        "http://host.docker.internal:18000",
+        description="Base URL rir2localdb без trailing slash. ADR 028-pattern.",
+    )
+    rir2localdb_timeout_seconds: float = Field(
+        5.0,
+        ge=1.0,
+        le=30.0,
+        description="Total request timeout. Cache hit ~100ms, miss ~500ms.",
+    )
+    rir2localdb_connect_timeout_seconds: float = Field(
+        1.0,
+        ge=0.5,
+        le=5.0,
+        description="Connect timeout (отдельно от read timeout).",
+    )
+
+    # ------------------------------------------------------------------
     # Вычисляемые свойства
     # ------------------------------------------------------------------
     @computed_field  # type: ignore[prop-decorator]

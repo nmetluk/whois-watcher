@@ -9,6 +9,85 @@
 
 ---
 
+## Session 2026-05-19 03:47 — Подэтап 4: tech debt sweep
+
+**Задача:** Закрыть мелкий tech debt накопленный за v0.6–v0.7:
+awk-баг в `scripts/send-session-log.sh` (skeleton дрейфовал над
+intro-абзацами), устаревшие CI actions с Node.js 20 deprecation
+warning, отсутствие `pre-commit install` в документации dev-setup.
+Попутно вскрылось ещё две предсуществующих проблемы — закрыли тоже.
+
+**Выполнено:**
+- Fix `scripts/send-session-log.sh`: awk теперь матчит `^---$` и
+  вставляет skeleton после первого разделителя; intro-абзацы
+  больше не дрейфуют. Skeleton также избавлен от лишней пустой
+  строки в конце. Закрыт open issue из подэтапов 2 / 2b / 3
+- CI actions: `actions/checkout@v4 → v6`, `astral-sh/setup-uv@v4 →
+  @v8.1.0`. Node.js 20 deprecation warning закрыт. setup-uv пиннится
+  на immutable patch-tag (Astral больше не публикует
+  major/minor — supply chain protection)
+- Установлен `pre-commit install` локально + установлен Python 3.11
+  через `uv python install 3.11` (нужен для `.pre-commit-config.yaml`
+  `default_language_version: python3.11`)
+- Прогон `pre-commit run --all-files` всплыл два предсуществующих
+  блокера: (а) hook `detect-secrets` ссылался на несуществующий
+  `.secrets.baseline`, (б) 6 файлов имели накопленный
+  whitespace/EOF drift — оба исправлены отдельными коммитами
+- CLAUDE.md: новый раздел «Pre-commit hooks (обязательно после
+  клонирования)» с инструкцией `uv run pre-commit install` +
+  напоминание про `uv python install 3.11`. Ссылка на инцидент
+  подэтапа 2b как обоснование
+
+**Изменённые/новые файлы:**
+- `scripts/send-session-log.sh` (awk + skeleton heredoc)
+- `.github/workflows/ci.yml` (actions bump)
+- `.pre-commit-config.yaml` (убран detect-secrets)
+- `CLAUDE.md` (новый раздел Pre-commit hooks)
+- `PROMPT_FOR_CLAUDE.md`, `SESSION_LOG.md`, `TODO.md`,
+  `docs/commands.md`, `migrations/versions/20260515_2330_initial_schema.py`
+  (whitespace/EOF auto-fixes от pre-commit)
+
+**Коммиты:**
+- `cf319b4` — fix(scripts): send-session-log.sh insert skeleton after first '---'
+- `ce79146` — chore(ci): bump actions/checkout v4→v6, setup-uv v4→v8.1.0
+- `a037120` — chore(precommit): remove broken detect-secrets hook
+- `ba02822` — chore: apply pre-commit auto-fixes (trim trailing whitespace, EOF)
+- `9f3f114` — docs(claude): document pre-commit install as required dev setup
+- `<этот коммит>` — docs(session): подэтап 4 — tech debt sweep
+
+**Проверки:**
+- pytest: **532 passed** (без изменений с прошлого подэтапа — этот
+  только конфиги/доки/whitespace)
+- mypy strict: clean (103 source files)
+- ruff: clean
+- black --check: clean
+- `pre-commit run --all-files`: **all hooks passed** (после удаления
+  broken detect-secrets и применения auto-fixes)
+- CI run `26069161468` на `9f3f114`: ✅ **success** — первый зелёный
+  прогон на новых action-версиях (`actions/checkout@v6` +
+  `astral-sh/setup-uv@v8.1.0`), Node.js 20 deprecation warning ушёл
+- `send-session-log.sh` first real test: skeleton встал на нужное
+  место (line 12, под `---`, intro paragraphs untouched) —
+  этот entry создан без ручного reshuffle'а layout'а
+
+**Архитектурные решения / Открытые вопросы:**
+- Решение убрать `detect-secrets` (а не чинить через генерацию
+  baseline) — обоснование в коммит-сообщении `a037120`. Если
+  захочется вернуть secret-scanning, восстановить через
+  `detect-secrets scan > .secrets.baseline` + back в config
+- `.pre-commit-config.yaml` всё ещё пинит `python3.11` для black
+  и default_language_version. Project на 3.12 в CI и проде. Когда
+  будет настроение — можно унифицировать на 3.12, но это не блокер
+- GitHub Release page для v0.7.0 — ждёт оформления через UI владельцем
+- `rir2localdb-sync.service` остаётся в failed state у соседнего
+  `rir2local` пользователя — данные пока свежие, но через ~26h
+  cron начнёт slать stale-alerts. Не наш сервис
+
+**Затраченное время:** ~25 минут (включая разбор предсуществующих
+блокеров с pre-commit)
+
+---
+
 ## Session 2026-05-19 02:53 — Release v0.7.0 — RIR/ASN lookup integration
 
 **Задача:** Финализировать релиз v0.7.0 после стабильного состояния

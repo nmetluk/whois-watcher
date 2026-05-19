@@ -1,7 +1,9 @@
 #!/bin/bash
 # scripts/send-session-log.sh
 # Добавляет skeleton-запись в SESSION_LOG.md по шаблону.
-# Запись добавляется СВЕРХУ под заголовком журнала.
+# Запись вставляется после ПЕРВОЙ строки `---` (разделитель между
+# intro-абзацами журнала и списком записей) — так intro остаётся
+# на месте, а новая запись попадает в самый верх списка.
 
 set -e
 
@@ -45,18 +47,30 @@ cat > "$TMP" << EOF
 **Затраченное время:** ~XX минут
 
 ---
-
 EOF
 
+# Insert skeleton after the FIRST line equal to "---" (the separator
+# between journal intro and the list of session entries). Previously
+# awk inserted right after line 1 (the H1), which pushed intro
+# paragraphs below new entries — required manual layout cleanup
+# every session. See SESSION_LOG.md entries for podetap 2 / 2b / 3.
 awk -v tmpfile="$TMP" '
-  NR==1 { print; print ""; while ((getline line < tmpfile) > 0) print line; next }
-  NR>1 { print }
+  /^---$/ && !inserted {
+    print
+    print ""
+    while ((getline line < tmpfile) > 0) print line
+    inserted = 1
+    next
+  }
+  { print }
 ' "$SESSION_LOG" > "${SESSION_LOG}.new"
 
 ORIGINAL_LINES=$(wc -l < "$SESSION_LOG")
 NEW_LINES=$(wc -l < "${SESSION_LOG}.new")
 if [ "$NEW_LINES" -le "$ORIGINAL_LINES" ]; then
-  echo "Error: new SESSION_LOG.md is shorter than original. Aborting."
+  echo "Error: no '---' separator found in $SESSION_LOG (or insertion failed)."
+  echo "       Expected the journal to have an intro section ended by a"
+  echo "       '---' line, then session entries below."
   rm "${SESSION_LOG}.new" "$TMP"
   exit 1
 fi

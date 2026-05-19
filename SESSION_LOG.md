@@ -9,6 +9,109 @@
 
 ---
 
+## Session 2026-05-19 20:15 — Подэтап 14a: DNS foundation
+
+**Задача:** Foundation для Этапа 14 / v0.8.0 (DNS A/AAAA monitoring,
+ADR 032) — добавить settings, зависимость dnspython, миграцию
+dns_cache + 5 toggles в user_domains, модели DNSCache + 5 колонок
+UserDomain, репозиторий DNSCacheRepository. Никакой бизнес-логики
+и UI — только инфраструктура. Деплоя нет; деплой только после
+14e (вся фича готова).
+
+**Выполнено:**
+- `dnspython>=2.6,<3` в зависимостях (фактически встал 2.8.0)
+- 3 новых settings в `src/config/settings.py` после RIR-секции:
+  `dns_resolvers` (default `["1.1.1.1", "8.8.8.8"]`),
+  `dns_timeout_seconds` (5.0, ge=1.0, le=30.0),
+  `dns_enabled` (True, kill-switch)
+- Миграция `20260519_dns` (down_revision `20260517_ssl`):
+  новая таблица `dns_cache` + индекс на `next_check_at` +
+  5 boolean колонок в `user_domains` (track_dns,
+  notify_dns_{a,aaaa,ns}_change, notify_dns_unreachable —
+  все `server_default=true` для backward-compat)
+- Модель `DNSCache` в `src/db/models.py` после `SSLCache`
+  с теми же scheduling-полями + поля A/AAAA/NS, asn_set,
+  resolution_state, is_reachable (nullable), resolver_used,
+  ns_mismatch_active, fail_count, last_error
+- 5 колонок DNS-toggle'ов в `UserDomain` после SSL-секции
+- `DNSCacheRepository` точно по паттерну `ssl_cache.py`:
+  наследуется от `BaseRepository`, `pg_insert.on_conflict_do_update`
+  с `flush()` + `session.get()` refresh, EXISTS-подзапрос
+  с фильтром `track_dns=true AND NOT is_muted` в
+  `get_due_for_check`
+- Регистрация `DNSCacheRepository` в
+  `src/db/repositories/__init__.py`
+
+**Изменённые/новые файлы:**
+- `pyproject.toml`, `uv.lock` (dnspython)
+- `src/config/settings.py` (3 поля DNS)
+- `migrations/versions/20260519_1709_add_dns_cache_and_dns_toggles_in_user_.py` (новый)
+- `src/db/models.py` (DNSCache + 5 колонок UserDomain)
+- `src/db/repositories/dns_cache.py` (новый)
+- `src/db/repositories/__init__.py` (регистрация)
+
+**Коммиты:**
+- `9cf473b` — feat(dns): add dnspython dependency and DNS settings
+- `b6d063a` — feat(dns): add dns_cache table and 5 user_domains toggles
+- `36bc675` — feat(dns): add DNSCacheRepository with full CRUD
+- `<этот>` — docs(session): подэтап 14a — DNS foundation
+
+**Проверки:**
+- pytest: **532 passing** (без новых — см. ниже про решение по тестам)
+- mypy strict: clean (104 source files)
+- ruff: clean
+- black: clean (один авто-rewrite на models.py применён)
+- pre-commit hooks: passed на всех 3 коммитах
+- alembic up/down/up на production-БД: clean (head =
+  `20260519_dns`). Использовали `docker compose run --rm`
+  с bind-mount `migrations/` — старый image без новой
+  миграции, поэтому overlay через volume
+- CI run [`26113156639`](https://github.com/nmetluk/whois-watcher/actions/runs/26113156639):
+  ✅ success (Ruff/Black/Mypy/Pytest все зелёные)
+
+**Архитектурные решения / Открытые вопросы:**
+
+- **Unit-тесты репозитория НЕ пишутся в 14a** (выбор
+  пользователя). Причина: в проекте нет ни одного
+  `test_*_repository.py` файла. Существующий паттерн —
+  репозитории покрываются косвенно через task-тесты
+  (см. `tests/unit/test_check_ssl_task.py`) с
+  моком `_fake_session()` через `asynccontextmanager`,
+  возвращающим `AsyncMock()`. Покрытие DNSCacheRepository
+  придёт в 14c через `tests/unit/test_check_dns_task.py`.
+- **revision_id `20260519_dns`** — выбран по проектной
+  конвенции (короткий читаемый слаг с датой, как
+  `20260517_ssl` / `20260517_pernotif`). Имя файла
+  ассижнено alembic автоматически по `file_template`
+  из `alembic.ini`.
+- **asn_set placeholder в v0.8.0** — колонка добавлена,
+  но реальное заполнение требует endpoint
+  `/v1/ip/{addr}/asn` в rir2localdb (v0.1.1 не отдаёт).
+  В 14c таска будет писать `[]` пока endpoint не появится.
+- **`ns_mismatch_active` колонка** — добавлена в схему,
+  но логика заполнения (сравнение DNS-NS с
+  `whois_cache.name_servers`) появится в 14c. В 14a —
+  только schema.
+
+**Что НЕ сделано в 14a (по плану):**
+- `src/dns_monitor/` модуль → 14b
+- ARQ-таски (`check_dns`, `dns_scheduler_tick`,
+  `send_dns_change_notice`) → 14c
+- `/whois` карточка + локали + inline-конфигуратор → 14d
+- ADR 032 в `docs/decisions.md` + `CHANGELOG.md` → 14e
+- Deploy (`bash scripts/deploy.sh`) → после 14e
+
+**Следующий шаг:** ревью этого подэтапа, затем промпт 14b
+(`src/dns_monitor/` — types/client/asn_filter/diff/scheduler
++ unit-тесты на чистые функции, которые в проекте уже
+тестируются).
+
+**Затраченное время:** ~45 минут (включая audit-проверки
+паттернов, остановку на вопросе о тестах репо и
+ожидание CI)
+
+---
+
 ## Session 2026-05-19 12:22 — Этап 14 prep: discrepancy audit, no code changes
 
 **Задача:** Реализовать Этап 14 / v0.8.0 (DNS A/AAAA monitoring,

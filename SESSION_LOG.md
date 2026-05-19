@@ -9,6 +9,76 @@
 
 ---
 
+## Session 2026-05-19 21:04 — Подэтап 14a-fixup: workflow regressions
+
+**Задача:** Починить два сломанных workflow, которые упали после
+push'а Подэтапа 14a:
+A. `sync-to-gist.yml` — "Argument list too long" (combined payload
+   6 mirror-файлов превысил ARG_MAX, ~127 KB, после роста
+   SESSION_LOG.md до 29 KB).
+B. `session-telegram-notification.yml` — Telegram HTML-парсер
+   ломается на "<3" в "dnspython>=2.6,<3" (интерпретирует как
+   открывающий тег `<3>`).
+
+Оба — наша инфраструктура (не Этап 14). Чиним перед 14b, иначе
+chat Claude перестаёт получать актуальный gist при следующих
+подэтапах.
+
+**Выполнено:**
+- `sync-to-gist.yml`: payload через mktemp + `--data-binary @file`
+  вместо inline `-d "$payload"`. argv остаётся маленьким, payload
+  читается curl'ом из файла. `trap rm -f` на EXIT гарантирует
+  очистку temp-файла даже при ошибке.
+- `session-telegram-notification.yml`: parse_mode полностью
+  отключён (`format: ""`). HTML wrapper-теги `<b>...</b>` и
+  `<a href=...>...</a>` убраны из message-шаблона, чтобы не
+  светились литералами в plain-режиме. Полная ссылка на журнал
+  оставлена как plain URL — Telegram сам сделает её кликабельной.
+
+**Изменённые/новые файлы:**
+- `.github/workflows/sync-to-gist.yml`
+- `.github/workflows/session-telegram-notification.yml`
+
+**Коммиты:**
+- `5d7049c` — fix(ci): payload via file + plain telegram parse_mode
+- `<этот>` — docs(session): подэтап 14a-fixup — workflow regressions
+
+**Проверки:**
+- YAML syntax (`yaml.safe_load`): оба файла валидны
+- Manual `gh workflow run "Sync metadata to Gist"` (run
+  [`26115781078`](https://github.com/nmetluk/whois-watcher/actions/runs/26115781078)):
+  ✅ success. Gist обновился — SESSION_LOG.md в gist'е теперь
+  начинается с записи Подэтапа 14a (а не от 11:40 как было после
+  фейла).
+- CI на fix-commit'е (run `26115781925`): зелёный (изменяются
+  только workflow-файлы, lint/test проходят).
+- Push этой session_log записи — финальный тест fix B
+  (см. ниже в отчёте).
+
+**Архитектурные решения / Открытые вопросы:**
+
+- **Plain text для Telegram** — session-log entries регулярно
+  содержат version constraints (`>=2.6,<3`), Python generics
+  (`list[int]`, `dict[str, Any]`), Markdown-спец-символы
+  (`*`, `_`, `` ` `` в названиях файлов и code-сниппетах). И HTML, и
+  Markdown парсы Telegram'а хрупкие — plain text устойчив ко всему.
+  Trade-off: теряем bold/links форматирование в нотификации, но
+  получаем нерушимый pipeline.
+- **Tempfile pattern для curl** — стандартный bash idiom для
+  больших payload'ов. Если в будущем добавим ещё mirror-файлов
+  (decisions.md растёт, ADR'ы прибавляются — сейчас 50 KB),
+  workflow не сломается. ARG_MAX на Linux обычно 128 KB-2 MB,
+  но это включает env-переменные и shell overhead.
+- **Корень проблемы — оба workflow тестировались только на
+  раннем состоянии репо.** Когда SESSION_LOG был <10 KB и без
+  technic content. Урок: end-to-end workflow infra нужно
+  стресс-тестить на реалистичных размерах. Это правило стоит
+  записать в CLAUDE.md (открытый вопрос для следующего ревью).
+
+**Затраченное время:** ~15 минут
+
+---
+
 ## Session 2026-05-19 20:15 — Подэтап 14a: DNS foundation
 
 **Задача:** Foundation для Этапа 14 / v0.8.0 (DNS A/AAAA monitoring,

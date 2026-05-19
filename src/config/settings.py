@@ -209,6 +209,33 @@ class Settings(BaseSettings):
     )
 
     # ------------------------------------------------------------------
+    # DNS monitoring (Этап 14, ADR 032)
+    # ------------------------------------------------------------------
+    # Async DNS resolver для DNS A/AAAA мониторинга с ASN-фильтрацией.
+    # Используются external resolvers (Cloudflare + Google) как baseline
+    # в v0.8.0. Локальный unbound — future work для v0.9.
+    dns_resolvers: list[str] = Field(
+        default_factory=lambda: ["1.1.1.1", "8.8.8.8"],
+        description=(
+            "External DNS resolvers. Используется как fallback chain "
+            "(first → second). Если все не отвечают — DNSError(timeout)."
+        ),
+    )
+    dns_timeout_seconds: float = Field(
+        default=5.0,
+        ge=1.0,
+        le=30.0,
+        description="Per-query DNS timeout. Включает retries на одном сервере.",
+    )
+    dns_enabled: bool = Field(
+        default=True,
+        description=(
+            "Master kill-switch. False → dns_monitor.resolve_records "
+            "возвращает DNSError(disabled) без сетевых запросов."
+        ),
+    )
+
+    # ------------------------------------------------------------------
     # Вычисляемые свойства
     # ------------------------------------------------------------------
     @computed_field  # type: ignore[prop-decorator]

@@ -46,6 +46,7 @@ dependencies = [
     # JSON
     "orjson>=3.9,<4.0",
     "python-dateutil>=2.9,<3.0",
+    "dnspython>=2.6,<3",
 ]
 
 [project.urls]

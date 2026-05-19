@@ -9,6 +9,125 @@
 
 ---
 
+## Session 2026-05-19 12:22 — Этап 14 prep: discrepancy audit, no code changes
+
+**Задача:** Реализовать Этап 14 / v0.8.0 (DNS A/AAAA monitoring,
+ADR 032) по присланному большому промпту (~2500-3500 строк, 5
+коммитов, deploy). Перед началом — обязательная сверка
+допущений промпта с фактическим кодом (правило этапа:
+«Если что-то неясно — стоп, пришли вопрос. Не пытайся
+угадать в архитектурных решениях»).
+
+**Выполнено:**
+- Прочитаны опорные паттерны: `src/ssl/{types,client,diff,scheduler}.py`,
+  `src/tasks/{check_ssl,ssl_scheduler,arq_config}.py`,
+  `src/db/{models,session}.py`, `src/db/repositories/{__init__,base,
+  ssl_cache,domains,whois_cache}.py`, `src/observability.py`,
+  `src/locales/__init__.py`, `src/config/settings.py`,
+  `scripts/deploy.sh`
+- Зафиксированы 8 расхождений промпта с фактическим кодом
+  (см. ниже «Открытые вопросы»)
+- На выбор предложены 4 варианта продолжения, выбран
+  «Переписать промпт сначала» — никаких правок в репо
+  не делалось
+
+**Изменённые/новые файлы:**
+- `SESSION_LOG.md` — только эта запись
+
+**Коммиты:**
+- `<этот коммит>` — docs(session): этап 14 prep — discrepancy audit
+
+**Проверки:**
+- pytest: not run (правок нет)
+- mypy strict: not run
+- ruff: not run
+- working tree: чистое до и после (за вычетом этой записи)
+
+**Архитектурные решения / Открытые вопросы:**
+
+8 расхождений промпта с фактическим кодом, требующих
+пересмотра планирующим Claude перед повторной отправкой:
+
+1. **Репозиторий подписок — `DomainRepository`, не
+   `UserDomainRepository`.** Промпт `check_dns.py` импортирует
+   несуществующий `src.db.repositories.user_domains.
+   UserDomainRepository` и зовёт `user_repo.
+   get_subscribers_for_domain(...)`. По факту единственный репо
+   для `user_domains` — `src/db/repositories/domains.py::
+   DomainRepository`, и метод `get_subscribers_for_domain`
+   лежит именно там (см. `check_ssl.py:172-173`).
+
+2. **Базовый класс репозитория — `BaseRepository(self.session)`,
+   не свой `_session`.** Промпт `DNSCacheRepository`
+   декларирует `def __init__: self._session = session` и
+   ручной `insert.on_conflict_do_update`. По факту все
+   репозитории наследуют `BaseRepository` (`self.session`),
+   плюс паттерн `pg_insert(...).values(...).
+   on_conflict_do_update(set_=fields)` с `flush()` и
+   `session.get(...)` для refresh (`ssl_cache.py:23-50`).
+
+3. **Bootstrap для `dns_scheduler_tick` отсутствует.** В
+   промпте — только TODO-комментарий. По факту
+   `ssl_scheduler_tick` имеет `_BOOTSTRAP_SQL` (`ssl_scheduler.py:
+   36-43`), который INSERT'ит заглушки в `ssl_cache` для всех
+   `user_domains` с `track_ssl=true`. Без аналога для DNS
+   существующие домены никогда не попадут в DNS-мониторинг.
+
+4. **Фильтр подписчиков в выборке `list_due`.** Промпт:
+   `select(DNSCache).where(next_check_at <= now).limit(...)`
+   — берёт всё подряд. По факту SSL использует
+   `get_due_for_check(*, limit)` с EXISTS-подзапросом по
+   `user_domains` с `track_ssl=true AND NOT is_muted`. Без
+   фильтра планировщик ставит `check_dns` на домены без
+   живых подписчиков.
+
+5. **Поле `last_successful_at` vs `last_successful_check_at`.**
+   Промпт DNSCache использует `last_successful_at`. По факту
+   SSLCache (`models.py:359`) — `last_successful_check_at`,
+   WhoisCache (`models.py:219`) — `last_successful_fetch_at`.
+   Стилевая согласованность важна.
+
+6. **Локали — flat dot.case dict, не nested attribute
+   access.** Промпт `notify_dns_changes.py`:
+   `from src.locales import get_locale; locale.dns_change_notice.
+   get(change_type, "").format(...)`. По факту
+   `src/locales/__init__.py:40` — функция `t(key, lang, **kwargs)`,
+   локали — плоский `dict[str, str]`. Структура
+   `dns_change_notice = {...}` со словарём не сработает.
+   Правильно: `t("dns_change_notice.a_changed", lang,
+   domain=domain)`.
+
+7. **NS-mismatch обращается к несуществующему полю
+   `whois_cache.payload`.** Промпт `check_dns.py`:
+   `whois_ns = list(whois_cache.payload.get("name_servers", [])
+   or [])`. По факту `models.py:200` — `name_servers` это
+   ОТДЕЛЬНАЯ колонка `ARRAY(Text)`. JSONB-колонка называется
+   `raw_data`, не `payload`. Правильно:
+   `whois_ns = list(whois_cache.name_servers or [])`.
+
+8. **`enrich_with_asn` — placeholder, ломающий diff-логику.**
+   В v0.8.0 функция возвращает `[]` (rir2localdb v0.1.1 не
+   отдаёт IP→ASN). Следствие: `a_asn_changed` всегда False
+   → `last_change_was_asn` всегда False → `calculate_next_dns_
+   check` уходит в `CDN_LIKELY_INTERVAL` (6h) при любой смене
+   A. Заявленный «critical signal» по факту в v0.8.0 никогда
+   не сработает. Также внутри `enrich_with_asn`:
+   `IPAllocation` импортируется и проверяется через
+   `isinstance`, но тело — `pass` (dead code).
+
+Дополнительный риск — **объём**. По CLAUDE.md и опыту
+подэтапа 2b (8 красных CI runs подряд из-за whitespace drift)
+эта работа по факту ~3-5 часов, не 90-120 минут заявленных.
+Один pre-commit/CI red-CI цикл удваивает время.
+
+**Решение пользователя:** переписать промпт сначала с учётом
+8 пунктов выше. Никаких правок в код Этапа 14 не сделано;
+рабочее дерево чистое.
+
+**Затраченное время:** ~30 минут (только разведка и отчёт)
+
+---
+
 ## Session 2026-05-19 03:47 — Подэтап 4: tech debt sweep
 
 **Задача:** Закрыть мелкий tech debt накопленный за v0.6–v0.7:

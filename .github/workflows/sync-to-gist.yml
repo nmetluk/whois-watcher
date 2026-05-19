@@ -31,7 +31,14 @@ jobs:
         run: |
           set -euo pipefail
 
-          payload=$(jq -n \
+          # Payload пишем в файл: combined-size 6 mirror-файлов растёт
+          # выше ARG_MAX (~128 KB), inline -d "$payload" падает с
+          # "Argument list too long". --data-binary @file читает stdin,
+          # argv остаётся маленьким.
+          payload_file=$(mktemp)
+          trap 'rm -f "$payload_file"' EXIT
+
+          jq -n \
             --rawfile claude CLAUDE.md \
             --rawfile todo TODO.md \
             --rawfile session SESSION_LOG.md \
@@ -47,14 +54,14 @@ jobs:
                 "decisions.md":         {"content": $decisions},
                 "PROMPT_FOR_CLAUDE.md": {"content": $prompt}
               }
-            }')
+            }' > "$payload_file"
 
           response=$(curl -sS -w "\n%{http_code}" \
             -X PATCH \
             -H "Authorization: Bearer $GIST_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            -d "$payload" \
+            --data-binary "@$payload_file" \
             "https://api.github.com/gists/$GIST_ID")
 
           status=$(echo "$response" | tail -1)

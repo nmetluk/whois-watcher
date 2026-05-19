@@ -27,10 +27,16 @@ jobs:
         with:
           to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          # Plain text: session log entries содержат technic content
+          # типа dnspython>=2.6,<3, list[int], `code`, *emphasis* —
+          # HTML/Markdown парсы ломаются на разной комбинации спец-
+          # символов. Plain text устойчив ко всему. Markdown/HTML
+          # разметка в самом message-шаблоне убрана, чтобы не светилась
+          # литералами.
+          format: ""
           message: |
-            <b>✅ Новая сессия Claude Code</b>
+            ✅ Новая сессия Claude Code
 
             ${{ steps.get_log.outputs.log }}
 
-            <a href="https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/SESSION_LOG.md">Открыть полный журнал</a>
-          format: html
+            Полный журнал: https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/SESSION_LOG.md

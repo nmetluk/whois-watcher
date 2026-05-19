@@ -145,6 +145,25 @@ class UserDomain(Base):
         ARRAY(Integer), nullable=True
     )
 
+    # Этап 14 (ADR 032): DNS-мониторинг. ``track_dns=False`` исключает
+    # домен из dns_scheduler — экономим ресурсы и не плодим уведомлений.
+    track_dns: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    notify_dns_a_change: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    notify_dns_aaaa_change: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    # Гибридная семантика: обычная смена NS-записей (info) И расхождение
+    # DNS-NS vs WHOIS-NS (critical) — оба под этим одним toggle'ом, но
+    # с разным эмодзи/тоном в сообщении.
+    notify_dns_ns_change: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    notify_dns_unreachable: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+
     last_problem_notified_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -390,3 +409,70 @@ class SSLCache(Base):
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<SSLCache domain={self.domain!r} not_after={self.not_after}>"
+
+
+# ---------------------------------------------------------------------------
+# dns_cache (Этап 14, ADR 032)
+# ---------------------------------------------------------------------------
+class DNSCache(Base):
+    """Общий кэш DNS-записей по доменам (ADR 032).
+
+    Параллельно ``ssl_cache`` и ``whois_cache``: одна запись на домен
+    (PK ``domain``), обслуживает всех подписчиков. Adaptive
+    ``next_check_at`` зависит от состояния (см. ``src.dns_monitor.scheduler``).
+
+    Поля ``is_reachable=None`` до первой проверки. После первой: True
+    если резолв удался, False при network/NXDOMAIN.
+    """
+
+    __tablename__ = "dns_cache"
+    __table_args__ = (Index("ix_dns_cache_next_check_at", "next_check_at"),)
+
+    domain: Mapped[str] = mapped_column(Text, primary_key=True)
+
+    # Scheduling
+    last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_successful_check_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    next_check_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    last_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # DNS records
+    a_records: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
+    aaaa_records: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
+    ns_records: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
+
+    # ASN enrichment — placeholder для v0.8.0 (rir2localdb v0.1.1 не
+    # отдаёт IP→ASN; полная сборка в v0.8.x).
+    asn_set: Mapped[list[int] | None] = mapped_column(
+        ARRAY(Integer),
+        nullable=True,
+        comment="Unique ASNs from a/aaaa IPs",
+    )
+
+    # Resolution state
+    resolution_state: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        server_default=text("'unknown'"),
+        comment="resolved / mx_only / no_dns / error / unknown",
+    )
+    is_reachable: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    resolver_used: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # NS-mismatch tracking — DNS-NS vs WHOIS-NS, критический сигнал.
+    ns_mismatch_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+
+    # Failure tracking
+    fail_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<DNSCache domain={self.domain!r} state={self.resolution_state!r}>"

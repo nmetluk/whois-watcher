@@ -9,6 +9,68 @@
 
 ---
 
+## Session 2026-05-19 02:53 — Release v0.7.0 — RIR/ASN lookup integration
+
+**Задача:** Финализировать релиз v0.7.0 после стабильного состояния 
+Stage 13 в репозитории. Bump 0.6.1 → 0.7.0, annotated tag, deploy, 
+проверка версии в проде.
+
+**Выполнено:**
+- `pyproject.toml`: `version = "0.6.1"` → `"0.7.0"`
+- `uv lock`: package version bump в lockfile
+- `CHANGELOG.md`: переименована секция `[Unreleased]` (с содержимым 
+  Stage 13) → `[0.7.0] — 2026-05-19`, добавлена новая пустая 
+  `[Unreleased]` сверху
+- Release commit `2512533` («docs: release v0.7.0 — RIR/ASN lookup 
+  integration (Stage 13, ADR 031)»)
+- Annotated tag `v0.7.0` с подробными release notes (RIR client API, 
+  two-tier error model, cron health-check, 4 новых settings, network 
+  topology reuse из ADR 028, тесты)
+- Push commit + tag в `origin/main`
+- Deploy: `scripts/deploy.sh` вышел с «Already up to date» (известный 
+  edge-case деплоя с того же хоста — diff'ит pre/post-pull); вручную 
+  выполнены те же шаги (`generate_build_info.sh`, `docker compose 
+  build`, `alembic upgrade head` — no-op для инфраструктурного 
+  релиза, `docker compose up -d`)
+- В проде подтверждена версия: `App version: 0.7.0`, `Tag: v0.7.0`, 
+  `Commit: 2512533`. Все 5 контейнеров `Up (healthy)`
+
+**Изменённые/новые файлы:**
+- `pyproject.toml` (version bump)
+- `uv.lock` (package version bump)
+- `CHANGELOG.md` ([Unreleased] → [0.7.0], новая [Unreleased] сверху)
+
+**Коммиты:**
+- `2512533` — docs: release v0.7.0 — RIR/ASN lookup integration 
+  (Stage 13, ADR 031)
+- `<этот коммит>` — docs(session): release v0.7.0
+
+**Теги:** `v0.7.0` (annotated, запушен в origin)
+
+**Проверки:**
+- `deploy.sh`: «Already up to date» (известный edge-case), ручной 
+  ребилд успешен
+- Все контейнеры `Up (healthy)`
+- In-container `get_app_version()` → `0.7.0`, `git_tag` → `v0.7.0`
+- pytest/mypy/ruff/black: не запускались (release-only, код не 
+  менялся; последний прогон на коде Stage 13 — clean, 532 passing)
+
+**Архитектурные решения / Открытые вопросы:**
+- GitHub Release page для v0.7.0 пока не оформлена — только tag. 
+  Не блокер, можно дооформить позже когда удобно
+- `rir2localdb-sync.service` остаётся в failed state у соседнего 
+  пользователя (`rir2local`) — данные пока свежие 
+  (`latest_sync_run.status=success`), но если timer не починят, 
+  через ~26h cron `rir_health_check` начнёт слать alerts о stale 
+  data. Не наш сервис — координация с владельцем `rir2local`
+- Следующий этап — v0.8 (DNS A/AAAA monitoring с ASN-фильтрацией) 
+  по плану из `TODO.md`. Не торопимся — Stage 13 пусть отработает 
+  в проде сутки-двое
+
+**Затраченное время:** ~10 минут
+
+---
+
 ## Session 2026-05-19 02:30 — Подэтап 3: v0.7 RIR/ASN lookup client
 
 **Задача:** Этап 13 — универсальный HTTP-клиент к rir2localdb для будущего 

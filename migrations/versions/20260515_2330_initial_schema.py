@@ -35,18 +35,14 @@ def upgrade() -> None:
         sa.Column("telegram_id", sa.BigInteger(), nullable=False),
         sa.Column("username", sa.Text(), nullable=True),
         sa.Column("language", sa.Text(), nullable=False, server_default="ru"),
-        sa.Column(
-            "timezone", sa.Text(), nullable=False, server_default="Europe/Moscow"
-        ),
+        sa.Column("timezone", sa.Text(), nullable=False, server_default="Europe/Moscow"),
         sa.Column(
             "notify_days",
             postgresql.ARRAY(sa.Integer()),
             nullable=False,
             server_default="{30,7,1}",
         ),
-        sa.Column(
-            "notify_at_hour", sa.Integer(), nullable=False, server_default="9"
-        ),
+        sa.Column("notify_at_hour", sa.Integer(), nullable=False, server_default="9"),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -59,9 +55,7 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("now()"),
         ),
-        sa.Column(
-            "is_blocked", sa.Boolean(), nullable=False, server_default=sa.text("false")
-        ),
+        sa.Column("is_blocked", sa.Boolean(), nullable=False, server_default=sa.text("false")),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("telegram_id", name="uq_users_telegram_id"),
     )
@@ -100,9 +94,7 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("true"),
         ),
-        sa.Column(
-            "last_problem_notified_at", sa.DateTime(timezone=True), nullable=True
-        ),
+        sa.Column("last_problem_notified_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("note", sa.Text(), nullable=True),
         sa.Column(
             "added_at",
@@ -114,9 +106,7 @@ def upgrade() -> None:
             ["user_id"], ["users.id"], ondelete="CASCADE", name="fk_user_domains_user_id"
         ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint(
-            "user_id", "domain", name="uq_user_domains_user_domain"
-        ),
+        sa.UniqueConstraint("user_id", "domain", name="uq_user_domains_user_domain"),
     )
     op.create_index("ix_user_domains_user_id", "user_domains", ["user_id"])
     op.create_index("ix_user_domains_domain", "user_domains", ["domain"])
@@ -135,13 +125,9 @@ def upgrade() -> None:
         sa.Column("name_servers", postgresql.ARRAY(sa.Text()), nullable=True),
         sa.Column("raw_data", postgresql.JSONB(), nullable=True),
         sa.Column("fetched_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column(
-            "last_successful_fetch_at", sa.DateTime(timezone=True), nullable=True
-        ),
+        sa.Column("last_successful_fetch_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("next_check_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column(
-            "fail_count", sa.Integer(), nullable=False, server_default="0"
-        ),
+        sa.Column("fail_count", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("last_error", sa.Text(), nullable=True),
         sa.PrimaryKeyConstraint("domain"),
     )
@@ -152,9 +138,7 @@ def upgrade() -> None:
         ["next_check_at"],
         postgresql_where=sa.text("next_check_at IS NOT NULL"),
     )
-    op.create_index(
-        "ix_whois_cache_expires_at", "whois_cache", ["expires_at"]
-    )
+    op.create_index("ix_whois_cache_expires_at", "whois_cache", ["expires_at"])
 
     # ------------------------------------------------------------------
     # sent_notifications
@@ -251,20 +235,14 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     # Порядок: сначала таблицы с FK, потом users (на которую они ссылаются).
-    op.drop_index(
-        "ix_system_events_severity_created", table_name="system_events"
-    )
+    op.drop_index("ix_system_events_severity_created", table_name="system_events")
     op.drop_index("ix_system_events_type_created", table_name="system_events")
     op.drop_table("system_events")
 
-    op.drop_index(
-        "ix_domain_changes_domain_detected", table_name="domain_changes"
-    )
+    op.drop_index("ix_domain_changes_domain_detected", table_name="domain_changes")
     op.drop_table("domain_changes")
 
-    op.drop_index(
-        "ix_sent_notifications_user_domain", table_name="sent_notifications"
-    )
+    op.drop_index("ix_sent_notifications_user_domain", table_name="sent_notifications")
     op.drop_table("sent_notifications")
 
     op.drop_index("ix_whois_cache_expires_at", table_name="whois_cache")

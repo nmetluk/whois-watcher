@@ -9,6 +9,106 @@
 
 ---
 
+## Session 2026-05-20 21:50 — Подэтап 14e-fixup: bootstrap false-alerts
+
+**Задача:** Хотфикс bootstrap false-alerts, найденный при smoke-test
+14e (см. предыдущую запись). Первый `dns_scheduler_tick` после деплоя
+прислал юзеру 2 → 38 ложных уведомлений (16 ns_change + 15 a_change
++ 7 aaaa_change). Применяем рекомендованный вариант 1 — расширить
+first-fetch guard в `compute_dns_diff`.
+
+**Root-cause:** `compute_dns_diff` first-fetch guard проверял только
+`old is None`. Но `dns_scheduler_tick._BOOTSTRAP_SQL` создаёт строки
+с `last_checked_at=NULL` и NULL-записями, и `get_due_for_check`
+сразу возвращает их в `check_dns`. Получаем `old != None`,
+`sorted(old.a_records or []) = []`, и сравнение с реальным резолвом
+даёт ложные `a_changed`/`aaaa_changed`/`ns_changed`.
+
+**Fix:** в `src/dns_monitor/diff.py`:
+
+```python
+if old is None or old.last_checked_at is None:
+    return diff
+```
+
+`_DNSCacheLike` Protocol дополнен полем `last_checked_at: datetime | None`.
+Это та же философия что:
+
+- WHOIS `is_registered` first-fetch guard (v0.3.0)
+- SSL `not cache.has_certificate` guard в `compute_ssl_diff`
+
+**Выполнено:**
+- `src/dns_monitor/diff.py` — расширенный first-fetch guard, обновлён
+  Protocol + docstring с объяснением (включая ссылку на инцидент 14e).
+- `tests/unit/test_dns_diff.py` —
+  `test_bootstrap_row_with_null_last_checked_no_changes`. `FakeDNSCache`
+  получил поле `last_checked_at` с дефолтом непустым (чтобы
+  существующие тесты не сломались), bootstrap-тест передаёт `None`
+  явно.
+- `tests/unit/test_check_dns_task.py` —
+  `test_bootstrap_row_no_notifications`. Полный ORM `DNSCache` с
+  `last_checked_at=None` и NULL-записями, ассерт что
+  `send_dns_change_notice` job НЕ enqueue'нут (другие job-типы
+  игнорируются).
+- Deploy: `deploy.sh` → "Already up to date" (тот же edge-case что
+  в 14e). Ручной rebuild: `generate_build_info.sh` + `docker compose
+  build` + `docker compose up -d --force-recreate bot worker
+  scheduler`.
+- Live-verify в проде: в контейнере `bot` сравнил
+  `compute_dns_diff(FakeBootstrapRow(), DNSRecords(['1.2.3.4'],
+  ['ns1.x']), [])` → `has_any_changes=False, a_changed=False,
+  ns_changed=False`. Фикс действительно в задеплоенном образе.
+
+**Изменённые файлы:**
+- `src/dns_monitor/diff.py` (+~8 строк: guard + Protocol + docstring)
+- `tests/unit/test_dns_diff.py` (+`FakeDNSCache.last_checked_at` +
+  `test_bootstrap_row_...`, ~30 строк)
+- `tests/unit/test_check_dns_task.py`
+  (+`test_bootstrap_row_no_notifications`, ~60 строк)
+
+**Коммиты:**
+- `653d7f0` fix(dns): suppress false change-alerts on bootstrap rows
+- `+1` docs(session): этот session log
+
+**Проверки:**
+- pytest: 589 → 591 (+2 новых, все зелёные)
+- mypy strict: clean (113 файлов)
+- ruff/black: clean (162 файла)
+- CI run 26183021134: success, 56s
+- Production live-verify: ✓ guard работает в задеплоенном образе
+
+**Production verify после фикса:**
+- Контейнеры пересозданы, uptime 15-20 секунд, все healthy
+- `dns_scheduler_tick` запустился при старте (`run_at_startup=True`),
+  отработал за 0.17s (никаких due-доменов, никаких enqueue
+  `check_dns`)
+- `send_dns_change_notice` в worker логах — **пусто** ✓
+- Поведение для будущих новых доменов: `/whois` bootstrap создаст
+  строку с `last_checked_at=NULL`, scheduler запустит `check_dns`,
+  diff вернёт пустой (guard сработает), записи лягут в кэш без
+  ложных уведомлений. Уведомления начнутся только со второго
+  fetch'а — когда реально что-то изменится.
+
+**Состояние Этапа 14:** ЗАВЕРШЁН + hotfix. DNS-мониторинг live,
+false-alerts класс устранён. Версия 0.7.0.
+
+**Открытые вопросы / следующие шаги:**
+- WHOIS и SSL уже имеют свои first-fetch guards
+  (`is_registered=False` в WHOIS, `not cache.has_certificate`
+  в SSL). Bootstrap-аномалии того же класса в них быть не должно,
+  но при release-промпте стоит ещё раз посмотреть глазами на
+  `compute_ssl_diff` и `compute_whois_diff` чтобы убедиться.
+- Release v0.8.0 — мини-промпт через 24-48ч стабилизации. Hotfix
+  попадёт в changelog v0.8.0 (он сейчас в `[Unreleased]` блоке
+  как 14e-фикс, но можно описать отдельной bullet'ой "fixed first-tick
+  false-alerts").
+- v0.8.x — реальная ASN-сборка после rir2localdb endpoint.
+- v0.9 — DNSSEC + локальный unbound.
+
+**Затраченное время:** ~15 минут (фикс короткий, верификация быстрая).
+
+---
+
 ## Session 2026-05-20 21:34 — Подэтап 14e: ADR + deploy + DNS live
 
 **Задача:** Финальный подэтап Этапа 14 / v0.8.0 — ADR 032,

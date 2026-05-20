@@ -170,6 +170,12 @@ LOCALE: dict[str, str] = {
     "notify_config.type.track_ssl": "SSL monitoring",
     "notify_config.type.ssl_expiry": "SSL expiry",
     "notify_config.type.ssl_change_issuer": "SSL certificate change",
+    # DNS (Stage 14, ADR 032)
+    "notify_config.type.track_dns": "Track DNS",
+    "notify_config.type.dns_a_change": "A records change",
+    "notify_config.type.dns_aaaa_change": "AAAA records change",
+    "notify_config.type.dns_ns_change": "NS change (including WHOIS mismatch)",
+    "notify_config.type.dns_unreachable": "DNS unreachable",
     "button.privacy": "📜 Privacy policy",
     "button.github": "💻 GitHub",
     "button.list_prev": "◀️ Prev",
@@ -319,6 +325,16 @@ LOCALE: dict[str, str] = {
     "commands.whois.ssl_line_expires": "{emoji} Valid until: {date} ({days_until})",
     "commands.whois.ssl_line_issuer": "Issuer: {issuer}",
     "commands.whois.ssl_unreachable": "🔒 SSL certificate: ⚠️ HTTPS endpoint is down",
+    # DNS (Stage 14, ADR 032)
+    "commands.whois.dns_section": "🌐 <b>DNS</b>",
+    "commands.whois.dns_line_a": "A: {records}",
+    "commands.whois.dns_line_aaaa": "AAAA: {records}",
+    "commands.whois.dns_line_ns_ok": "NS: {records} ✓",
+    "commands.whois.dns_line_ns_mismatch": "NS: {records} 🚨",
+    "commands.whois.dns_line_ns_registry": "Registry: {records}",
+    "commands.whois.dns_unreachable": "🌐 <b>DNS</b>: ⚠️ unreachable",
+    "commands.whois.dns_mx_only": "🌐 <b>DNS</b>: MX only (email-only domain)",
+    "commands.whois.dns_no_dns": "🌐 <b>DNS</b>: no records",
     "commands.whois.source_just_now": "ℹ️ Fetched: just now",
     "commands.whois.source_cached": "ℹ️ From cache, updated {ago}",
     "commands.whois.free": "🌐 {domain} — not registered\n\nThe domain is available for registration.",
@@ -543,6 +559,33 @@ LOCALE: dict[str, str] = {
         "The site stopped serving an SSL certificate. Check that the web server is running."
     ),
     "notifications.ssl_change.reachable": ("✅ <b>{domain}</b> — HTTPS is back online"),
+    # DNS (Stage 14, ADR 032)
+    "notifications.dns_change.a_changed": (
+        "🟠 <b>{domain}</b> — A records changed\n\nNow: {records}"
+    ),
+    "notifications.dns_change.aaaa_changed": (
+        "🟠 <b>{domain}</b> — AAAA records changed\n\nNow: {records}"
+    ),
+    "notifications.dns_change.ns_changed": (
+        "🟠 <b>{domain}</b> — NS servers changed\n\nNow: {records}"
+    ),
+    "notifications.dns_change.ns_mismatch_detected": (
+        "🚨 <b>CRITICAL: {domain}</b>\n\n"
+        "DNS returns NS servers different from registry (WHOIS). "
+        "This is a classic indicator of domain hijack or incomplete "
+        "DNS migration. Check /whois and verify that registry NS "
+        "records match your expectations.\n\n"
+        "DNS-NS: {records}"
+    ),
+    "notifications.dns_change.ns_mismatch_resolved": (
+        "✅ <b>{domain}</b> — DNS-NS / registry-NS mismatch resolved"
+    ),
+    "notifications.dns_change.unreachable": (
+        "🚨 <b>{domain}</b> — DNS stopped responding\n\n"
+        "The domain may be expired, deleted, or temporarily unavailable. "
+        "If you didn't make changes — this is urgent."
+    ),
+    "notifications.dns_change.reachable": ("✅ <b>{domain}</b> — DNS is back online"),
     "notifications.ack.muted": "🔕 Notifications for this domain are off",
     "notifications.ack.refresh_started": "🔄 Refresh started",
     "notifications.ack.no_access": "❌ This domain isn't in your list",

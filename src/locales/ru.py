@@ -184,6 +184,12 @@ LOCALE: dict[str, str] = {
     "notify_config.type.track_ssl": "Мониторинг SSL",
     "notify_config.type.ssl_expiry": "Истечение SSL",
     "notify_config.type.ssl_change_issuer": "Смена SSL-сертификата",
+    # DNS (Этап 14, ADR 032)
+    "notify_config.type.track_dns": "Отслеживать DNS",
+    "notify_config.type.dns_a_change": "Смена A-записей",
+    "notify_config.type.dns_aaaa_change": "Смена AAAA-записей",
+    "notify_config.type.dns_ns_change": "Смена NS (включая mismatch с WHOIS)",
+    "notify_config.type.dns_unreachable": "DNS недоступен",
     "button.privacy": "📜 Политика конфиденциальности",
     "button.github": "💻 GitHub",
     "button.list_prev": "◀️ Назад",
@@ -331,6 +337,16 @@ LOCALE: dict[str, str] = {
     "commands.whois.ssl_line_expires": "{emoji} Действителен до: {date} ({days_until})",
     "commands.whois.ssl_line_issuer": "Издатель: {issuer}",
     "commands.whois.ssl_unreachable": "🔒 SSL-сертификат: ⚠️ HTTPS не отвечает",
+    # DNS (Этап 14, ADR 032)
+    "commands.whois.dns_section": "🌐 <b>DNS</b>",
+    "commands.whois.dns_line_a": "A: {records}",
+    "commands.whois.dns_line_aaaa": "AAAA: {records}",
+    "commands.whois.dns_line_ns_ok": "NS: {records} ✓",
+    "commands.whois.dns_line_ns_mismatch": "NS: {records} 🚨",
+    "commands.whois.dns_line_ns_registry": "Registry: {records}",
+    "commands.whois.dns_unreachable": "🌐 <b>DNS</b>: ⚠️ не отвечает",
+    "commands.whois.dns_mx_only": "🌐 <b>DNS</b>: только MX (email-only домен)",
+    "commands.whois.dns_no_dns": "🌐 <b>DNS</b>: записей нет",
     "commands.whois.source_just_now": "ℹ️ Данные получены: только что",
     "commands.whois.source_cached": "ℹ️ Данные из кэша, обновлены {ago}",
     "commands.whois.free": "🌐 {domain} — не зарегистрирован\n\nДомен свободен для регистрации.",
@@ -561,6 +577,33 @@ LOCALE: dict[str, str] = {
         "Сайт перестал отдавать SSL-сертификат. Проверьте, что веб-сервер работает."
     ),
     "notifications.ssl_change.reachable": ("✅ <b>{domain}</b> — HTTPS снова работает"),
+    # DNS (Этап 14, ADR 032)
+    "notifications.dns_change.a_changed": (
+        "🟠 <b>{domain}</b> — изменились A-записи\n\nТеперь: {records}"
+    ),
+    "notifications.dns_change.aaaa_changed": (
+        "🟠 <b>{domain}</b> — изменились AAAA-записи\n\nТеперь: {records}"
+    ),
+    "notifications.dns_change.ns_changed": (
+        "🟠 <b>{domain}</b> — изменились NS-серверы\n\nТеперь: {records}"
+    ),
+    "notifications.dns_change.ns_mismatch_detected": (
+        "🚨 <b>КРИТИЧНО: {domain}</b>\n\n"
+        "DNS отдаёт NS-серверы, отличные от тех что в registry (WHOIS). "
+        "Это классический признак угона домена или незавершённой "
+        "миграции DNS. Проверь /whois и убедись что NS-записи в "
+        "registry соответствуют тому что ты ожидаешь.\n\n"
+        "DNS-NS: {records}"
+    ),
+    "notifications.dns_change.ns_mismatch_resolved": (
+        "✅ <b>{domain}</b> — расхождение DNS-NS и registry-NS устранено"
+    ),
+    "notifications.dns_change.unreachable": (
+        "🚨 <b>{domain}</b> — DNS перестал отвечать\n\n"
+        "Домен может быть истёкшим, удалённым или временно недоступен. "
+        "Если ты не вносил изменений — это срочно."
+    ),
+    "notifications.dns_change.reachable": ("✅ <b>{domain}</b> — DNS снова работает"),
     "notifications.ack.muted": "🔕 Уведомления для этого домена выключены",
     "notifications.ack.refresh_started": "🔄 Запустил повторную проверку",
     "notifications.ack.no_access": "❌ Этот домен не в вашем списке",

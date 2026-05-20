@@ -9,6 +9,96 @@
 
 ---
 
+## Session 2026-05-20 21:08 — Подэтап 14d: UI + локали
+
+**Задача:** Visible UX-слой для DNS-мониторинга (Этап 14 / v0.8.0,
+ADR 032). DNS-блок в карточке `/whois`, расширение конфигуратора
+уведомлений на 5 DNS-toggle'ов, локали ~16 ключей × 2 языка. ADR /
+CHANGELOG / deploy — следующий подэтап (14e).
+
+**Выполнено:**
+- `format_dns_block(cache, *, whois_ns, lang)` в
+  `src/services/formatters.py` — параллельно `format_ssl_block`.
+  Пять веток: `unknown`/`last_checked_at=None` → `None`; `error` или
+  `is_reachable=False` → compact "DNS не отвечает"; `mx_only`/`no_dns`
+  → одна строка; `resolved` → tree (`├`/`└`) с A/AAAA/NS, усечение
+  A до 5, AAAA до 3, индикатор `(+N)`. NS-mismatch против `whois_ns`
+  через `dns_monitor.detect_ns_mismatch` (case-insensitive, dot-norm)
+  — на mismatch подсветка 🚨 и отдельная строка с registry-NS.
+- Интеграция в `src/bot/handlers/whois.py` (`_send_whois_card`):
+  DNS bootstrap mirror SSL (если `dns_cache` строки нет — `upsert`
+  пустышки + `enqueue check_dns`), `whois_ns` берётся из
+  `cached.name_servers`, `dns_block` приклеивается к body после
+  `ssl_block`.
+- `src/bot/keyboards.py`: расширение `_TOGGLE_FIELDS` на 5 пар
+  (`track_dns`, `notify_dns_a_change`, `notify_dns_aaaa_change`,
+  `notify_dns_ns_change`, `notify_dns_unreachable`). Рендеринг сам
+  итерирует tuple — никаких правок в `notify_config_keyboard`. Итого
+  14 toggle-кнопок (6 WHOIS + 3 SSL + 5 DNS) + 4 control = 18.
+- `src/locales/ru.py` + `src/locales/en.py`: +16 ключей × 2 языка
+  (9 в `commands.whois.dns_*`, 5 в `notify_config.type.dns_*`,
+  7 в `notifications.dns_change.*`). Placeholder ключи из 14c
+  (`notifications.dns_change.*`) теперь имеют тексты —
+  `send_dns_change_notice` сразу заработает после деплоя.
+- `tests/unit/test_format_dns_block.py` — 11 кейсов: skip для
+  unchecked/unknown, skip для пустого resolved-кэша, resolved с
+  NS-match (`✓` + tree-формат), resolved с NS-mismatch
+  (`🚨` + registry-line), unreachable/mx_only/no_dns compact,
+  truncate A>5 c `(+5)`, edge "A-only без NS" корректно закрывает
+  дерево, RU/EN расходятся для `mx_only`.
+
+**Изменённые/новые файлы:**
+- `src/services/formatters.py` (+`format_dns_block`, +
+  `_format_records_truncated`, импорты `DNSCache`/`detect_ns_mismatch`)
+- `src/bot/handlers/whois.py` (DNS bootstrap + composition, импорт
+  `DNSCacheRepository`/`format_dns_block`)
+- `src/bot/keyboards.py` (расширение `_TOGGLE_FIELDS` на 5 пар)
+- `src/locales/ru.py`, `src/locales/en.py` (32 строки локалей)
+- `tests/unit/test_format_dns_block.py` (новый, 11 кейсов)
+
+**Коммиты:**
+- `000c28a` feat(dns): add ~16 locale keys for DNS UI (RU + EN)
+- `3855e65` feat(dns): add DNS block to /whois card with NS-mismatch highlight
+- `c932b57` feat(dns): add 5 DNS toggles to notify_config_keyboard
+- `+1` docs(session): этот session log
+
+**Проверки:**
+- pytest: 578 → 589 (+11 новых, все зелёные)
+- mypy strict: clean (113 файлов)
+- ruff/black: clean (162 файла)
+- CI run 26180951760: success
+
+**Архитектурные решения / Открытые вопросы:**
+- DNS-блок compact-philosophy: `None` если нечего показать (как SSL).
+  Не оставляем "—" в карточке.
+- Resolved → tree (`├ A`/`├ AAAA`/`└ NS`); остальные четыре state'а
+  → одна строка. NS отсутствует в resolved → переоформляем последнюю
+  строку (A или AAAA) на `└ ` префикс.
+- NS-mismatch — приоритетный сигнал безопасности. Помимо подсветки
+  🚨 в NS-строке, добавляется вторая строка `└ Registry: ...` для
+  контекста (пользователь сразу видит ожидаемые NS-серверы).
+- Truncate A=5, AAAA=3 — конкретный лимит подобран под мобильный
+  UX (Cloudflare часто отдаёт 20 IPv4 и 20 IPv6, без truncation
+  карточка растягивается на полэкрана).
+- Тест `test_english_locale_for_translatable_state` использует
+  `mx_only` (не `resolved`), потому что у resolved-tree метки A:/NS:
+  идентичны в RU и EN — это feature (IP-метки не переводятся), не баг.
+- В тесте `_DNSCacheLike` дублирован как dataclass `FakeDNSCache`
+  вместо импорта Protocol-а: `format_dns_block` принимает `DNSCache`,
+  mypy в тестах принимает фейк через `# type: ignore[arg-type]`.
+- 14e — последний подэтап: ADR 032 (полный текст, не stub), CHANGELOG
+  entry в [Unreleased] с описанием DNS-мониторинга, `bash
+  scripts/deploy.sh` на u7743id13129, smoke-test (проверка что
+  `dns_scheduler_tick` реально запускается в cron-логах scheduler
+  контейнера каждые 5 минут, что DNS-блок появляется в `/whois`
+  карточке после первого fetch'а), финальный SESSION_LOG.
+- После 14e + 24-48ч стабилизации — отдельный мини-промпт релиз
+  v0.8.0 (bump pyproject.toml, tag, GitHub Release).
+
+**Затраченное время:** ~35 минут
+
+---
+
 ## Session 2026-05-20 20:27 — Подэтап 14c: ARQ tasks
 
 **Задача:** Три ARQ-задачи для DNS-мониторинга (Этап 14 / v0.8.0,

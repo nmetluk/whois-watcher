@@ -96,12 +96,15 @@ async def _on_shutdown(ctx: dict[str, Any]) -> None:
 
 def _build_functions() -> list[Any]:
     """Импорты задач отложены — это разбивает цикл tasks → arq_config → tasks."""
+    from src.tasks.check_dns import check_dns
     from src.tasks.check_domain import check_domain
     from src.tasks.check_ssl import check_ssl
     from src.tasks.cleanup import cleanup_old_events, cleanup_orphan_cache
     from src.tasks.daily_stats import send_daily_summary
+    from src.tasks.dns_scheduler import dns_scheduler_tick
     from src.tasks.expiry_scheduler import expiry_notification_scheduler
     from src.tasks.notify_changes import send_change_notice
+    from src.tasks.notify_dns_changes import send_dns_change_notice
     from src.tasks.notify_problem import send_problem_notice
     from src.tasks.notify_ssl_changes import send_ssl_change_notice
     from src.tasks.notify_wishlist import send_wishlist_available_notice
@@ -133,12 +136,17 @@ def _build_functions() -> list[Any]:
         ssl_reminders_scheduler,
         send_ssl_expiry_reminder,
         send_ssl_change_notice,
+        # DNS monitoring (Этап 14, ADR 032)
+        check_dns,
+        dns_scheduler_tick,
+        send_dns_change_notice,
     ]
 
 
 def _build_cron_jobs() -> list[Any]:
     from src.tasks.cleanup import cleanup_old_events, cleanup_orphan_cache
     from src.tasks.daily_stats import send_daily_summary
+    from src.tasks.dns_scheduler import dns_scheduler_tick
     from src.tasks.expiry_scheduler import expiry_notification_scheduler
     from src.tasks.proxy_health import proxy_health_check
     from src.tasks.rir_health import rir_health_check
@@ -178,6 +186,13 @@ def _build_cron_jobs() -> list[Any]:
         cron(
             ssl_scheduler_tick,
             name="ssl_scheduler_tick",
+            minute={0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55},
+            run_at_startup=True,
+        ),
+        # ADR 032: DNS scheduler — каждые 5 минут, как WHOIS и SSL.
+        cron(
+            dns_scheduler_tick,
+            name="dns_scheduler_tick",
             minute={0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55},
             run_at_startup=True,
         ),

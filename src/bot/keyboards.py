@@ -288,6 +288,12 @@ _TOGGLE_FIELDS: tuple[tuple[str, str], ...] = (
     ("track_ssl", "notify_config.type.track_ssl"),
     ("notify_ssl_expiry", "notify_config.type.ssl_expiry"),
     ("notify_ssl_change_issuer", "notify_config.type.ssl_change_issuer"),
+    # DNS (Этап 14, ADR 032)
+    ("track_dns", "notify_config.type.track_dns"),
+    ("notify_dns_a_change", "notify_config.type.dns_a_change"),
+    ("notify_dns_aaaa_change", "notify_config.type.dns_aaaa_change"),
+    ("notify_dns_ns_change", "notify_config.type.dns_ns_change"),
+    ("notify_dns_unreachable", "notify_config.type.dns_unreachable"),
 )
 
 

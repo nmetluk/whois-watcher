@@ -9,6 +9,126 @@
 
 ---
 
+## Session 2026-05-20 09:36 — Подэтап 14b: DNS Monitor module
+
+**Задача:** Создать подсистему `src/dns_monitor/` по образцу
+`src/ssl/` — чистый модуль без интеграций с БД/ARQ. Только
+async DNS resolver (dnspython), доменные типы, ASN-placeholder,
+diff с first-fetch guard и NS-mismatch детекцией, adaptive TTL
+scheduler + unit-тесты с моками. Никаких ARQ-тасков, UI,
+ADR/CHANGELOG — это 14c/14d/14e.
+
+**Выполнено:**
+- `src/dns_monitor/types.py` — `DNSRecords`, `DNSError`,
+  `DNSResult`, `ResolutionState` (`resolved`/`mx_only`/`no_dns`),
+  `DNSErrorType` (8 категорий: invalid_domain, nxdomain,
+  no_records, timeout, servfail, resolver_unreachable, disabled,
+  internal_error). Slots/kw_only по образцу `ssl/types.py`.
+- `src/dns_monitor/client.py` — `resolve_records(domain)` async,
+  never raises. Цепочка резолверов из `settings.dns_resolvers`:
+  fallback на timeout/servfail/NoNameservers; NXDOMAIN и
+  invalid_domain — финальные. Запрашиваем A/AAAA/NS/MX
+  (MX — только для определения `mx_only`, сами записи не
+  сохраняются). Внутренний `_try_resolver` собирает все типы
+  на одном резолвере, классифицирует исход через
+  dnspython-исключения.
+- `src/dns_monitor/asn_filter.py` — `enrich_with_asn(ips)`
+  placeholder, возвращает `[]`. Активируется в v0.8.x после
+  появления endpoint `/v1/ip/{addr}/asn` в rir2localdb.
+  `compute_dns_diff` устойчив к пустому ASN-set.
+- `src/dns_monitor/diff.py` — `compute_dns_diff(old, new,
+  new_asn_set)` → `DNSDiff` (a_changed, a_asn_changed,
+  aaaa_changed, aaaa_asn_changed, ns_changed,
+  became_unreachable, became_reachable). First-fetch guard
+  (`old=None` → пустой diff). `became_*` — переход, не
+  состояние (тот же инвариант что в `ssl/diff.py`). Структурный
+  `_DNSCacheLike` Protocol для приёма и DNSCache, и фейков
+  без жёсткой ORM-зависимости в чистом модуле. Плюс
+  `detect_ns_mismatch(dns_ns, whois_ns)` —
+  case-insensitive, trailing-dot нормализация.
+- `src/dns_monitor/scheduler.py` — `calculate_next_dns_check`
+  с bucket'ами: `fail_count>=10` → 24h backoff;
+  `ns_mismatch_active` → 30m (critical); recent change без
+  ASN → 6h (CDN-noise); recent ASN-смена → 1h; новый домен
+  (без `last_successful_at`) → 1h; иначе → 1 day stable.
+- `src/dns_monitor/__init__.py` — public API re-exports.
+- 4 unit-теста (35 кейсов): `test_dns_client.py` (10 кейсов с
+  AsyncMock'ом dnspython: disabled, invalid IDN, A/AAAA/NS
+  success, mx_only, no_dns, NXDOMAIN, timeout, servfail,
+  fallback на второй резолвер), `test_dns_diff.py` (15 кейсов:
+  first-fetch, A/AAAA/NS changes, sort-invariance,
+  became_reachable/unreachable, invalid_domain/disabled
+  exemption, ASN critical signal, ns_mismatch normalization),
+  `test_dns_scheduler.py` (9 кейсов: все ветки + default-now
+  TZ-aware), `test_dns_asn_filter.py` (2 кейса placeholder).
+
+**Изменённые/новые файлы:**
+- `src/dns_monitor/__init__.py` (новый)
+- `src/dns_monitor/types.py` (новый)
+- `src/dns_monitor/client.py` (новый)
+- `src/dns_monitor/asn_filter.py` (новый)
+- `src/dns_monitor/diff.py` (новый)
+- `src/dns_monitor/scheduler.py` (новый)
+- `tests/unit/test_dns_client.py` (новый)
+- `tests/unit/test_dns_diff.py` (новый)
+- `tests/unit/test_dns_scheduler.py` (новый)
+- `tests/unit/test_dns_asn_filter.py` (новый)
+
+**Коммиты:**
+- `1860c00` — feat(dns): add src/dns_monitor/ module — async DNS resolver
+- `c6df39f` — test(dns): unit tests for dns_monitor module
+- `<этот>` — docs(session): подэтап 14b — DNS monitor module
+
+**Проверки:**
+- pytest: **575 passing** (было 540 на main после 14a-fixup,
+  +35 новых DNS-тестов). `tests/unit/test_dns_*.py` все
+  зелёные с первого прогона.
+- mypy strict: clean (110 source files — было 104 + 6 новых
+  в `src/dns_monitor/`)
+- ruff: clean (один F401 fix — убрал `DNSRecords` из
+  TYPE-only импорта в `diff.py`)
+- black: clean (3 auto-rewrite'а на dns_monitor применены
+  до коммита, pre-commit не сработал на коммитах)
+- pre-commit hooks: passed на обоих коммитах
+- CI: см. отчёт в Telegram после push'а
+
+**Архитектурные решения / Открытые вопросы:**
+
+- **`_DNSCacheLike` Protocol в `diff.py`** — чтобы держать
+  модуль `dns_monitor/` чистым от ORM-зависимости (импорт
+  `DNSCache` под `TYPE_CHECKING`-гардом), но при этом
+  принимать и реальную модель, и фейковый dataclass в
+  тестах. Альтернатива — параметрический import `Any` или
+  жёсткий импорт `DNSCache` — обе хуже. Mypy strict
+  принимает Protocol с union'ом без жалоб.
+- **MX запрашиваем, но не сохраняем** — MX нужен только
+  для классификации `resolution_state="mx_only"`
+  (parked/email-only домен). Хранить весь список MX в
+  кэше избыточно: пользователю интересно "есть ли почта
+  без сайта", а не сами MX-серверы. Если в 14c/14d
+  потребуется — добавим колонку и допишем парсинг.
+- **`last_change_was_asn` всегда False в v0.8.0** —
+  планирующий Claude знает, scheduler корректно
+  переключается в FRESH_INTERVAL при `True`, но реальный
+  ASN-сигнал придёт только в v0.8.x. Test
+  `test_recent_asn_change_is_fresh` проверяет логику
+  с явным `True` — на регрессию защищён.
+- **AsyncMock-патчинг dnspython оказался простым** —
+  все 10 кейсов в `test_dns_client.py` зелёные с первого
+  прогона, никаких skip'ов не потребовалось. Помог
+  helper `_make_answer(records)` + `_patch_resolver`
+  (контекст-менеджер вокруг `patch("dns.asyncresolver.Resolver", ...)`).
+- **Следующий подэтап 14c** — ARQ-tasks (check_dns,
+  dns_scheduler_tick, send_dns_change_notice) + регистрация
+  в `arq_config.py` + `_BOOTSTRAP_SQL`-style insert
+  существующих доменов в `dns_cache` при первом запуске
+  таска (либо одноразовая миграция, либо lazy-init на
+  первом scheduler-tick'е — выбор пользователя в 14c).
+
+**Затраченное время:** ~25 минут
+
+---
+
 ## Session 2026-05-19 21:04 — Подэтап 14a-fixup: workflow regressions
 
 **Задача:** Починить два сломанных workflow, которые упали после

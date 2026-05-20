@@ -9,6 +9,100 @@
 
 ---
 
+## Session 2026-05-20 20:27 — Подэтап 14c: ARQ tasks
+
+**Задача:** Три ARQ-задачи для DNS-мониторинга (Этап 14 / v0.8.0,
+ADR 032) — `check_dns`, `dns_scheduler_tick`, `send_dns_change_notice`.
+Параллельная инфраструктура к SSL-подсистеме (`check_ssl` /
+`ssl_scheduler_tick` / `send_ssl_change_notice`). UI, локали, ADR,
+deploy — следующие подэтапы (14d/14e).
+
+**Выполнено:**
+- `src/tasks/dns_scheduler.py` — cron tick: `_BOOTSTRAP_SQL` через
+  `INSERT … ON CONFLICT DO NOTHING` для существующих доменов
+  с `track_dns=true`, без записи в `dns_cache`; `BATCH_LIMIT=500`
+  выборка через `DNSCacheRepository.get_due_for_check`; enqueue
+  `check_dns` (сам защищён Redis-флагом).
+- `src/tasks/notify_dns_changes.py` — диспетчер уведомлений на
+  семь `change_type`: `a_changed`, `aaaa_changed`, `ns_changed`,
+  `ns_mismatch_detected`, `ns_mismatch_resolved`,
+  `became_unreachable`, `became_reachable`. `_TYPE_MAP` связывает
+  каждый тип с locale-ключом (placeholder до 14d), типом записи
+  в `notifications`-журнале и flag-полем `UserDomain`. Тот же
+  exception handling что в `notify_ssl_changes`: `TelegramForbiddenError`
+  → `is_blocked=True`, `TelegramBadRequest` → warning без падения.
+- `src/tasks/check_dns.py` — основная задача: Redis lock
+  `dns_check_in_progress:<domain>` (TTL 60s), `bind_log_context(
+  subsystem="dns")`, `resolve_records` → `enrich_with_asn` →
+  `compute_dns_diff` ДО мутации, `detect_ns_mismatch` против
+  `whois_cache.name_servers` (отдельная ARRAY-колонка),
+  отслеживание NS-mismatch transitions через
+  `old.ns_mismatch_active` ↔ `new_ns_mismatch_active`. Adaptive
+  TTL через `calculate_next_dns_check`. Единый upsert и в
+  success, и в error-ветке (вместо `update_fail`) — это держит
+  `ns_mismatch_active` синхронным и покрывает редкий кейс
+  "первый fetch упал до bootstrap".
+- `src/tasks/arq_config.py` — `check_dns`, `dns_scheduler_tick`,
+  `send_dns_change_notice` зарегистрированы в `_build_functions`;
+  `dns_scheduler_tick` поднят как cron в `_build_cron_jobs`
+  (каждые 5 минут, `run_at_startup=True`, в одном такте с
+  `scheduler_tick`/`ssl_scheduler_tick`).
+- `tests/unit/test_check_dns_task.py` — 8 кейсов: lock-skip,
+  first-fetch guard, `a_changed` → enqueue, `is_muted` глушит,
+  `track_dns=False` глушит, NS-mismatch detected transition,
+  `invalid_domain` не флипает `is_reachable`, `nxdomain` first
+  failure флипает + enqueue `became_unreachable`.
+- `tests/unit/test_dns_scheduler_task.py` — 3 кейса: bootstrap
+  SQL выполняется, due-домены енкйюятся, пустая выборка → no-op.
+
+**Изменённые/новые файлы:**
+- `src/tasks/dns_scheduler.py` (новый, 68 строк)
+- `src/tasks/notify_dns_changes.py` (новый, 164 строки)
+- `src/tasks/check_dns.py` (новый, 225 строк)
+- `src/tasks/arq_config.py` (правка: +6 импортов, +1 cron-блок)
+- `tests/unit/test_check_dns_task.py` (новый, ~330 строк)
+- `tests/unit/test_dns_scheduler_task.py` (новый, ~110 строк)
+
+**Коммиты:**
+- `74fe6e4` feat(dns): add dns_scheduler_tick and send_dns_change_notice tasks
+- `b158fe1` feat(dns): add check_dns task with full resolve→diff→notify flow
+- `beed3fa` test(dns): unit tests for check_dns and dns_scheduler tasks
+- `+1` docs(session): этот session log
+
+**Проверки:**
+- pytest: 567 → 578 (+11 новых, все зелёные)
+- mypy strict: clean (113 файлов)
+- ruff/black: clean
+- CI run 26178761550: success, 59s
+
+**Архитектурные решения / Открытые вопросы:**
+- WHOIS-NS читается из колонки `whois_cache.name_servers`
+  (ARRAY(Text)), не из `raw_data`.
+- `last_change_was_asn` — placeholder False в v0.8.0 (asn_set
+  пустой из-за `enrich_with_asn` placeholder); v0.8.x активирует
+  без code-change в `check_dns.py`.
+- NS-mismatch tracked как persistent `ns_mismatch_active` поле
+  в `DNSCache` для transition detection и adaptive TTL.
+- First-fetch guard: уведомления только когда
+  `diff.has_any_changes AND old is not None`. Для NS-mismatch —
+  тот же guard (`old is not None`).
+- В `check_ssl` failure-ветка использует `update_fail` +
+  ручную мутацию `existing.is_reachable`. В `check_dns`
+  выбран единый `upsert`-путь — это короче и держит
+  `ns_mismatch_active` корректным.
+- Расхождение с промптом: в проекте `ctx["sync_redis"]` —
+  обычный Redis для locks, `ctx["redis"]` — ArqRedis для
+  enqueue. `ctx["arq_redis"]` нет.
+- Открыто на 14d: UI (`format_dns_block`), inline-конфигуратор
+  + 5 toggle'ов, локали ~15 ключей RU/EN (placeholder ключи
+  из 14c наполнятся).
+- Открыто на 14e: ADR 032, CHANGELOG, deploy + smoke-test
+  на проде, релиз v0.8.0.
+
+**Затраченное время:** ~40 минут
+
+---
+
 ## Session 2026-05-20 09:36 — Подэтап 14b: DNS Monitor module
 
 **Задача:** Создать подсистему `src/dns_monitor/` по образцу

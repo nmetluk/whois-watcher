@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — DNS A/AAAA monitoring (Stage 14, [ADR 032](docs/decisions.md#032-dns-aaaaa-monitoring-как-параллельная-подсистема))
+
+- **DNS-мониторинг** для всех отслеживаемых доменов: четвёртая ось
+  наблюдения после WHOIS, SSL и RIR-инфраструктуры. Отдельная
+  параллельная подсистема (`src/dns_monitor/`). Cron
+  `dns_scheduler_tick` каждые 5 минут собирает due-домены,
+  `check_dns` резолвит A/AAAA/NS через dnspython (цепочка external
+  резолверов Cloudflare `1.1.1.1` + Google `8.8.8.8`).
+- **Adaptive TTL** для DNS-проверок: `ns_mismatch_active` → 30 мин,
+  `fail_count >= 10` → 24 ч, recent change без ASN-смены → 6 ч
+  (likely CDN), новый домен → 1 ч, стабильный → 1 день.
+- **DNS change-уведомления**: смена A-записей, смена AAAA-записей,
+  смена NS-серверов, became unreachable / reachable. Отдельно —
+  **расхождение DNS-NS vs WHOIS-NS** (critical security signal:
+  классический индикатор угона домена или незавершённой миграции).
+- **Per-domain DNS toggles**: `track_dns` (kill-switch, default true),
+  `notify_dns_a_change`, `notify_dns_aaaa_change`,
+  `notify_dns_ns_change` (гибрид: обычная смена + mismatch),
+  `notify_dns_unreachable`. Все в едином конфигураторе
+  `/whois → ⚙️ Уведомления`.
+- **DNS-блок в карточке `/whois`**: A/AAAA/NS-записи с подсветкой
+  совпадения (✓) или расхождения (🚨) DNS-NS с registry-NS.
+  Компактные состояния для mx-only / no-dns / unreachable доменов.
+  При первой проверке домена ставит `check_dns` без ожидания
+  cron-тика.
+- **Локали**: ~16 новых ключей ru/en для DNS-блока, уведомлений и
+  конфигуратора.
+
+### Database
+
+- Новая таблица **`dns_cache`** (PK `domain`): scheduling-поля
+  (`last_checked_at`, `last_successful_check_at`, `next_check_at`,
+  `last_changed_at`), записи (`a_records`, `aaaa_records`,
+  `ns_records` — все ARRAY(Text)), `asn_set` (ARRAY(Integer),
+  placeholder в v0.8.0), `resolution_state`, `is_reachable`,
+  `resolver_used`, `ns_mismatch_active`, failure-tracking
+  (`fail_count`, `last_error`). Индекс `ix_dns_cache_next_check_at`.
+- 5 новых колонок в **`user_domains`**: `track_dns`,
+  `notify_dns_a_change`, `notify_dns_aaaa_change`,
+  `notify_dns_ns_change`, `notify_dns_unreachable` (все bool,
+  default true).
+- Миграция `20260519_dns` (down_revision `20260517_ssl`).
+
+### Dependencies
+
+- `dnspython >= 2.6, < 3` — async DNS resolver.
+
+### Architectural
+
+- Новый ADR 032 — DNS monitoring rationale.
+- **Out of scope в v0.8.0** (future work): DNSSEC валидация (v0.9),
+  локальный unbound (v0.9), полноценная ASN-сборка (v0.8.x,
+  зависит от rir2localdb endpoint `/v1/ip/{addr}/asn`), adaptive
+  CDN learning (v0.8.x). ASN-фильтр в v0.8.0 — placeholder
+  (`enrich_with_asn` возвращает пустой list), любая смена IP даёт
+  уведомление.
+
 ## [0.7.0] — 2026-05-19
 
 ### Added — RIR/ASN lookup integration (Stage 13, [ADR 031](docs/decisions.md#031-universal-rirasn-lookup-client-rir2localdb-integration))

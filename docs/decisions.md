@@ -810,3 +810,163 @@ IP'шники пользователей не хотим.
 - В v0.7 client нигде не используется — это намеренно. v0.8
   применит его для DNS monitoring (новая таблица ``dns_cache``, новые
   per-domain toggles, новый scheduler с ASN-aware фильтрацией).
+
+
+## 032. DNS A/AAAA monitoring как параллельная подсистема
+
+### Контекст
+
+Этапы 1–13 покрывали мониторинг WHOIS (истечение регистрации, смена
+регистратора/NS/статусов/владельца) и SSL-сертификатов. Но между
+ними оставалось слепое пятно — **реальное состояние DNS-резолюции
+домена**. WHOIS-NS показывает что в registry, но не показывает что
+DNS отдаёт фактически. Сценарии, проходившие незамеченными:
+
+- **Угон через смену DNS** — атакующий меняет NS на уровне DNS,
+  registry-WHOIS ещё показывает старые NS какое-то время. Расхождение
+  DNS-NS vs WHOIS-NS — классический ранний сигнал.
+- **Domain takeover** — A-запись указывает на освобождённый IP
+  облачного провайдера, который злоумышленник зарегистрировал на
+  себя.
+- **Падение DNS** — NS-сервера перестали отвечать, домен не
+  резолвится, сайт недоступен. WHOIS этого не видит (регистрация
+  ещё валидна).
+- **Незавершённая миграция** — сменили хостинг, забыли обновить
+  часть записей, домен резолвится непредсказуемо.
+
+Параллельно в v0.7.0 (ADR 031) добавлен ``rir_client`` — он позволяет
+определять ASN каждого IP, что в перспективе даёт ASN-фильтрацию шума
+от CDN round-robin (Cloudflare и т. п. постоянно меняют IP в пределах
+своего ASN — это не настоящее изменение хостинга).
+
+### Решение
+
+Полностью **параллельная подсистема** к WHOIS и SSL, по тем же
+архитектурным паттернам что ADR 030 (SSL). Своя таблица ``dns_cache``,
+свои cron-задачи, свой scheduler с собственными adaptive-интервалами.
+
+| WHOIS | SSL | DNS |
+| --- | --- | --- |
+| ``whois_cache`` | ``ssl_cache`` | ``dns_cache`` |
+| ``WhoisData``/``WhoisError`` | ``SSLCertificate``/``SSLError`` | ``DNSRecords``/``DNSError`` |
+| ``whois.client`` | ``ssl.client.fetch_certificate`` | ``dns_monitor.resolve_records`` |
+| ``whois.scheduler`` | ``ssl.scheduler`` | ``dns_monitor.scheduler`` |
+| ``whois.diff`` | ``ssl.diff.compute_ssl_diff`` | ``dns_monitor.diff.compute_dns_diff`` |
+| ``tasks.check_domain`` | ``tasks.check_ssl`` | ``tasks.check_dns`` |
+| ``tasks.scheduler_tick`` | ``tasks.ssl_scheduler_tick`` | ``tasks.dns_scheduler_tick`` |
+| ``tasks.notify_changes`` | ``tasks.notify_ssl_changes`` | ``tasks.notify_dns_changes`` |
+
+DNS-резолвинг через **dnspython** (async resolver) с цепочкой external
+резолверов (Cloudflare ``1.1.1.1`` + Google ``8.8.8.8``). При сбое
+первого — fallback на следующий. Локальный unbound — future work для
+v0.9.
+
+Per-domain настройки (на ``UserDomain``):
+
+- ``track_dns`` (bool, default true) — kill-switch на мониторинг
+  целиком. False → домен не попадает в ``dns_scheduler_tick`` выборку.
+- ``notify_dns_a_change`` / ``notify_dns_aaaa_change`` — смена
+  A/AAAA-записей.
+- ``notify_dns_ns_change`` — гибридный toggle: обычная смена NS
+  (info) И расхождение DNS-NS vs WHOIS-NS (critical). Оба под одним
+  переключателем, но с разным тоном/эмодзи в сообщении.
+- ``notify_dns_unreachable`` — became_unreachable / became_reachable.
+
+### Технические инварианты
+
+- **First fetch не триггерит уведомлений** — ``compute_dns_diff(old=None)``
+  возвращает пустой diff (тот же инвариант что WHOIS и SSL). Покрывает
+  «только что включили мониторинг».
+- **became_unreachable — переход, не состояние** — проверяем
+  ``old.is_reachable``, иначе на каждом retry'е дубль.
+- **``invalid_domain`` / ``disabled`` НЕ считаются как unreachable** —
+  это конфигурационные проблемы, не сетевые (аналогия ``no_https``
+  в SSL).
+- **``is_muted`` имеет приоритет** — гасит и DNS-уведомления.
+- **NS-mismatch — отдельный persistent state**
+  (``dns_cache.ns_mismatch_active``) для transition detection
+  (``detected``/``resolved``) и для adaptive TTL.
+- **WHOIS-NS читается из колонки ``whois_cache.name_servers``**
+  (отдельная ARRAY(Text), не из ``raw_data``) — для
+  ``detect_ns_mismatch``.
+- **Sort-нормализация при сравнении** — A/AAAA/NS списки сортируются
+  перед diff, порядок не считается изменением.
+
+### Adaptive TTL для DNS-проверок
+
+В отличие от SSL (где интервал зависит от ``not_after``), у DNS нет
+«истечения». Критерии (``src.dns_monitor.scheduler``):
+
+| Условие | Интервал |
+| --- | --- |
+| ``ns_mismatch_active`` | 30 минут (critical state) |
+| ``fail_count >= 10`` | 24 часа (backoff) |
+| recent change < 24h, без ASN-смены | 6 часов (likely CDN) |
+| recent change < 24h, с ASN-сменой | 1 час (true critical) |
+| новый домен (no ``last_successful``) | 1 час |
+| стабильный | 1 день |
+
+### ASN-фильтрация (placeholder в v0.8.0)
+
+rir2localdb v0.1.1 не отдаёт IP→ASN маппинг (endpoint ``/v1/ip/{addr}``
+возвращает allocation, не ASN). Поэтому в v0.8.0 ``enrich_with_asn``
+возвращает пустой list, ``asn_set`` всегда пустой, ``last_change_was_asn``
+всегда False. ``compute_dns_diff`` работает без ASN-фильтра — любая
+смена IP даёт ``a_changed=True`` (больше CDN-шума, но не пропускаем
+реальные смены).
+
+В v0.8.x — координация с владельцем rir2localdb на добавление
+endpoint ``/v1/ip/{addr}/asn`` (через RPSL ``inetnum.origin``). После
+этого ASN-фильтр активируется БЕЗ изменений в коде ``dns_monitor`` /
+``check_dns``.
+
+### Альтернативы
+
+**Расширить ``ssl_cache`` или ``whois_cache`` колонками ``dns_*``.**
+Отказались: разная семантика, разные источники сбоев, разные
+интервалы. Сводить в одну таблицу = усложнение SQL без выигрыша
+(тот же аргумент что в ADR 030).
+
+**Прямой DNS:53 через сокеты без библиотеки.** Отказались: dnspython
+зрелый, async из коробки, DNSSEC-ready для v0.9, обработка edge-cases
+(truncation→TCP, EDNS) уже решена.
+
+**Локальный unbound с самого начала.** Отложили в v0.9. В v0.8.0
+external резолверы проще (нет system-level зависимости, нет нового
+сервиса на хосте). Privacy-минус (DNS-запросы уходят к Cloudflare/
+Google) приемлем — это публичные резолверы, и мы спрашиваем только
+публичные домены.
+
+**Внешний DNS API (Cloudflare Radar, DNS-over-HTTPS провайдеры).**
+Отказались: зависимость от SaaS, rate limits, privacy. dnspython +
+прямые UDP-запросы дешевле и под нашим контролем.
+
+### Следствия
+
+- ``UserDomain`` получил 5 новых колонок. Новая таблица ``dns_cache``
+  (PK ``domain``, ~14 колонок). Миграция ``20260519_dns``
+  (down_revision ``20260517_ssl``).
+- ARQ-воркер регистрирует 3 новых таски (``check_dns``,
+  ``dns_scheduler_tick``, ``send_dns_change_notice``) + 1 новый cron
+  (``dns_scheduler_tick``, каждые 5 минут — та же сетка что WHOIS/SSL).
+- ``/whois`` карточка дополнена DNS-блоком (``format_dns_block``); при
+  первой проверке домена ставится ``check_dns`` без ожидания тика.
+- Конфигуратор уведомлений расширен 5 DNS-toggle'ами (итого 14
+  toggle'ов).
+- Новая зависимость ``dnspython >= 2.6, < 3``.
+- Privacy: DNS-данные публичные (любой резолвер их отдаёт), логируем
+  без redaction (аналогия SSL).
+
+### Out of scope для v0.8.0
+
+- **DNSSEC валидация** — future work v0.9 (требует валидирующий
+  резолвер, обработка bogus/indeterminate). В v0.8 мы мониторим
+  записи, не проверяем DNSSEC-цепочку (та же философия «мониторим,
+  не валидируем» что в SSL ADR 030).
+- **Локальный unbound** — v0.9 (для приватности и кэширования).
+- **Полноценная ASN-сборка** — v0.8.x (зависит от rir2localdb upgrade).
+- **Adaptive CDN learning** — v0.8.x (детект «этот домен всегда меняет
+  IP в пределах ASN X» после 30 дней наблюдения, чтобы ещё агрессивнее
+  подавлять шум).
+- **``dns_reminders_scheduler``** — не нужен, у DNS нет «истечения»,
+  реактивных уведомлений из diff-цикла достаточно.

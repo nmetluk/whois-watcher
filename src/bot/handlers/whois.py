@@ -20,11 +20,16 @@ from redis.asyncio import Redis
 from src.bot.keyboards import WhoisAction, whois_actions
 from src.config.limits import Limits
 from src.db.models import User
-from src.db.repositories import DomainRepository, SSLCacheRepository, WhoisCacheRepository
+from src.db.repositories import (
+    DNSCacheRepository,
+    DomainRepository,
+    SSLCacheRepository,
+    WhoisCacheRepository,
+)
 from src.db.session import get_session
 from src.locales import t
 from src.services.domains import DomainService
-from src.services.formatters import format_ssl_block, format_whois_response
+from src.services.formatters import format_dns_block, format_ssl_block, format_whois_response
 from src.services.formatters_full import build_full_text_from_cache_row
 from src.services.whois_facade import WhoisFacade
 from src.utils.idn import from_punycode
@@ -107,11 +112,22 @@ async def _send_whois_card(
         if ssl_cache is None:
             await ssl_repo.upsert(result.data.domain)
             await arq_redis.enqueue_job("check_ssl", result.data.domain)
+        # ADR 032: DNS-блок аналогично — bootstrap + enqueue check_dns. Сама
+        # задача защищена redis-флагом dns_check_in_progress.
+        dns_repo = DNSCacheRepository(session)
+        dns_cache = await dns_repo.get(result.data.domain)
+        if dns_cache is None:
+            await dns_repo.upsert(result.data.domain)
+            await arq_redis.enqueue_job("check_dns", result.data.domain)
+        whois_ns = list(cached.name_servers or []) if cached is not None else None
 
     body = format_whois_response(result.data, lang=lang, fetched_at=fetched_at)
     ssl_block = format_ssl_block(ssl_cache, lang=lang)
     if ssl_block:
         body = body + "\n\n" + ssl_block
+    dns_block = format_dns_block(dns_cache, whois_ns=whois_ns, lang=lang)
+    if dns_block:
+        body = body + "\n\n" + dns_block
     if result.is_stale:
         body = t("errors.whois_stale", lang, days=result.stale_age_days) + "\n\n" + body
     await message.answer(

@@ -10,12 +10,18 @@ from __future__ import annotations
 import html
 from datetime import UTC, datetime
 
-from src.db.models import SSLCache, UserDomain, WhoisCache
+from src.db.models import DNSCache, SSLCache, UserDomain, WhoisCache
+from src.dns_monitor import detect_ns_mismatch
 from src.locales import t
 from src.utils.formatting import format_date, format_days_until, get_expiry_emoji
 from src.utils.idn import from_punycode
 from src.whois.status_format import format_statuses
 from src.whois.types import WhoisContact, WhoisData
+
+# Усечение длинных списков IP — Cloudflare и другие CDN отдают 20+ адресов,
+# карточка должна оставаться компактной.
+_MAX_A_RECORDS_SHOWN = 5
+_MAX_AAAA_RECORDS_SHOWN = 3
 
 
 def _display_domain(domain_punycode: str) -> str:
@@ -203,6 +209,85 @@ def format_ssl_block(
         ),
         "└ " + t("commands.whois.ssl_line_issuer", lang, issuer=html.escape(issuer)),
     ]
+    return "\n".join(lines)
+
+
+def _format_records_truncated(records: list[str], limit: int) -> str:
+    """Усечение и HTML-escape списка IP/NS для строки карточки."""
+    shown = records[:limit]
+    text = ", ".join(html.escape(r) for r in shown)
+    if len(records) > limit:
+        text += f" (+{len(records) - limit})"
+    return text
+
+
+def format_dns_block(
+    cache: DNSCache | None,
+    *,
+    whois_ns: list[str] | None,
+    lang: str,
+) -> str | None:
+    """DNS-блок для карточки ``/whois`` (Этап 14, ADR 032).
+
+    Возвращает ``None``, если данных нет (``last_checked_at is None``) или
+    состояние ``resolution_state='unknown'``. Иначе — компактный блок:
+
+    - ``resolved`` → tree-формат с A/AAAA/NS и подсветкой
+      DNS-NS ↔ WHOIS-NS (🚨 на mismatch, ✓ на совпадение)
+    - ``mx_only``/``no_dns`` → одна строка со статусом
+    - ``error`` или ``is_reachable=False`` → "DNS не отвечает"
+
+    ``whois_ns`` — список NS-серверов из ``whois_cache.name_servers``
+    (для ``detect_ns_mismatch``). ``None`` если WHOIS не успел отработать.
+    """
+    if cache is None or cache.last_checked_at is None:
+        return None
+
+    state = cache.resolution_state
+
+    if state == "unknown":
+        return None
+
+    if state == "error" or cache.is_reachable is False:
+        return t("commands.whois.dns_unreachable", lang)
+
+    if state == "mx_only":
+        return t("commands.whois.dns_mx_only", lang)
+
+    if state == "no_dns":
+        return t("commands.whois.dns_no_dns", lang)
+
+    # resolved — tree-формат. По контракту dns_monitor.types ``resolved`` =
+    # хотя бы один A или AAAA, но ns_records может быть пустым.
+    lines = [t("commands.whois.dns_section", lang)]
+
+    if cache.a_records:
+        records_text = _format_records_truncated(cache.a_records, _MAX_A_RECORDS_SHOWN)
+        lines.append("├ " + t("commands.whois.dns_line_a", lang, records=records_text))
+
+    if cache.aaaa_records:
+        records_text = _format_records_truncated(cache.aaaa_records, _MAX_AAAA_RECORDS_SHOWN)
+        lines.append("├ " + t("commands.whois.dns_line_aaaa", lang, records=records_text))
+
+    if cache.ns_records:
+        ns_text = ", ".join(html.escape(ns) for ns in cache.ns_records)
+        mismatch = bool(whois_ns) and detect_ns_mismatch(cache.ns_records, whois_ns or [])
+        if mismatch:
+            lines.append("├ " + t("commands.whois.dns_line_ns_mismatch", lang, records=ns_text))
+            registry_text = ", ".join(html.escape(n) for n in (whois_ns or []))
+            lines.append(
+                "└ " + t("commands.whois.dns_line_ns_registry", lang, records=registry_text)
+            )
+        else:
+            lines.append("└ " + t("commands.whois.dns_line_ns_ok", lang, records=ns_text))
+    elif len(lines) > 1 and lines[-1].startswith("├ "):
+        # Нет NS — переоформим последнюю строку (A или AAAA) на закрывающий префикс.
+        lines[-1] = "└ " + lines[-1][2:]
+
+    if len(lines) == 1:
+        # Заголовок без данных — лучше ничего не показывать.
+        return None
+
     return "\n".join(lines)
 
 

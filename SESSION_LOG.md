@@ -9,6 +9,125 @@
 
 ---
 
+## Session 2026-05-20 21:34 — Подэтап 14e: ADR + deploy + DNS live
+
+**Задача:** Финальный подэтап Этапа 14 / v0.8.0 — ADR 032,
+CHANGELOG entry, deploy в production, smoke-test. DNS-мониторинг
+становится live. Версию НЕ bump'аем (остаётся 0.7.0 до отдельного
+release-промпта после 24-48ч стабилизации).
+
+**Выполнено:**
+- ADR 032 в `docs/decisions.md` (полная структура: контекст,
+  решение с параллельной WHOIS/SSL/DNS таблицей, технические
+  инварианты, adaptive TTL bucket'ы, ASN placeholder ratio,
+  4 альтернативы с обоснованием отказа, следствия, out-of-scope
+  v0.8.0).
+- CHANGELOG `[Unreleased]` entry (full feature summary +
+  schema-сводка `dns_cache` + 5 `user_domains` колонок + миграция
+  `20260519_dns` + dependency `dnspython >= 2.6, < 3` +
+  architectural notes с future-work списком).
+- `bash scripts/deploy.sh` запущен — вышел с известным edge-case'ом
+  «Already up to date» (deploy скрипт diff'ит pre/post-pull HEAD,
+  а коммитим и деплоим с того же хоста — тот же edge-case что в
+  v0.7.0 релизе). Ручной rebuild по тем же шагам: build_info,
+  `docker compose build bot worker scheduler`, `alembic upgrade head`
+  (no-op — миграция была применена в 14a), `docker compose up -d
+  --force-recreate bot worker scheduler`.
+- Smoke-test:
+  - все 3 app-контейнера healthy, uptime 22-28 секунд (recreated)
+  - `get_app_version()` → `0.7.0` (не bump'нули как и планировали)
+  - `resolve_records('google.com')` → `DNSRecords` с 1 A-записью
+    `142.251.38.78`, 4 NS, `resolution_state=resolved`,
+    `resolver_used='1.1.1.1'`
+  - worker зарегистрировал **20 функций** включая `check_dns`,
+    `dns_scheduler_tick`, `send_dns_change_notice`
+  - scheduler стартовый тик: `dns_scheduler_tick: bootstrapped 16
+    new domain(s) → queued 16 domain(s)`
+  - `dns_cache` table: 16 строк, все `last_checked_at IS NOT NULL`,
+    14 в state `resolved`, 0 ns_mismatch
+
+**🚨 Критическая находка — bootstrap row treated as "old state":**
+
+При первом тике scheduler сначала bootstrap'ит `dns_cache` строки
+(`a_records=NULL`, `ns_records=NULL`, `last_checked_at=NULL`), затем
+`get_due_for_check` возвращает их в `check_dns`. В check_dns
+получаем `old = bootstrap row` (НЕ `None`), и `compute_dns_diff(old,
+new, ...)` считает: `sorted(old.a_records or [])` = `[]` против
+непустого `new.a_records` → `a_changed=True`. Аналогично для
+`ns_changed`. First-fetch guard в `compute_dns_diff` срабатывает
+только при `old is None`, но не при «old — sparse bootstrap row».
+
+**Результат в production**: 38 уведомлений ушло юзеру 2 за минуту
+после деплоя:
+
+  - `dns_ns_change`: 16 (по одному на каждый домен)
+  - `dns_a_change`: 15
+  - `dns_aaaa_change`: 7
+
+Каждое — false alert (не было реальной смены, просто бот первый
+раз увидел эти записи). На повторных тиках уведомлений уже не будет
+(после первого fetch'а кэш заполнен реальными данными). Но первая
+волна — спам.
+
+**Fix-направления** (требуют обсуждения):
+
+1. **В `compute_dns_diff`**: если `old.last_checked_at is None`
+   → вернуть пустой `DNSDiff()` (расширение first-fetch guard'а
+   за `old is None`). Минимально инвазивно, локально в pure-функции.
+2. **В `check_dns`**: если `old is not None and old.last_checked_at
+   is None` → skip enqueue notifications (но всё равно записать
+   данные в кэш).
+3. **В `dns_scheduler.py` bootstrap**: не делать INSERT'ы с
+   `next_check_at=now()` для существующих доменов; ставить
+   `next_check_at=now() + 5min` чтобы первый check прошёл уже после
+   того как scheduler пометит строку как «реально проверена».
+   Не сработает — bootstrap-строка всё равно создаётся с null records.
+
+Рекомендация: вариант **1** — самый чистый, защищает invariant
+в одном месте, легко тестируется.
+
+**Изменённые файлы:**
+- `docs/decisions.md` (+ADR 032, ~165 строк)
+- `CHANGELOG.md` (+`[Unreleased]` блок, ~52 строки)
+
+**Коммиты:**
+- `5285376` docs(dns): ADR 032 + CHANGELOG entry for DNS monitoring
+- `+1` docs(session): этот session log
+
+**Smoke-test результаты:**
+- Контейнеры healthy, свежий uptime ✓
+- Версия 0.7.0 (не bump'аем) ✓
+- `dns_scheduler_tick` в cron-логах ✓ (`bootstrapped 16 → queued 16`)
+- `resolve_records('google.com')` → `DNSRecords` с записями ✓
+- worker зарегистрировал DNS-таски ✓ (20 функций)
+- 🚨 Bootstrap false-alerts — 38 уведомлений ушло (см. выше)
+
+**Состояние Этапа 14:** код-полностью deployed, мониторинг **live**.
+Есть один открытый bug (bootstrap false-alerts), его fix не блокирует
+release v0.8.0 концептуально, но сам fix желательно закатать ДО
+release-тага, чтобы он попал в changelog.
+
+**Открытые вопросы / следующие шаги:**
+- **Bootstrap false-alerts fix** — короткий хотфикс-промпт перед
+  release (вариант 1 выше: `compute_dns_diff` возвращает пустой
+  diff если `old.last_checked_at is None`). Тест: новый кейс
+  в `test_dns_diff.py` + один в `test_check_dns_task.py`.
+- Наблюдение 24-48ч: смотреть admin-канал на предмет других
+  false-alerts (особенно `became_unreachable` на флапающих
+  резолверах, `a_changed` на CDN-доменах — это ожидаемый шум в
+  v0.8.0 без ASN-фильтра).
+- Release v0.8.0 — отдельный мини-промпт ПОСЛЕ хотфикса и 24-48ч
+  стабилизации (bump `pyproject.toml` 0.7.0 → 0.8.0, git tag
+  v0.8.0, GitHub Release page).
+- v0.8.x — реальная ASN-сборка после rir2localdb endpoint
+  `/v1/ip/{addr}/asn`.
+- v0.9 — DNSSEC + локальный unbound.
+
+**Затраченное время:** ~30 минут (включая ручной rebuild и
+расследование bootstrap-аномалии).
+
+---
+
 ## Session 2026-05-20 21:08 — Подэтап 14d: UI + локали
 
 **Задача:** Visible UX-слой для DNS-мониторинга (Этап 14 / v0.8.0,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from src.dns_monitor import (
     DNSError,
@@ -10,6 +11,11 @@ from src.dns_monitor import (
     compute_dns_diff,
     detect_ns_mismatch,
 )
+
+# Дефолт last_checked_at — непустой, чтобы существующие тесты
+# с реальным diff'ом продолжали работать. Bootstrap-тест передаёт
+# None явно.
+_DEFAULT_LAST_CHECKED = datetime(2026, 1, 1, tzinfo=UTC)
 
 
 @dataclass
@@ -21,6 +27,7 @@ class FakeDNSCache:
     ns_records: list[str] | None = None
     asn_set: list[int] | None = None
     is_reachable: bool | None = True
+    last_checked_at: datetime | None = _DEFAULT_LAST_CHECKED
 
 
 def _records(**kwargs) -> DNSRecords:
@@ -39,6 +46,32 @@ def test_first_fetch_old_none_returns_empty_diff() -> None:
     diff = compute_dns_diff(None, new, [])
     assert not diff.has_any_changes
     assert not diff.has_critical_changes
+
+
+def test_bootstrap_row_with_null_last_checked_no_changes() -> None:
+    """Sparse bootstrap-строка (``last_checked_at=None``) не триггерит
+    change-флаги при первой реальной проверке.
+
+    Регрессия 14e: ``dns_scheduler_tick`` bootstrap создавал строки
+    с NULL-записями и NULL ``last_checked_at``. ``compute_dns_diff``
+    видел ``old is not None`` и сравнивал ``sorted(None or []) = []``
+    с реальными записями → ложные ``a_changed`` / ``ns_changed`` /
+    ``aaaa_changed`` (в проде 38 уведомлений за один тик).
+    """
+    bootstrap_row = FakeDNSCache(
+        a_records=None,
+        aaaa_records=None,
+        ns_records=None,
+        last_checked_at=None,  # ключевой маркер bootstrap-строки
+        is_reachable=None,
+    )
+    new = _records(
+        a_records=["1.2.3.4"],
+        aaaa_records=["2001:db8::1"],
+        ns_records=["ns1.example.com."],
+    )
+    diff = compute_dns_diff(bootstrap_row, new, [])
+    assert not diff.has_any_changes, "bootstrap row must not trigger change notifications"
 
 
 # ---------------------------------------------------------------------

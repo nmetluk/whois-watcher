@@ -142,6 +142,66 @@ class TestFirstFetch:
         cache_repo.upsert.assert_awaited_once()
         arq_redis.enqueue_job.assert_not_called()
 
+    async def test_bootstrap_row_no_notifications(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """check_dns на свежей bootstrap-строке (last_checked_at=None)
+        не шлёт change-уведомлений — это первая реальная проверка.
+
+        Регрессия 14e: первый dns_scheduler_tick прислал 38 false-alerts
+        потому что bootstrap-строки с NULL-записями проходили
+        first-fetch guard в ``compute_dns_diff`` (там был только
+        ``if old is None``).
+        """
+        sync_redis = AsyncMock()
+        sync_redis.set.return_value = True
+        arq_redis = AsyncMock()
+        ctx = _ctx(sync_redis=sync_redis, arq_redis=arq_redis)
+
+        # Bootstrap-строка: запись существует, но не была проверена.
+        bootstrap_row = DNSCache(domain="example.com")
+        bootstrap_row.a_records = None
+        bootstrap_row.aaaa_records = None
+        bootstrap_row.ns_records = None
+        bootstrap_row.asn_set = None
+        bootstrap_row.resolution_state = "unknown"
+        bootstrap_row.is_reachable = None
+        bootstrap_row.resolver_used = None
+        bootstrap_row.ns_mismatch_active = False
+        bootstrap_row.fail_count = 0
+        bootstrap_row.last_error = None
+        bootstrap_row.last_checked_at = None
+        bootstrap_row.last_successful_check_at = None
+        bootstrap_row.last_changed_at = None
+        bootstrap_row.next_check_at = datetime(2026, 5, 20, 12, 0, tzinfo=UTC)
+
+        cache_repo = AsyncMock()
+        cache_repo.get.return_value = bootstrap_row
+        cache_repo.upsert = AsyncMock()
+
+        domain_repo = AsyncMock()
+        domain_repo.get_subscribers_for_domain.return_value = []
+
+        _patch_repos(
+            monkeypatch,
+            cache_repo=cache_repo,
+            domain_repo=domain_repo,
+            resolve_result=_make_records(a=["1.2.3.4"], ns=["ns1.example.com"]),
+        )
+
+        from src.tasks.check_dns import check_dns
+
+        await check_dns(ctx, "example.com")
+
+        # Данные записаны в кэш, но send_dns_change_notice НЕ enqueue'нут.
+        cache_repo.upsert.assert_awaited_once()
+        notify_calls = [
+            c
+            for c in arq_redis.enqueue_job.await_args_list
+            if c.args and c.args[0] == "send_dns_change_notice"
+        ]
+        assert (
+            notify_calls == []
+        ), f"bootstrap row must not enqueue notifications, got: {notify_calls}"
+
 
 class TestChangeDetection:
     async def test_a_change_enqueues_for_subscribers(self, monkeypatch: pytest.MonkeyPatch) -> None:

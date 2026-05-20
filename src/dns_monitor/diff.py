@@ -29,6 +29,8 @@ from typing import TYPE_CHECKING, Protocol
 from src.dns_monitor.types import DNSError, DNSResult
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from src.db.models import DNSCache
 
 
@@ -40,6 +42,7 @@ class _DNSCacheLike(Protocol):
     ns_records: list[str] | None
     asn_set: list[int] | None
     is_reachable: bool | None
+    last_checked_at: datetime | None
 
 
 @dataclass(slots=True, kw_only=True)
@@ -84,6 +87,14 @@ def compute_dns_diff(
     """Сравнивает старое состояние из БД и свежий resolve.
 
     ``old=None`` — первая проверка, пустой diff (first-fetch guard).
+    ``old.last_checked_at is None`` — sparse bootstrap-строка,
+    созданная ``dns_scheduler_tick`` до первого реального
+    ``check_dns``; тоже трактуется как "первая проверка". Без этой
+    ветки smoke-test 14e показал 38 ложных уведомлений
+    (NULL-записи сравнивались как пустой список против реального
+    резолва — давало ``a_changed``/``ns_changed``/``aaaa_changed``).
+    Аналогия: WHOIS first-fetch fix v0.3.0 и
+    ``not has_certificate`` в ``compute_ssl_diff``.
 
     NB: ``became_unreachable`` проверяется через ``old.is_reachable``
     — это ПЕРЕХОД, не состояние. На каждом retry в unreachable не
@@ -91,8 +102,8 @@ def compute_dns_diff(
     """
     diff = DNSDiff()
 
-    # First-fetch guard
-    if old is None:
+    # First-fetch guard — нет старого состояния либо bootstrap-row.
+    if old is None or old.last_checked_at is None:
         return diff
 
     # new — ошибка резолва

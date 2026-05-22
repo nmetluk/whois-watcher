@@ -64,6 +64,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`enrich_with_asn` возвращает пустой list), любая смена IP даёт
   уведомление.
 
+## [0.7.2] — 2026-05-22
+
+### Fixed
+
+- **`/wishlist` без аргумента** снова показывает список wishlist-доменов
+  (UX-регрессия из v0.7.1). FSM-prompt для пустого аргумента остаётся
+  только у команд с единственной операцией: `/add`, `/rmv`, `/check`,
+  `/notify`, `/unnotify`.
+
+### Documentation
+
+- **ADR 033** приведён в соответствие с реальностью: storage =
+  `MemoryStorage`, TTL обеспечивается middleware `clear_state_on_command`
+  вместо `RedisStorage(state_ttl=300)`. Добавлена секция Followup в
+  ADR и пункт в TODO.md → Tech debt для миграции на RedisStorage в v0.8.x.
+
 ## [0.7.1] — 2026-05-22
 
 ### Changed

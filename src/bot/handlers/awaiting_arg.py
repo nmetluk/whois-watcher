@@ -1,9 +1,13 @@
 """FSM-flow для команд с обязательным доменом-аргументом (ADR 033).
 
-Когда пользователь шлёт ``/add``, ``/rmv``, ``/check``, ``/notify``,
-``/unnotify`` или ``/wishlist`` без аргумента, соответствующий handler
-переводит сессию в ``AwaitingDomainArg.waiting`` и пишет prompt. Дальше
-работает этот роутер:
+Когда пользователь шлёт ``/add``, ``/rmv``, ``/check``, ``/notify``
+или ``/unnotify`` без аргумента, соответствующий handler переводит
+сессию в ``AwaitingDomainArg.waiting`` и пишет prompt. ``/wishlist``
+из этого flow выпадает: у него уже есть осмысленное поведение для
+пустого аргумента (показать список wishlist'а), и его собственный
+handler не ставит state.
+
+Дальше работает этот роутер:
 
 1. ``on_domain_input`` — FSM-text-handler. Валидирует ввод, кладёт пару
    ``(cmd, domain)`` в FSM-data под коротким токеном и показывает
@@ -29,7 +33,6 @@ from redis.asyncio import Redis
 from src.bot.handlers import add_remove
 from src.bot.handlers import check as check_handler
 from src.bot.handlers import notifications as notifications_handler
-from src.bot.handlers import wishlist as wishlist_handler
 from src.bot.keyboards import CmdArgCallback, cmd_arg_confirm_kb
 from src.bot.states import AwaitingDomainArg
 from src.bot.validators import extract_domain_from_text, is_valid_domain
@@ -45,9 +48,7 @@ router = Router(name="awaiting_arg")
 
 # Поддерживаемые команды + соответствующие handler-функции. Имена
 # совпадают с command-литералом в ``Command("...")``.
-SUPPORTED_COMMANDS: frozenset[str] = frozenset(
-    {"add", "rmv", "check", "notify", "unnotify", "wishlist"}
-)
+SUPPORTED_COMMANDS: frozenset[str] = frozenset({"add", "rmv", "check", "notify", "unnotify"})
 
 
 def _extract_domains(text: str) -> list[str]:
@@ -265,16 +266,6 @@ async def _dispatch(
             command=command,
             user=user,
             lang=lang,
-            state=state,
-        )
-    elif cmd == "wishlist":
-        await wishlist_handler.cmd_wishlist(
-            message=message,
-            command=command,
-            user=user,
-            lang=lang,
-            arq_redis=arq_redis,
-            limits=limits,
             state=state,
         )
 

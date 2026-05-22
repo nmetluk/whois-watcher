@@ -7,7 +7,8 @@
   prompt без чувствительной утечки.
 - ``on_confirm`` — stale-callback не падает, «no» чистит state, «yes»
   диспатчит правильный handler с правильными аргументами.
-- ``_dispatch`` — каждая из 6 команд маршрутизируется в нужную функцию.
+- ``_dispatch`` — каждая из 5 команд маршрутизируется в нужную функцию
+  (``/wishlist`` НЕ в FSM-flow с v0.7.2).
 """
 
 from __future__ import annotations
@@ -234,28 +235,25 @@ class TestOnConfirmStale:
 
 
 # ---------------------------------------------------------------------------
-# Dispatcher — все 6 команд
+# Dispatcher — все 5 команд (/wishlist выпал из FSM-flow в v0.7.2)
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
     "cmd",
-    ["add", "rmv", "check", "notify", "unnotify", "wishlist"],
+    ["add", "rmv", "check", "notify", "unnotify"],
 )
 class TestDispatcher:
     async def test_supported_command_routes(
         self, cmd: str, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Каждый из 6 cmd должен попадать в свой handler-функцию."""
+        """Каждый из 5 cmd должен попадать в свой handler-функцию."""
         from src.bot.handlers import (
             add_remove,
             notifications,
         )
         from src.bot.handlers import (
             check as check_module,
-        )
-        from src.bot.handlers import (
-            wishlist as wishlist_module,
         )
 
         # Замокаем все возможные target'ы. Только один из них должен быть
@@ -265,14 +263,12 @@ class TestDispatcher:
         cmd_check_mock = AsyncMock()
         cmd_notify_mock = AsyncMock()
         cmd_unnotify_mock = AsyncMock()
-        cmd_wishlist_mock = AsyncMock()
 
         monkeypatch.setattr(add_remove, "cmd_add", cmd_add_mock)
         monkeypatch.setattr(add_remove, "cmd_rmv", cmd_rmv_mock)
         monkeypatch.setattr(check_module, "cmd_check", cmd_check_mock)
         monkeypatch.setattr(notifications, "cmd_notify", cmd_notify_mock)
         monkeypatch.setattr(notifications, "cmd_unnotify", cmd_unnotify_mock)
-        monkeypatch.setattr(wishlist_module, "cmd_wishlist", cmd_wishlist_mock)
 
         message = MagicMock()
         await handler._dispatch(
@@ -293,7 +289,6 @@ class TestDispatcher:
             "check": cmd_check_mock,
             "notify": cmd_notify_mock,
             "unnotify": cmd_unnotify_mock,
-            "wishlist": cmd_wishlist_mock,
         }[cmd]
         others = [
             m
@@ -303,7 +298,6 @@ class TestDispatcher:
                 "check": cmd_check_mock,
                 "notify": cmd_notify_mock,
                 "unnotify": cmd_unnotify_mock,
-                "wishlist": cmd_wishlist_mock,
             }.items()
             if k != cmd
         ]
@@ -322,6 +316,9 @@ class TestDispatcher:
 class TestSupportedCommands:
     def test_supported_commands_set(self) -> None:
         assert (
-            frozenset({"add", "rmv", "check", "notify", "unnotify", "wishlist"})
-            == handler.SUPPORTED_COMMANDS
+            frozenset({"add", "rmv", "check", "notify", "unnotify"}) == handler.SUPPORTED_COMMANDS
         )
+
+    def test_wishlist_not_in_set(self) -> None:
+        """``/wishlist`` без аргумента показывает список — не FSM-flow (v0.7.2)."""
+        assert "wishlist" not in handler.SUPPORTED_COMMANDS

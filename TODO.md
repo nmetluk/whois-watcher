@@ -89,6 +89,14 @@ whois-подобную информацию по IP и ASN через REST API.
   и частоту считаем нормальными — сейчас только в коде
 - [ ] Release page для v0.6.1 на GitHub UI (сейчас только tag, без
   оформления). Не критично — для patch-релиза tag достаточно
+- [ ] **v0.8.x: миграция FSM с MemoryStorage на RedisStorage**. Сейчас
+      все FSM-states (`AwaitingDomainArg`, `ListSearchStates`,
+      `NotifyDaysStates`, `NotifySslDaysStates`, `DownloadStates`,
+      `SettingsStates`) хранятся в памяти процесса. State теряется при
+      рестарте бота; реального time-based TTL нет, он эмулируется
+      middleware `clear_state_on_command`. Переход на
+      `RedisStorage(state_ttl=300)` даст устойчивость к рестартам и
+      настоящий TTL. См. ADR 033 → Followup.
 
 ## Идеи на потом (не запланировано)
 

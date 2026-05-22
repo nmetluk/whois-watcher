@@ -17,7 +17,12 @@ from arq import ArqRedis
 from redis.asyncio import Redis
 
 from src.bot.handlers import ROUTERS
-from src.bot.middlewares import LocaleMiddleware, RateLimitMiddleware, UserRegisterMiddleware
+from src.bot.middlewares import (
+    ClearAwaitingArgOnCommand,
+    LocaleMiddleware,
+    RateLimitMiddleware,
+    UserRegisterMiddleware,
+)
 from src.config.limits import Limits
 from src.config.settings import Settings
 
@@ -60,14 +65,19 @@ def create_dispatcher(
     # 1. регистрация пользователя — должна быть первой, остальные читают user
     # 2. локаль — кладёт data["lang"], читает user.language
     # 3. rate limit — читает user
+    # 4. clear-awaiting-arg (ADR 033) — только для message-observer'а:
+    #    если пришла команда в состоянии AwaitingDomainArg.waiting, сбрасывает
+    #    state ДО routing'а, чтобы команда пошла своим обычным путём.
     user_register = UserRegisterMiddleware(settings)
     locale = LocaleMiddleware()
     rate_limit = RateLimitMiddleware(redis, limits)
+    clear_awaiting = ClearAwaitingArgOnCommand()
 
     for observer in (dp.message, dp.callback_query):
         observer.middleware(user_register)
         observer.middleware(locale)
         observer.middleware(rate_limit)
+    dp.message.middleware(clear_awaiting)
 
     for router in ROUTERS:
         dp.include_router(router)

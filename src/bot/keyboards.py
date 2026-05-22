@@ -121,6 +121,18 @@ class DownloadAction(CallbackData, prefix="dl"):
     action: str  # "add" | "cancel" | "show_invalid"
 
 
+class CmdArgCallback(CallbackData, prefix="cmdarg"):
+    """Подтверждение «выполнить /<cmd> <domain>?» в FSM-flow (ADR 033).
+
+    ``token`` — короткий идентификатор (uuid hex[:8]), по которому в
+    FSM-data ищется ``(cmd, domain)``. В callback_data сам домен не
+    кладём — лимит Telegram 64 байта не выдержит длинный IDN.
+    """
+
+    action: str  # "yes" | "no"
+    token: str
+
+
 class NotifyAction(CallbackData, prefix="notif"):
     """Действия из карточек уведомлений (Этап 5).
 
@@ -576,6 +588,21 @@ def ssl_expiry_notification(domain: str, *, lang: str) -> InlineKeyboardMarkup:
         callback_data=NotifyAction(action="mute", domain=domain).pack(),
     )
     builder.adjust(1)
+    return builder.as_markup()
+
+
+def cmd_arg_confirm_kb(token: str, *, lang: str) -> InlineKeyboardMarkup:
+    """Кнопки «✅ Да / ❌ Нет» для FSM-flow подтверждения (ADR 033)."""
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text=t("commands.cmd_arg.yes", lang),
+        callback_data=CmdArgCallback(action="yes", token=token).pack(),
+    )
+    builder.button(
+        text=t("commands.cmd_arg.no", lang),
+        callback_data=CmdArgCallback(action="no", token=token).pack(),
+    )
+    builder.adjust(2)
     return builder.as_markup()
 
 

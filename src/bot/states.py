@@ -66,3 +66,25 @@ class NotifySslDaysStates(StatesGroup):
     """
 
     waiting_for_days = State()
+
+
+class AwaitingDomainArg(StatesGroup):
+    """FSM-flow для команд с обязательным доменом-аргументом (ADR 033).
+
+    Когда пользователь шлёт ``/add``, ``/rmv``, ``/check``, ``/notify``,
+    ``/unnotify`` или ``/wishlist`` БЕЗ аргумента, бот переводит сессию
+    в это состояние и просит ввести домен следующим сообщением.
+
+    FSM-data: ``{"cmd": str, "token_map": dict[str, str]}``.
+
+    - ``cmd`` — какую команду выполнить после подтверждения. Хранится в
+      FSM-data, а не в имени state'а, чтобы один callback-handler
+      обслуживал все 6 команд.
+    - ``token_map`` — ``{uuid_short: domain}``, потому что Telegram
+      режет callback_data до 64 байт и длинный домен туда не влезет.
+      Карта (а не одно значение) разрешает пользователю несколько раз
+      ввести разные домены до подтверждения — старые токены становятся
+      stale, но не падают.
+    """
+
+    waiting = State()

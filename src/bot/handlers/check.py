@@ -8,11 +8,13 @@ from __future__ import annotations
 
 from aiogram import Router
 from aiogram.filters import Command, CommandObject
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from arq import ArqRedis
 from redis.asyncio import Redis
 
 from src.bot.handlers.whois import _send_whois_card
+from src.bot.states import AwaitingDomainArg
 from src.config.limits import Limits
 from src.db.models import User
 from src.locales import t
@@ -34,9 +36,13 @@ async def cmd_check(
     arq_redis: ArqRedis,
     redis: Redis[str],
     limits: Limits,
+    state: FSMContext,
 ) -> None:
     if not command.args:
-        await message.answer(t("errors.no_domain", lang))
+        # ADR 033.
+        await state.set_state(AwaitingDomainArg.waiting)
+        await state.update_data(cmd="check", token_map={})
+        await message.answer(t("commands.cmd_arg.prompt", lang, cmd="check"))
         return
     raw = command.args.strip().split()[0]
     try:

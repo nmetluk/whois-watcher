@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] — 2026-05-22
+
+### Changed
+
+- Команды `/add`, `/rmv`, `/check`, `/notify`, `/unnotify`,
+  `/wishlist` без аргумента теперь спрашивают домен и подтверждают
+  inline-кнопками если он пришёл отдельным сообщением (ADR 033).
+
+### Fixed
+
+- Убрана сухая ошибка `errors.no_domain` при пустом аргументе у
+  команд с обязательным доменом.
+
 ## [0.7.0] — 2026-05-19
 
 ### Added — RIR/ASN lookup integration (Stage 13, [ADR 031](docs/decisions.md#031-universal-rirasn-lookup-client-rir2localdb-integration))

@@ -97,6 +97,23 @@ LOCALE: dict[str, str] = {
     "cancel.done": "Cancelled.",
     "cancel.nothing": "Nothing to cancel.",
     # ------------------------------------------------------------------
+    # FSM-flow for missing-argument commands (ADR 033)
+    # ------------------------------------------------------------------
+    "commands.cmd_arg.prompt": "Send a domain for /{cmd}. /cancel to abort.",
+    "commands.cmd_arg.confirm": "Run <b>/{cmd} {domain}</b>?",
+    "commands.cmd_arg.yes": "✅ Yes",
+    "commands.cmd_arg.no": "❌ No",
+    "commands.cmd_arg.invalid": (
+        "<code>{input}</code> doesn't look like a domain. Try again or /cancel."
+    ),
+    "commands.cmd_arg.too_many": (
+        "Found multiple domains, I'll take the first: <code>{domain}</code>. "
+        "For bulk import use /download."
+    ),
+    "commands.cmd_arg.cancelled": "Cancelled.",
+    "commands.cmd_arg.executing": "Running /{cmd} {domain}…",
+    "commands.cmd_arg.stale": "No longer relevant.",
+    # ------------------------------------------------------------------
     # Inline buttons
     # ------------------------------------------------------------------
     "button.check_domain": "🌐 Check domain",

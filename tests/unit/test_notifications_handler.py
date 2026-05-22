@@ -41,16 +41,29 @@ def domain_repo() -> Iterator[MagicMock]:
         yield repo
 
 
+def _state() -> AsyncMock:
+    """FSMContext-мок с поддержкой set_state/update_data/clear/get_state."""
+    s = AsyncMock()
+    s.get_state = AsyncMock(return_value=None)
+    return s
+
+
 class TestCmdNotify:
-    async def test_without_arg_returns_error(self, domain_repo: MagicMock) -> None:
+    async def test_without_arg_enters_fsm_flow(self, domain_repo: MagicMock) -> None:
+        """ADR 033: пустой аргумент → переход в AwaitingDomainArg.waiting."""
         message = AsyncMock()
         cmd = MagicMock(args=None)
+        state = _state()
 
-        await handler.cmd_notify(message, cmd, _user(), "ru")
+        await handler.cmd_notify(message, cmd, _user(), "ru", state)
 
+        # State выставлен, prompt отправлен.
+        state.set_state.assert_awaited_once()
+        state.update_data.assert_awaited_once()
         message.answer.assert_awaited_once()
         text = message.answer.await_args.args[0]
-        assert "Укажите домен" in text
+        assert "домен" in text.lower()
+        # Бизнес-логика не вызывается.
         domain_repo.toggle_notifications.assert_not_called()
 
     async def test_enables_all_flags(self, domain_repo: MagicMock) -> None:
@@ -58,7 +71,7 @@ class TestCmdNotify:
         message = AsyncMock()
         cmd = MagicMock(args="example.ru")
 
-        await handler.cmd_notify(message, cmd, _user(), "ru")
+        await handler.cmd_notify(message, cmd, _user(), "ru", _state())
 
         domain_repo.toggle_notifications.assert_awaited_once_with(1, "example.ru", enabled=True)
         text = message.answer.await_args.args[0]
@@ -69,7 +82,7 @@ class TestCmdNotify:
         message = AsyncMock()
         cmd = MagicMock(args="example.ru")
 
-        await handler.cmd_notify(message, cmd, _user(), "ru")
+        await handler.cmd_notify(message, cmd, _user(), "ru", _state())
 
         text = message.answer.await_args.args[0]
         assert "не отслеживается" in text
@@ -81,7 +94,7 @@ class TestCmdUnnotify:
         message = AsyncMock()
         cmd = MagicMock(args="example.ru")
 
-        await handler.cmd_unnotify(message, cmd, _user(), "ru")
+        await handler.cmd_unnotify(message, cmd, _user(), "ru", _state())
 
         domain_repo.toggle_notifications.assert_awaited_once_with(1, "example.ru", enabled=False)
         # Кнопка «🔔 Включить обратно» должна быть приложена
@@ -94,7 +107,7 @@ class TestCmdUnnotify:
         message = AsyncMock()
         cmd = MagicMock(args="!!! not a domain !!!")
 
-        await handler.cmd_unnotify(message, cmd, _user(), "ru")
+        await handler.cmd_unnotify(message, cmd, _user(), "ru", _state())
 
         domain_repo.toggle_notifications.assert_not_called()
         text = message.answer.await_args.args[0]

@@ -111,6 +111,23 @@ LOCALE: dict[str, str] = {
     "cancel.done": "Действие отменено.",
     "cancel.nothing": "Нечего отменять.",
     # ------------------------------------------------------------------
+    # FSM-flow для команд без аргумента (ADR 033)
+    # ------------------------------------------------------------------
+    "commands.cmd_arg.prompt": "Введите домен для /{cmd}. /cancel — отмена.",
+    "commands.cmd_arg.confirm": "Выполнить <b>/{cmd} {domain}</b>?",
+    "commands.cmd_arg.yes": "✅ Да",
+    "commands.cmd_arg.no": "❌ Нет",
+    "commands.cmd_arg.invalid": (
+        "<code>{input}</code> не похоже на домен. Попробуйте ещё раз или /cancel."
+    ),
+    "commands.cmd_arg.too_many": (
+        "Найдено несколько доменов, возьму первый: <code>{domain}</code>. "
+        "Для массового импорта — /download."
+    ),
+    "commands.cmd_arg.cancelled": "Отменено.",
+    "commands.cmd_arg.executing": "Выполняю /{cmd} {domain}…",
+    "commands.cmd_arg.stale": "Уже не актуально.",
+    # ------------------------------------------------------------------
     # Inline-кнопки
     # ------------------------------------------------------------------
     "button.check_domain": "🌐 Проверить домен",

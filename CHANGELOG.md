@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-05-22
+
 ### Added — DNS A/AAAA monitoring (Stage 14, [ADR 032](docs/decisions.md#032-dns-aaaaa-monitoring-как-параллельная-подсистема))
 
 - **DNS-мониторинг** для всех отслеживаемых доменов: четвёртая ось

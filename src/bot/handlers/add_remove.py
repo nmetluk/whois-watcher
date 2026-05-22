@@ -11,10 +11,12 @@ import logging
 
 from aiogram import Router
 from aiogram.filters import Command, CommandObject
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from arq import ArqRedis
 from redis.asyncio import Redis
 
+from src.bot.states import AwaitingDomainArg
 from src.config.limits import Limits
 from src.db.models import User
 from src.db.repositories import DomainRepository, WhoisCacheRepository
@@ -42,10 +44,14 @@ async def cmd_add(
     arq_redis: ArqRedis,
     redis: Redis[str],
     limits: Limits,
+    state: FSMContext,
 ) -> None:
     """``/add <domain>`` — добавить домен в портфель пользователя."""
     if not command.args:
-        await message.answer(t("errors.no_domain", lang))
+        # ADR 033: переход в FSM-flow вместо сухой ошибки.
+        await state.set_state(AwaitingDomainArg.waiting)
+        await state.update_data(cmd="add", token_map={})
+        await message.answer(t("commands.cmd_arg.prompt", lang, cmd="add"))
         return
     domain_input = command.args.strip().split()[0]
 
@@ -91,10 +97,14 @@ async def cmd_rmv(
     lang: str,
     arq_redis: ArqRedis,
     limits: Limits,
+    state: FSMContext,
 ) -> None:
     """``/rmv <domain>`` — убрать домен из портфеля."""
     if not command.args:
-        await message.answer(t("errors.no_domain_with_list", lang))
+        # ADR 033.
+        await state.set_state(AwaitingDomainArg.waiting)
+        await state.update_data(cmd="rmv", token_map={})
+        await message.answer(t("commands.cmd_arg.prompt", lang, cmd="rmv"))
         return
     domain_input = command.args.strip().split()[0]
 

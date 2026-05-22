@@ -20,7 +20,11 @@
 14. ``version``      — скрытая ``/version`` (диагностика, не в меню/help)
 15. ``wishlist``     — ``/wishlist`` + callback'и уведомления «домен освободился»
 16. ``stubs``        — пустой роутер (зарезервирован под будущие команды)
-17. ``text``         — обработка не-команд (последний)
+17. ``awaiting_arg`` — FSM-flow для команд без аргумента (ADR 033). ВАЖНО:
+   должен идти ПОСЛЕ всех command-роутеров и ПЕРЕД ``text``-fallback'ом —
+   тогда команды разбираются обычным path'ом, а текст в state'е
+   подхватывается этим роутером, а не plain-text-роутером.
+18. ``text``         — обработка не-команд (последний)
 """
 
 from aiogram import Router
@@ -28,6 +32,7 @@ from aiogram import Router
 from src.bot.handlers import (
     add_remove,
     admin,
+    awaiting_arg,
     check,
     csv_export,
     delete_me,
@@ -64,6 +69,7 @@ ROUTERS: tuple[Router, ...] = (
     version.router,
     wishlist.router,
     stubs.router,
+    awaiting_arg.router,  # ADR 033 — FSM-flow для команд без аргумента
     text.router,
 )
 

@@ -19,7 +19,12 @@ from aiogram.types import BotCommand
 from src.bot.app import create_bot, create_dispatcher
 from src.bot.commands import COMMANDS_EN, COMMANDS_RU
 from src.bot.handlers import ROUTERS
-from src.bot.middlewares import LocaleMiddleware, RateLimitMiddleware, UserRegisterMiddleware
+from src.bot.middlewares import (
+    ClearAwaitingArgOnCommand,
+    LocaleMiddleware,
+    RateLimitMiddleware,
+    UserRegisterMiddleware,
+)
 from src.config.limits import get_limits
 from src.config.settings import get_settings
 
@@ -68,7 +73,7 @@ class TestDispatcherComposition:
         assert dispatcher["redis"] is _session_redis
 
     def test_middleware_chain_order(self, dispatcher: Dispatcher) -> None:
-        """Порядок middleware на ``dp.message``: user_register → locale → rate_limit."""
+        """``dp.message``: user_register → locale → rate_limit → clear_awaiting (ADR 033)."""
         chain = list(dispatcher.message.middleware._middlewares)
         # Проверяем именно типы — экземпляры создаются внутри create_dispatcher.
         types_in_order = [type(m) for m in chain]
@@ -76,6 +81,7 @@ class TestDispatcherComposition:
             UserRegisterMiddleware,
             LocaleMiddleware,
             RateLimitMiddleware,
+            ClearAwaitingArgOnCommand,
         ]
 
 

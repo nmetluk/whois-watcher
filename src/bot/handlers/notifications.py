@@ -21,10 +21,12 @@ import logging
 import idna
 from aiogram import F, Router
 from aiogram.filters import Command, CommandObject
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from arq import ArqRedis
 
 from src.bot.keyboards import NotifyAction, notify_enable_button
+from src.bot.states import AwaitingDomainArg
 from src.db.models import User
 from src.db.repositories import DomainRepository
 from src.db.session import get_session
@@ -49,10 +51,19 @@ def _notify_days_label(days: list[int]) -> str:
 
 
 @router.message(Command("notify"))
-async def cmd_notify(message: Message, command: CommandObject, user: User, lang: str) -> None:
+async def cmd_notify(
+    message: Message,
+    command: CommandObject,
+    user: User,
+    lang: str,
+    state: FSMContext,
+) -> None:
     """``/notify <domain>`` — включить уведомления для домена."""
     if not command.args:
-        await message.answer(t("errors.no_domain_with_list", lang))
+        # ADR 033.
+        await state.set_state(AwaitingDomainArg.waiting)
+        await state.update_data(cmd="notify", token_map={})
+        await message.answer(t("commands.cmd_arg.prompt", lang, cmd="notify"))
         return
     raw = command.args.strip().split()[0]
     normalized = _try_normalize(raw)
@@ -79,10 +90,19 @@ async def cmd_notify(message: Message, command: CommandObject, user: User, lang:
 
 
 @router.message(Command("unnotify"))
-async def cmd_unnotify(message: Message, command: CommandObject, user: User, lang: str) -> None:
+async def cmd_unnotify(
+    message: Message,
+    command: CommandObject,
+    user: User,
+    lang: str,
+    state: FSMContext,
+) -> None:
     """``/unnotify <domain>`` — выключить все уведомления для домена."""
     if not command.args:
-        await message.answer(t("errors.no_domain_with_list", lang))
+        # ADR 033.
+        await state.set_state(AwaitingDomainArg.waiting)
+        await state.update_data(cmd="unnotify", token_map={})
+        await message.answer(t("commands.cmd_arg.prompt", lang, cmd="unnotify"))
         return
     raw = command.args.strip().split()[0]
     normalized = _try_normalize(raw)

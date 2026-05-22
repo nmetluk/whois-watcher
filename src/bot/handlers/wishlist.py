@@ -24,25 +24,26 @@ import logging
 
 from aiogram import Router
 from aiogram.filters import Command, CommandObject
-from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from arq import ArqRedis
 from redis.asyncio import Redis
 
-from src.bot.keyboards import WishlistAction
-from src.bot.states import AwaitingDomainArg
+from src.bot.keyboards import WishlistAction, list_pagination
 from src.config.limits import Limits
 from src.db.models import User
 from src.db.repositories import DomainRepository, WhoisCacheRepository
 from src.db.session import get_session
 from src.locales import t
 from src.services.domains import DomainService
+from src.services.formatters import format_list_row
 from src.services.whois_facade import WhoisFacade
 from src.utils.idn import from_punycode, normalize_domain
 
 logger = logging.getLogger(__name__)
 
 router = Router(name="wishlist")
+
+_LIST_PAGE_SIZE = 50
 
 
 # ---------------------------------------------------------------------------
@@ -58,20 +59,15 @@ async def cmd_wishlist(
     lang: str,
     arq_redis: ArqRedis,
     limits: Limits,
-    state: FSMContext,
 ) -> None:
-    """``/wishlist`` — без аргумента запускает FSM-flow (ADR 033), с
-    аргументом добавляет домен в wishlist.
+    """``/wishlist`` без аргумента → список; с аргументом → добавить.
 
-    Просмотр текущего wishlist доступен через ``/list`` → фильтр
-    «🎯 Wishlist» (см. ``ListFilter(name="wishlist")``).
+    FSM-flow из ADR 033 НЕ применяется к этой команде — у неё уже есть
+    осмысленное поведение для пустого аргумента (показать список).
     """
     args = (command.args or "").strip()
     if not args:
-        # ADR 033.
-        await state.set_state(AwaitingDomainArg.waiting)
-        await state.update_data(cmd="wishlist", token_map={})
-        await message.answer(t("commands.cmd_arg.prompt", lang, cmd="wishlist"))
+        await _show_wishlist(message=message, user=user, lang=lang)
         return
     await _add_to_wishlist(
         message=message,
@@ -81,6 +77,35 @@ async def cmd_wishlist(
         arq_redis=arq_redis,
         limits=limits,
     )
+
+
+async def _show_wishlist(*, message: Message, user: User, lang: str) -> None:
+    async with get_session() as session:
+        domain_repo = DomainRepository(session)
+        rows, total = await domain_repo.list_with_whois_filtered(
+            user.id,
+            filter_type="wishlist",
+            limit=_LIST_PAGE_SIZE,
+            offset=0,
+        )
+
+    if not rows:
+        await message.answer(t("commands.wishlist.empty", lang))
+        return
+
+    header = t(
+        "commands.wishlist.header",
+        lang,
+        total=total,
+        page=1,
+        total_pages=max(1, (total + _LIST_PAGE_SIZE - 1) // _LIST_PAGE_SIZE),
+    )
+    body_rows = [format_list_row(user_domain, cache, lang=lang) for user_domain, cache in rows]
+    body = header + "\n\n" + "\n".join(body_rows)
+    keyboard = list_pagination(
+        0, max(1, (total + _LIST_PAGE_SIZE - 1) // _LIST_PAGE_SIZE), lang=lang
+    )
+    await message.answer(body, reply_markup=keyboard)
 
 
 async def _add_to_wishlist(

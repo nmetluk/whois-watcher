@@ -1,15 +1,15 @@
 ---
 id: TASK-0003
 title: Схема user_domains (registrable_domain, is_subdomain) + WHOIS-джойны
-status: open
+status: done
 milestone: v0.9.0
 adr: 035
 area: code
 depends_on: [TASK-0002]
-branch: ""
-owner: ""
-session: ""
-pr: ""
+branch: task/0003-subdomain-schema-whois-joins
+owner: claude-code
+session: docs/sessions/2026-05-29_task-0003_subdomain_schema.md
+pr: 3
 created: 2026-05-29
 ---
 

@@ -1,7 +1,7 @@
 """add registrable_domain and is_subdomain to user_domains
 
 Revision ID: 20260529_registrable_domain
-Revises: 20260519_dns_cache
+Revises: 20260519_dns
 Create Date: 2026-05-29 00:00:00.000000
 
 TASK-0003 (подэтап 2b) — схема поддоменов.
@@ -24,7 +24,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "20260529_registrable_domain"
-down_revision: str | None = "20260519_dns_cache"
+down_revision: str | None = "20260519_dns"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

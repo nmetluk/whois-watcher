@@ -1,15 +1,15 @@
 ---
 id: TASK-0002
 title: PSL — зависимость tldextract + src/utils/domains.py
-status: open
+status: completed
 milestone: v0.9.0
 adr: 035
 area: code
 depends_on: [TASK-0001]
-branch: ""
+branch: task/0002-psl-utils-domains
 owner: ""
-session: ""
-pr: ""
+session: 2026-05-28_task-0002_psutils_domains
+pr: "2"
 created: 2026-05-29
 ---
 

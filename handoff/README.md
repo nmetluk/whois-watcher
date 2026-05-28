@@ -95,7 +95,7 @@ git add handoff/ && git commit -m "task(NNNN): краткое название" 
 
 **Исполнитель — взять и сдать задачу:**
 ```
-git pull
+git checkout main && git pull --rebase origin main   # ОБЯЗАТЕЛЬНО: свежий main
 python scripts/handoff.py list --status open
 python scripts/handoff.py claim TASK-NNNN     # ставит claimed + создаёт ветку
 # ... работа, тесты, per-session отчёт в docs/sessions/ ...
@@ -106,6 +106,32 @@ git push -u origin task/NNNN-slug             # затем открыть PR
 **Архитектор — принять:**
 ревью PR → merge в `main`. После merge:
 `python scripts/handoff.py done TASK-NNNN` (или авто-проставление в CI).
+
+## Правила, нарушение которых ломает мерж (read this)
+
+Эти пункты выведены из реальных инцидентов на TASK-0002…0004. Нарушение
+любого превращает приём задачи в ручную операцию с риском потерять чужой
+код. Соблюдать строго:
+
+1. **Ветку резать ТОЛЬКО от свежего `main`.** Перед `claim` —
+   `git checkout main && git pull --rebase origin main`. Иначе ветка
+   тащит устаревшие файлы и при мерже **откатывает уже принятую работу**
+   предыдущих тасков (PSL, миграции, бухгалтерию). Это случилось трижды.
+2. **Статусы — только из набора** `open | claimed | in_review | blocked |
+   done`. НЕ `completed`. Менять статус только через
+   `scripts/handoff.py status`, не редактируя frontmatter руками
+   (CLI заодно пересобирает `INDEX.md` и валидирует).
+3. **`session:` — полный путь** `docs/sessions/SESSION-...md` (или
+   принятый `YYYY-MM-DD_task-NNNN_*.md`) **с расширением `.md`**.
+4. **Перед написанием миграции — узнать актуальный alembic-head.**
+   `down_revision` обязан точно совпадать с id последней миграции на
+   свежем `main` (см. `migrations/versions/`). Выдуманный id
+   (`..._dns_cache` вместо `..._dns`) ломает `alembic upgrade head`.
+   После добавления — проверить, что head единственный.
+5. **Не трогать handoff-бухгалтерию чужих тасков** (STATE/INDEX/чужие
+   `TASK-*.md`). Свой таск переводит исполнитель; `STATE.md` после merge
+   крупных кусков ведёт архитектор.
+6. **Один таск = одна ветка = один PR**, имя `task/NNNN-slug`.
 
 ## Что читать дальше
 

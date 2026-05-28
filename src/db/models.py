@@ -98,6 +98,7 @@ class UserDomain(Base):
         UniqueConstraint("user_id", "domain", name="uq_user_domains_user_domain"),
         Index("ix_user_domains_user_id", "user_id"),
         Index("ix_user_domains_domain", "domain"),
+        Index("ix_user_domains_registrable_domain", "registrable_domain"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -108,6 +109,10 @@ class UserDomain(Base):
     )
     # punycode-форма (нормализация на стороне приложения, см. utils/idn.py)
     domain: Mapped[str] = mapped_column(Text, nullable=False)
+    # registrable-домен (eTLD+1) — для WHOIS-джойнов. Для apex-доменов == domain.
+    registrable_domain: Mapped[str] = mapped_column(Text, nullable=False)
+    # Признак поддомена: True если domain != registrable_domain
+    is_subdomain: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
 
     # NULL = берём notify_days из users
     notify_days: Mapped[list[int] | None] = mapped_column(ARRAY(Integer), nullable=True)

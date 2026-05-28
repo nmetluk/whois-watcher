@@ -176,7 +176,7 @@ class DomainRepository(BaseRepository):
         """
         stmt = (
             select(UserDomain, WhoisCache)
-            .outerjoin(WhoisCache, WhoisCache.domain == UserDomain.domain)
+            .outerjoin(WhoisCache, WhoisCache.domain == UserDomain.registrable_domain)
             .where(UserDomain.user_id == user_id)
             .order_by(
                 WhoisCache.expires_at.asc().nulls_last(),
@@ -200,7 +200,7 @@ class DomainRepository(BaseRepository):
         """
         stmt = (
             select(UserDomain, WhoisCache)
-            .outerjoin(WhoisCache, WhoisCache.domain == UserDomain.domain)
+            .outerjoin(WhoisCache, WhoisCache.domain == UserDomain.registrable_domain)
             .where(UserDomain.user_id == user_id)
             .order_by(
                 WhoisCache.expires_at.asc().nulls_last(),
@@ -253,7 +253,7 @@ class DomainRepository(BaseRepository):
 
         base = (
             select(UserDomain, WhoisCache)
-            .outerjoin(WhoisCache, WhoisCache.domain == UserDomain.domain)
+            .outerjoin(WhoisCache, WhoisCache.domain == UserDomain.registrable_domain)
             .where(UserDomain.user_id == user_id)
         )
 
@@ -409,7 +409,7 @@ class DomainRepository(BaseRepository):
                 func.count().filter(UserDomain.added_at >= month_ago).label("added_month"),
             )
             .select_from(UserDomain)
-            .outerjoin(WhoisCache, WhoisCache.domain == UserDomain.domain)
+            .outerjoin(WhoisCache, WhoisCache.domain == UserDomain.registrable_domain)
             .where(UserDomain.user_id == user_id)
         )
 

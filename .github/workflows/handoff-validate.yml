@@ -1,0 +1,35 @@
+name: Handoff validate
+
+# Валидация handoff-задач и свежести доски INDEX.md. Кроссплатформенно
+# (чистый Python stdlib). Блокирующий гейт на PR — не даёт смержить
+# задачу с битым frontmatter, дублем id, status=done без session-отчёта
+# или устаревшим INDEX.md.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'handoff/**'
+      - 'scripts/handoff.py'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'handoff/**'
+      - 'scripts/handoff.py'
+      - 'docs/sessions/**'
+
+jobs:
+  validate:
+    name: Validate handoff tasks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate
+        run: python scripts/handoff.py validate

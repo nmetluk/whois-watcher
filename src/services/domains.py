@@ -28,6 +28,7 @@ from src.services.results import (
     RemoveDomainResult,
 )
 from src.services.whois_facade import WhoisFacade
+from src.utils.domains import registrable_domain as get_registrable_domain
 from src.utils.idn import normalize_domain
 from src.whois.types import WhoisData
 
@@ -73,6 +74,9 @@ class DomainService:
         if not is_valid_domain(normalized):
             return AddDomainResult(status="invalid_domain", normalized_domain=normalized)
 
+        # WHOIS-операции работаем по registrable-домену (eTLD+1)
+        registrable = get_registrable_domain(normalized)
+
         # Проверка лимита и дубля.
         current_count = await self._domains.count_by_user(user_id)
         if current_count >= self._limits.max_domains_per_user:
@@ -87,7 +91,7 @@ class DomainService:
             if existing.is_wishlist:
                 # Промоут wishlist → tracked
                 await self._domains.promote_from_wishlist(user_id, normalized)
-                cached = await self._cache.get(normalized)
+                cached = await self._cache.get(registrable)
                 return AddDomainResult(
                     status="promoted",
                     normalized_domain=normalized,
@@ -95,7 +99,7 @@ class DomainService:
                     notify_days_label=_format_days(notify_days),
                 )
             # Ужеtracked
-            cached = await self._cache.get(normalized)
+            cached = await self._cache.get(registrable)
             return AddDomainResult(
                 status="already_tracked",
                 normalized_domain=normalized,
@@ -106,8 +110,8 @@ class DomainService:
         # Вставка в user_domains.
         await self._domains.add(user_id, normalized)
 
-        # Что насчёт общего кэша?
-        cached = await self._cache.get(normalized)
+        # Что насчёт общего кэша? Ищем по registrable-домену.
+        cached = await self._cache.get(registrable)
         if cached is not None and cached.expires_at is not None:
             return AddDomainResult(
                 status="added",
@@ -116,9 +120,9 @@ class DomainService:
                 notify_days_label=_format_days(notify_days),
             )
 
-        # Кэша нет — заводим строку и ставим задачу.
-        await self._cache.upsert(normalized)  # пустая строка с PK
-        await self._facade.enqueue_check(normalized)
+        # Кэша нет — заводим строку и ставим задачу по registrable.
+        await self._cache.upsert(registrable)  # пустая строка с PK
+        await self._facade.enqueue_check(registrable)
         return AddDomainResult(
             status="added_pending",
             normalized_domain=normalized,
@@ -192,7 +196,11 @@ class DomainService:
         *,
         force_refresh: bool = False,
     ) -> FacadeResult:
-        """Делегирует в ``WhoisFacade.get_or_fetch`` с предварительной нормализацией."""
+        """Делегирует в ``WhoisFacade.get_or_fetch`` с предварительной нормализацией.
+
+        WHOIS-данные запрашиваются по registrable-домену (eTLD+1), чтобы
+        поддомены наследовали данные родителя.
+        """
         try:
             normalized = normalize_domain(domain_input)
         except (idna.IDNAError, ValueError, UnicodeError):
@@ -203,7 +211,9 @@ class DomainService:
                     domain=domain_input, error_type="parse_error", message="invalid domain"
                 )
             )
-        return await self._facade.get_or_fetch(normalized, force_refresh=force_refresh)
+        # WHOIS по registrable-домену
+        registrable = get_registrable_domain(normalized)
+        return await self._facade.get_or_fetch(registrable, force_refresh=force_refresh)
 
 
 # ---------------------------------------------------------------------------

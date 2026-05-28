@@ -493,6 +493,33 @@ class DomainRepository(BaseRepository):
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
+    async def promote_from_wishlist(self, user_id: int, domain: str) -> bool:
+        """Конвертирует wishlist-строку в обычное отслеживание.
+
+        ``is_wishlist=False`` + восстановление дефолтных флагов
+        ``notify_*`` из ``DEFAULT_NOTIFICATION_FLAGS``. SSL/DNS toggle'ы
+        не трогаем — ``add_to_wishlist`` их не гасит.
+
+        Возвращает True, если строка была wishlist и обновлена.
+        """
+        stmt = (
+            update(UserDomain)
+            .where(
+                and_(
+                    UserDomain.user_id == user_id,
+                    UserDomain.domain == domain,
+                    UserDomain.is_wishlist.is_(True),
+                )
+            )
+            .values(
+                is_wishlist=False,
+                **DEFAULT_NOTIFICATION_FLAGS,
+            )
+            .returning(UserDomain.id)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none() is not None
+
     async def update_notification_settings(
         self,
         user_id: int,

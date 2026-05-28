@@ -49,6 +49,7 @@ AddStatus = Literal[
     "added",  # успешно добавлено + есть свежие WHOIS-данные
     "added_pending",  # добавлено, данные подгружаются в фоне
     "already_tracked",  # домен уже у пользователя в списке
+    "promoted",  # промоут из wishlist в обычное отслеживание
     "limit_reached",  # достигнут MAX_DOMAINS_PER_USER
     "invalid_domain",  # не похоже на домен
 ]

@@ -66,7 +66,16 @@ class TestAddForUser:
     async def test_already_tracked_returns_cached(self) -> None:
         domain_repo = AsyncMock()
         domain_repo.count_by_user.return_value = 5
-        domain_repo.exists.return_value = True
+        # get_for_user возвращает обычную tracked-строку
+        domain_repo.get_for_user.return_value = UserDomain(
+            user_id=1,
+            domain="example.com",
+            is_wishlist=False,
+            notify_expiry=True,
+            notify_ns_change=False,
+            notify_registrar_change=True,
+            notify_status_change=True,
+        )
         cache_repo = AsyncMock()
         cache_repo.get.return_value = WhoisCache(
             domain="example.com",
@@ -87,7 +96,8 @@ class TestAddForUser:
         """Домен в общем кэше уже есть → status='added' + whois_data."""
         domain_repo = AsyncMock()
         domain_repo.count_by_user.return_value = 0
-        domain_repo.exists.return_value = False
+        # get_for_user возвращает None — домена нет у пользователя
+        domain_repo.get_for_user.return_value = None
         cache_repo = AsyncMock()
         cache_repo.get.return_value = WhoisCache(
             domain="example.com",
@@ -109,7 +119,8 @@ class TestAddForUser:
         """Домена нет в общем кэше → status='added_pending', задача в очереди."""
         domain_repo = AsyncMock()
         domain_repo.count_by_user.return_value = 0
-        domain_repo.exists.return_value = False
+        # get_for_user возвращает None — домена нет у пользователя
+        domain_repo.get_for_user.return_value = None
         cache_repo = AsyncMock()
         cache_repo.get.return_value = None
         facade = AsyncMock()
@@ -125,7 +136,8 @@ class TestAddForUser:
         """Запись в кэше есть, но expires_at=None → тоже pending (нужна свежая проверка)."""
         domain_repo = AsyncMock()
         domain_repo.count_by_user.return_value = 0
-        domain_repo.exists.return_value = False
+        # get_for_user возвращает None — домена нет у пользователя
+        domain_repo.get_for_user.return_value = None
         cache_repo = AsyncMock()
         cache_repo.get.return_value = WhoisCache(domain="example.com", expires_at=None)
         facade = AsyncMock()
@@ -140,7 +152,8 @@ class TestAddForUser:
         """``Example.COM`` → ``example.com``: проверяем нормализацию ввода."""
         domain_repo = AsyncMock()
         domain_repo.count_by_user.return_value = 0
-        domain_repo.exists.return_value = False
+        # get_for_user возвращает None — домена нет у пользователя
+        domain_repo.get_for_user.return_value = None
         cache_repo = AsyncMock()
         cache_repo.get.return_value = None
         service = _make_service(domain_repo=domain_repo, cache_repo=cache_repo)

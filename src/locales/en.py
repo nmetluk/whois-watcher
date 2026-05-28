@@ -279,6 +279,7 @@ LOCALE: dict[str, str] = {
         "\n"
         "Fetching WHOIS data, I'll send the result in a minute."
     ),
+    "commands.add.promoted_from_wishlist": "✅ {domain} moved from wishlist to regular tracking",
     "commands.add.already_tracked": "ℹ️ {domain} is already in your list",
     # ------------------------------------------------------------------
     # /rmv

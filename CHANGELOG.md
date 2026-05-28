@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] — 2026-05-28
+
+### Fixed — Wishlist ↔ tracking auto-promote (ADR 034)
+
+- **Промоут wishlist → tracked**: `/add` на домен, лежащий в wishlist,
+  теперь тихо конвертирует его в обычное отслеживание. Раньше такой домен
+  застревал в лимбо: невидим в `/list` (скрывался как wishlist) и не
+  конвертировался.
+- **Новый метод `DomainRepository.promote_from_wishlist`**: `UPDATE ...
+  WHERE is_wishlist=True` → `is_wishlist=False` + восстановление
+  дефолтных флагов `notify_*`. SSL/DNS toggle'ы не трогаем.
+- **Изменён `DomainService.add_for_user`**: теперь использует `get_for_user`
+  вместо `exists` для различения wishlist/tracked. Новый статус
+  `promoted` в `AddDomainResult`.
+- **Локализация**: добавлен ключ `commands.add.promoted_from_wishlist`
+  (ru/en).
+- **Тесты**: покрыты все ветки промоута (idempotency, new domain, already
+  tracked).
+
 ## [0.8.0] — 2026-05-22
 
 ### Added — DNS A/AAAA monitoring (Stage 14, [ADR 032](docs/decisions.md#032-dns-aaaaa-monitoring-как-параллельная-подсистема))

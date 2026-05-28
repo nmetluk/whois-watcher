@@ -292,6 +292,7 @@ LOCALE: dict[str, str] = {
         "\n"
         "Подгружаю WHOIS-данные, пришлю результат через минуту."
     ),
+    "commands.add.promoted_from_wishlist": "✅ {domain} перенесён из wishlist в обычное отслеживание",
     "commands.add.already_tracked": "ℹ️ {domain} уже у вас в списке",
     # ------------------------------------------------------------------
     # /rmv

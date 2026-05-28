@@ -1,15 +1,15 @@
 ---
 id: TASK-0001
 title: Багфикс wishlist ↔ tracked (авто-промоут)
-status: open
+status: done
 milestone: v0.8.1
 adr: 034
 area: code
 depends_on: []
-branch: ""
-owner: ""
-session: ""
-pr: ""
+branch: task/0001-wishlist-tracked-fix
+owner: claude-code
+session: docs/sessions/2026-05-28_task-0001_wishlist-tracked-fix.md
+pr: branch task/0001-wishlist-tracked-fix (FF-merged)
 created: 2026-05-28
 ---
 

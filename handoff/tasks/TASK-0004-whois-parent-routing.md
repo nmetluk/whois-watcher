@@ -1,15 +1,15 @@
 ---
 id: TASK-0004
 title: Маршрутизация WHOIS на registrable-родителя (facade/scheduler)
-status: open
+status: completed
 milestone: v0.9.0
 adr: 035
 area: code
 depends_on: [TASK-0003]
-branch: ""
+branch: task/0004-whois-parent-routing
 owner: ""
-session: ""
-pr: ""
+session: 2026-05-29_task-0004_whois_parent_routing
+pr: "4"
 created: 2026-05-29
 ---
 

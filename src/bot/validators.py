@@ -11,6 +11,7 @@ import re
 
 import idna
 
+from src.utils.domains import is_public_suffix_only
 from src.utils.idn import normalize_domain
 
 # Полный label: 1–63 символа, буквы/цифры/дефис, не начинается и не кончается дефисом.
@@ -71,6 +72,9 @@ def is_valid_domain(s: str) -> bool:
         return False
     # TLD не может состоять только из цифр (это IPv4-suffix или просто бред).
     if labels[-1].isdigit():
+        return False
+    # Отклоняем публичные суффиксы через PSL (co.uk, org.uk, ru и т.п.)
+    if is_public_suffix_only(normalized):
         return False
     return True
 

@@ -44,6 +44,10 @@ class TestIsValidDomain:
             "example.123",  # TLD из цифр
             ".example.com",  # пустой первый label
             "a" * 64 + ".com",  # label > 63
+            "co.uk",  # публичный суффикс (PSL)
+            "org.uk",  # публичный суффикс (PSL)
+            "ru",  # публичный суффикс (PSL)
+            "com",  # публичный суффикс (PSL)
         ],
     )
     def test_invalid(self, domain: str) -> None:

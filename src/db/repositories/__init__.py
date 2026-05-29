@@ -13,6 +13,7 @@
 from src.db.repositories.base import BaseRepository
 from src.db.repositories.dns_cache import DNSCacheRepository
 from src.db.repositories.domains import DomainRepository
+from src.db.repositories.email_intel_cache import EmailIntelCacheRepository
 from src.db.repositories.notifications import NotificationRepository
 from src.db.repositories.ssl_cache import SSLCacheRepository
 from src.db.repositories.users import UserRepository
@@ -22,6 +23,7 @@ __all__ = [
     "BaseRepository",
     "DNSCacheRepository",
     "DomainRepository",
+    "EmailIntelCacheRepository",
     "NotificationRepository",
     "SSLCacheRepository",
     "UserRepository",

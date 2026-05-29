@@ -169,6 +169,13 @@ class UserDomain(Base):
         Boolean, nullable=False, server_default=text("true")
     )
 
+    # Этап 15 (ADR 036): Email-intel мониторинг. ``track_email=False`` исключает
+    # домен из email_intel_scheduler — экономим ресурсы и не плодим уведомления.
+    track_email: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    notify_email_change: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+
     last_problem_notified_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -481,3 +488,90 @@ class DNSCache(Base):
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<DNSCache domain={self.domain!r} state={self.resolution_state!r}>"
+
+
+# ---------------------------------------------------------------------------
+# email_intel_cache (TASK-0015, ADR 036)
+# ---------------------------------------------------------------------------
+class EmailIntelCache(Base):
+    """Общий кэш email/policy-записей по доменам (ADR 036).
+
+    Параллельно ``whois_cache``, ``ssl_cache``, ``dns_cache``: одна запись
+    на домен (PK ``domain``), обслуживает всех подписчиков. Adaptive
+    ``next_check_at`` зависит от состояния (scheduler в ``src.email_intel.scheduler``).
+
+    Хранит разобранные данные:
+    - MX: список host+priority (JSONB)
+    - SPF: сырая запись + режим (all/sp=...)
+    - DMARC: policy, sp/p, pct
+    - DKIM: найденные селекторы
+    """
+
+    __tablename__ = "email_intel_cache"
+    __table_args__ = (Index("ix_email_intel_cache_next_check_at", "next_check_at"),)
+
+    domain: Mapped[str] = mapped_column(Text, primary_key=True)
+
+    # Scheduling
+    fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_successful_check_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    next_check_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    # Reachability
+    is_reachable: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+
+    # Email records
+    mx_records: Mapped[list[dict[str, Any]] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment='Список MX-записей [{"priority": 10, "host": "mail.example.com"}]',
+    )
+
+    # SPF
+    spf_record: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Сырая SPF-запись",
+    )
+    spf_mode: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Режим SPF: none, neutral, pass, fail, softfail, temperror, permerror",
+    )
+
+    # DMARC
+    dmarc_policy: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="DMARC policy: none, quarantine, reject",
+    )
+    dmarc_subpolicy: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="DMARC sp/p: none, quarantine, reject",
+    )
+    dmarc_pct: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        comment="DMARC pct (0-100), NULL = дефолт 100",
+    )
+
+    # DKIM
+    dkim_selectors: Mapped[list[str] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment="Список найденных DKIM-селекторов",
+    )
+
+    # Failure tracking
+    fail_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<EmailIntelCache domain={self.domain!r} mx={len(self.mx_records) if self.mx_records else 0}>"

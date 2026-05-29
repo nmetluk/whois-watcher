@@ -1,15 +1,15 @@
 ---
 id: TASK-0014
 title: Релиз v0.9.1 — починенная миграция + CI/mypy фиксы
-status: open
+status: claimed
 milestone: v0.9.1
 adr: ""
 area: docs
 depends_on: [TASK-0009]
-branch: ""
+branch: task/0014-release-v0-9-1
 owner: ""
 session: ""
-pr: ""
+pr: "9"
 created: 2026-05-29
 ---
 

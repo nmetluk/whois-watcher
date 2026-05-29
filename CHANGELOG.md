@@ -7,7 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] — 2026-05-29
+
+### Fixed
+
+- **Миграция `20260529_registrable_domain` теперь применяется на PostgreSQL**
+  — в v0.9.0 была дефектна из-за `server_default=sa.text("")` и backfill
+  `WHERE registrable_domain = ""` (пустая строка не NULL). В v0.9.1 миграция
+  исправлена: строковый литерал `''` в `server_default`, валидный backfill
+  на `IS NULL`, снятие `server_default` после заполнения (TASK-0008).
+- **`mypy`**: устранён type-narrowing в `src/bot/handlers/whois.py` — шаг
+  `mypy` в CI снова зелёный (TASK-0013).
+- **CI**: добавлен smoke-test Alembic-миграций на Postgres (`CI=1 pytest
+  tests/integration/test_migrations.py`); alembic больше не гасит логгеры
+  приложения (`disable_existing_loggers=False` в `migrations/env.py`);
+  миграционный тест изолирован в subprocess для корректной teardown
+  ресурсов (TASK-0009).
+
 ## [0.9.0] — 2026-05-29
+
+**Примечание:** Миграция `20260529_registrable_domain` в v0.9.0 была дефектна
+и не применялась на PostgreSQL. Исправлена в v0.9.1.
 
 Поддержка поддоменов и зон 3-го уровня через Public Suffix List
 ([ADR 035](docs/decisions.md)). WHOIS берётся у registrable-родителя
@@ -33,7 +53,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Миграция `20260529_registrable_domain`: в `user_domains` добавлены
   `registrable_domain` (Text, индекс `ix_user_domains_registrable_domain`)
   и `is_subdomain`. Backfill существующих строк: `registrable_domain =
-  domain`. Применяется на чистой БД без потерь.
+  domain`.
+
+  **Примечание:** В v0.9.0 миграция была дефектна и не применялась на
+  PostgreSQL. Исправлена в v0.9.1.
 
 ### Added — UX для поддоменов (TASK-0005, подэтап 2d)
 

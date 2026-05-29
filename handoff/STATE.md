@@ -41,22 +41,26 @@ v0.9.0: 0002→0003→0004→0005→0006 (аудит); все depend на TASK-0
 Аудит v0.9.0 (TASK-0006/0007) завершён. Отчёт + дополнение:
 `handoff/audits/AUDIT-2026-05-29-v0-9-0-poddomeny-psl.md`.
 
-⚠️ **Повторный аудит эскалировал ключевой finding до 🔴 critical.** Миграция
-`20260529_registrable_domain` **не применяется на PostgreSQL** (пустой
-`DEFAULT` от `sa.text("")` + backfill `WHERE registrable_domain = ""` с
-двойными кавычками = zero-length identifier — подтверждено offline-рендером
-alembic). Первичная оценка «medium / убрать server_default» неверна.
+✅ **Критичная часть аудита закрыта — можно тегать v0.9.0.** Смержены:
+**TASK-0008** (PR #6) — миграция `..._0000` починена in-place (`''`, валидный
+default + DROP DEFAULT; SQL валиден для Postgres); **TASK-0013** (PR #8) — mypy
+narrowing в whois.py, шаг `mypy` снова зелёный; **TASK-0009** (PR #7) — smoke-test
+миграций на Postgres в CI + `env.py disable_existing_loggers=False`, тест
+изолирован через subprocess. CI на main зелёный.
 
-⚠️ **PR #5 (первая попытка TASK-0008) отклонён** на ревью: исполнитель добавил
-новую миграцию `..._0001` поверх сломанной `..._0000` (не применяется), работал
-от устаревшего main. Переделать строго по обновлённой спеке в теле TASK-0008
-(блок «⛔ Ревью PR #5»): чинить `..._0000` in-place, новая ветка от свежего main.
+История фиксов (для контекста): первичный аудит занизил баг миграции до medium;
+повторный эскалировал до 🔴. PR #5 (band-aid `..._0001`) отклонён. В ходе
+TASK-0009 всплыли две неочевидные связки через глобальное состояние:
+alembic `fileConfig` гасил логгер локалей (→ caplog-тест) и in-process
+`asyncio.run`+asyncpg тёк сокетами/event loop (→ `filterwarnings=error` ронял
+сторонний тест) — обе закрыты.
 
-Очередь до тега v0.9.0: **TASK-0008** 🔴 (починить миграцию in-place) →
-**TASK-0009** 🟠 (CI smoke-test миграций на Postgres) → **TASK-0010** 🟡
-(tldextract: cache_dir + реальный no-network тест) → **TASK-0011** 🟢 (доки
-tldextract/PSL). **Тег v0.9.0 — только после TASK-0008.** Далее —
-**TASK-0012** дизайн ADR 036 (v0.10 domain intelligence).
+Остаётся (НЕ блокирует тег v0.9.0): **TASK-0010** 🟡 (tldextract: явный
+`cache_dir=None` + реальный no-network тест), **TASK-0011** 🟢 (доки
+tldextract/PSL). Далее — **TASK-0012** дизайн ADR 036 (v0.10 domain intelligence).
+
+**Рекомендация:** тегнуть **v0.9.0** (поднять версию в `pyproject.toml`,
+запись в `CHANGELOG.md`), затем добивать 0010/0011.
 
 ## Последняя сессия
 

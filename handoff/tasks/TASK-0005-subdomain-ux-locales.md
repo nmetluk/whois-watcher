@@ -1,15 +1,15 @@
 ---
 id: TASK-0005
 title: UX поддоменов — /whois, /add, /list, локали
-status: open
+status: done
 milestone: v0.9.0
 adr: 035
 area: code
 depends_on: [TASK-0004]
-branch: ""
-owner: ""
-session: ""
-pr: ""
+branch: task/0005-subdomain-ux-locales
+owner: claude-code
+session: docs/sessions/2026-05-29_task-0005_subdomain_ux.md
+pr: 5
 created: 2026-05-29
 ---
 

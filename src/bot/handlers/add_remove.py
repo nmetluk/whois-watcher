@@ -56,8 +56,14 @@ async def cmd_add(
         return
     domain_input = command.args.strip().split()[0]
 
-    # TASK-0005: проверка на публичный суффикс
-    if is_public_suffix_only(domain_input):
+    # TASK-0005: проверка на публичный суффикс. Мусорный ввод не должен
+    # ронять хэндлер — невалидное пусть обработается ниже штатно
+    # (idna.IDNAError — подкласс UnicodeError).
+    try:
+        is_suffix_only = is_public_suffix_only(domain_input)
+    except (ValueError, UnicodeError):
+        is_suffix_only = False
+    if is_suffix_only:
         await message.answer(t("errors.public_suffix_not_domain", lang))
         return
 

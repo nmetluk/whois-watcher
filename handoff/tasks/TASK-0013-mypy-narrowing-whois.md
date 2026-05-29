@@ -1,15 +1,15 @@
 ---
 id: TASK-0013
 title: Починить mypy type-narrowing в whois.py (красный CI с TASK-0005)
-status: claimed
+status: done
 milestone: v0.9.0
 adr: ""
 area: code
 depends_on: []
 branch: task/0013-mypy-narrowing-whois
 owner: claude
-session: "docs/sessions/2026-05-29_task-0013_mypy_narrowing_whois.md"
-pr: "https://github.com/nmetluk/whois-watcher/pull/8"
+session: docs/sessions/2026-05-29_task-0013_mypy_narrowing_whois.md
+pr: https://github.com/nmetluk/whois-watcher/pull/8
 created: 2026-05-29
 ---
 

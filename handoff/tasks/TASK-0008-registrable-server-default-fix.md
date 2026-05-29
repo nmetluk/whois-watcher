@@ -8,7 +8,7 @@ area: code
 depends_on: [TASK-0007]
 branch: ""
 owner: ""
-session: ""
+session: "docs/sessions/2026-05-29_task-0008_registrable_server_default.md"
 pr: ""
 created: 2026-05-29
 ---

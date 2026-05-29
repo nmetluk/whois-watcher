@@ -3,7 +3,7 @@
 **Дата:** 2026-05-30
 **Таск:** TASK-0015 — Схема email_intel_cache + toggle'ы уведомлений (ADR 036)
 **Ветка:** task/0015-email-intel-schema
-**PR:** (будет создан)
+**PR:** https://github.com/nmetluk/whois-watcher/pull/12
 **Статус:** done
 
 ## Кратко

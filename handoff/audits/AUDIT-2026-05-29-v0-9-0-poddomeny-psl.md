@@ -89,8 +89,53 @@ Findings: нет.
 
 ## Заведённые задачи по итогам
 
-- [TASK-0008](../tasks/TASK-0008-registrable-server-default-fix.md) — убрать server_default с registrable_domain в миграции (medium)
+- [TASK-0008](../tasks/TASK-0008-fix-registrable-migration.md) — починить
+  миграцию registrable_domain (🔴 эскалировано — см. дополнение ниже).
 
 ---
 
 **Вердикт:** Fix-then-go — исправить TASK-0008, затем тег v0.9.0.
+
+---
+
+## Дополнение — повторный аудит 2026-05-29 (эскалация finding'а)
+
+**Аудитор:** архитектор (Cowork) · **Коммит:** `9d51960` · сделано после
+первичного аудита по запросу владельца.
+
+Первичный аудит расценил проблему миграции как 🟡 **medium** («косметический
+рассинхрон `server_default`»). Повторная проверка через offline-рендер
+alembic показала, что это **🔴 critical: миграция вообще не применяется на
+PostgreSQL.** Реальный SQL, отправляемый в БД:
+
+```sql
+ALTER TABLE user_domains ADD COLUMN registrable_domain TEXT DEFAULT  NOT NULL;   -- пустой DEFAULT
+ALTER TABLE user_domains ADD COLUMN is_subdomain BOOLEAN DEFAULT false NOT NULL; -- корректно (контраст)
+UPDATE user_domains SET registrable_domain = domain WHERE registrable_domain = "";
+```
+
+1. `server_default=sa.text("")` → `DEFAULT  NOT NULL` (пустая клауза) —
+   невалидный DDL для Postgres. Соседний `is_subdomain` с `sa.text("false")`
+   рендерится корректно (`DEFAULT false`) — наглядный контраст.
+2. Backfill `WHERE registrable_domain = ""` — двойные кавычки в Postgres это
+   **идентификатор нулевой длины** → `ERROR: zero-length delimited identifier`.
+
+Предложенный первичным аудитом фикс (отдельной миграцией снять
+`server_default`) **не решает проблему** — он надстраивается над миграцией,
+которая не применяется. Корректный фикс — починить исходную миграцию
+in-place (`''` вместо `""`, валидный default + снятие после backfill).
+
+**Почему не поймано:** миграции не покрыты тестами (`conftest.py` к реальной
+БД не подключается), sqlite молча принимает `""` как строку и маскирует баг.
+
+**Скорректированный вердикт:** по-прежнему **fix-then-go**, но 🔴 — НЕ тегать
+v0.9.0 до починки миграции. Дополнительные findings (повторный аудит):
+
+- 🔴 **TASK-0008** (эскалирован) — починить миграцию registrable_domain.
+- 🟠 **TASK-0009** — smoke-test Alembic-миграций на Postgres в CI (корневая
+  причина, что баг прошёл «зелёный» CI; сервис postgres в `ci.yml` уже есть).
+- 🟡🟢 **TASK-0010** — tldextract: явный `cache_dir=None` (дефолт — реальный
+  путь, НЕ None, как ошибочно гласят код и оба аудита) + реальный no-network
+  тест (текущий сеть не блокирует).
+- 🟢 **TASK-0011** — доки: tldextract/PSL в `CLAUDE.md` и `architecture.md`.
+- (forward) **TASK-0012** — дизайн ADR 036, domain intelligence v0.10.

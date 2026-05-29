@@ -20,8 +20,8 @@ RIR/ASN-фундамент. Введён новый рабочий процес�
 | Этап | Релиз | ADR | Состояние |
 |------|-------|-----|-----------|
 | Багфикс wishlist ↔ tracked | v0.8.1 | 034 ✅ | TASK-0001 done, **релиз v0.8.1 выпущен** |
-| Поддомены / PSL / DNS-SSL у поддомена | v0.9.0 | 035 ✅ | TASK-0002…0005 done (merged); код v0.9.0 готов; аудит 0006 → релиз |
-| Domain intelligence (MX/SPF/DKIM/DMARC, subdomain enum) | v0.10+ | 036 | дизайн |
+| Поддомены / PSL / DNS-SSL у поддомена | v0.9.0 | 035 ✅ | код done; аудит выявил 🔴 в миграции → блок тега до TASK-0008 (0008-0011) |
+| Domain intelligence (MX/SPF/DKIM/DMARC, subdomain enum) | v0.10+ | 036 | дизайн (TASK-0012) |
 
 ADR 034 и 035 дописаны в `docs/decisions.md`. Цепочка зависимостей
 v0.9.0: 0002→0003→0004→0005→0006 (аудит); все depend на TASK-0001.
@@ -38,27 +38,32 @@ v0.9.0: 0002→0003→0004→0005→0006 (аудит); все depend на TASK-0
 
 ## Следующий шаг
 
-Аудит v0.9.0 (TASK-0006/0007) завершён. Отчёт:
+Аудит v0.9.0 (TASK-0006/0007) завершён. Отчёт + дополнение:
 `handoff/audits/AUDIT-2026-05-29-v0-9-0-poddomeny-psl.md`.
 
-Найден один **medium** finding: рассинхрон server_default в миграции
-`20260529_registrable_domain` vs модель `UserDomain`. Заведён
-TASK-0008 — убрать server_default отдельной миграцией.
+⚠️ **Повторный аудит эскалировал ключевой finding до 🔴 critical.** Миграция
+`20260529_registrable_domain` **не применяется на PostgreSQL** (пустой
+`DEFAULT` от `sa.text("")` + backfill `WHERE registrable_domain = ""` с
+двойными кавычками = zero-length identifier — подтверждено offline-рендером
+alembic). Первичная оценка «medium / убрать server_default» неверна.
 
-После закрытия TASK-0008 — тег v0.9.0.
+Очередь до тега v0.9.0: **TASK-0008** 🔴 (починить миграцию in-place) →
+**TASK-0009** 🟠 (CI smoke-test миграций на Postgres) → **TASK-0010** 🟡
+(tldextract: cache_dir + реальный no-network тест) → **TASK-0011** 🟢 (доки
+tldextract/PSL). **Тег v0.9.0 — только после TASK-0008.** Далее —
+**TASK-0012** дизайн ADR 036 (v0.10 domain intelligence).
 
 ## Последняя сессия
 
-**2026-05-29 — TASK-0006/0007 (аудит v0.9.0)**
+**2026-05-29 — повторный аудит v0.9.0 (эскалация)**
 
-Проведён комплексный аудит раздела v0.9.0 (поддомены/PSL). Проверены:
-безопасность (tldextract supply-chain, оффлайн-режим), архитектура
-(ADR 035, registrable_domain), производительность (индексы, N+1),
-тесты (74 passed), кроссплатформенность, документация.
-
-Отчёт: `handoff/audits/AUDIT-2026-05-29-v0-9-0-poddomeny-psl.md`.
-
-Finding: рассинхрон server_default в миграции/модели → TASK-0008.
+После первичного аудита (TASK-0006/0007, вывод «один medium») по запросу
+владельца проведён повторный проход. Offline-рендером alembic подтверждено,
+что миграция registrable_domain **не применяется на Postgres** — finding
+эскалирован medium → 🔴 critical. TASK-0008 переписан и расширен (починка
+миграции, не косметика). Заведены TASK-0009/0010/0011 (CI-тест миграций,
+tldextract hardening, доки) и forward-таск TASK-0012 (ADR 036).
+Дополнение к отчёту — в `handoff/audits/AUDIT-2026-05-29-v0-9-0-poddomeny-psl.md`.
 
 ## Открытые вопросы
 

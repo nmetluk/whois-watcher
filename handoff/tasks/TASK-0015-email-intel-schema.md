@@ -1,12 +1,12 @@
 ---
 id: TASK-0015
 title: Схема email_intel_cache + toggle'ы уведомлений (ADR 036)
-status: open
+status: claimed
 milestone: v0.10.0
 adr: 036
 area: code
 depends_on: [TASK-0012]
-branch: ""
+branch: task/0015-email-intel-schema
 owner: ""
 session: ""
 pr: ""

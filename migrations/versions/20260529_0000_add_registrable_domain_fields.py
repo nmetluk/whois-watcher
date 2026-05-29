@@ -31,13 +31,14 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     # Добавляем колонки (NOT NULL с дефолтом, чтобы существующие строки не помирали)
+    # registrable_domain: дефолт — пустая строка как строковый литерал ''
     op.add_column(
         "user_domains",
         sa.Column(
             "registrable_domain",
             sa.Text(),
             nullable=False,
-            server_default=sa.text(""),
+            server_default=sa.text("''"),
         ),
     )
     op.add_column(
@@ -51,9 +52,13 @@ def upgrade() -> None:
     )
 
     # Backfill: для существующих строк registrable_domain = domain
+    # Используем одинарные кавычки для строкового литерала (PostgreSQL)
     op.execute(
-        sa.text('UPDATE user_domains SET registrable_domain = domain WHERE registrable_domain = ""')
+        sa.text("UPDATE user_domains SET registrable_domain = domain WHERE registrable_domain = ''")
     )
+
+    # После backfill снимаем server_default — модель его не имеет
+    op.alter_column("user_domains", "registrable_domain", server_default=None)
 
     # Добавляем индекс на registrable_domain для WHOIS-джойнов
     op.create_index(

@@ -15,6 +15,8 @@ from urllib.parse import quote_plus
 import alembic.command
 import alembic.config
 import pytest
+from alembic.migration import MigrationContext
+from sqlalchemy import create_engine
 
 
 def _get_postgres_url() -> str | None:
@@ -87,25 +89,34 @@ def test_migrations_roundtrip(alembic_cfg: alembic.config.Config) -> None:
     - downgrade is reversible (no orphan objects).
     - Exactly one alembic head (no branching).
     """
+
+    # Helper to get current revision from DB (not filesystem)
+    def get_db_revision() -> str | None:
+        url = alembic_cfg.get_main_option("sqlalchemy.url")
+        assert url is not None  # for mypy
+        engine = create_engine(url)
+        with engine.begin() as connection:
+            context = MigrationContext.configure(connection)
+            return context.get_current_revision()
+
     # Clean slate: stamp base (no actual tables yet)
     alembic.command.stamp(alembic_cfg, "base", purge=True)
 
     # Upgrade to latest
     alembic.command.upgrade(alembic_cfg, "head")
 
-    # Verify single head (no split branches) via script directory
-    script = alembic.script.ScriptDirectory.from_config(alembic_cfg)
-    current_head = script.get_current_head()
-    assert current_head is not None, "Expected a current head after upgrade"
+    # Verify we're at head (non-None revision in DB)
+    current_rev = get_db_revision()
+    assert current_rev is not None, "Expected a current revision after upgrade"
 
     # Downgrade back to base
     alembic.command.downgrade(alembic_cfg, "base")
 
-    # Verify we're back at base
-    current_head = script.get_current_head()
-    assert current_head is None, f"Expected None at base, got: {current_head}"
+    # Verify we're back at base (None in DB)
+    current_rev = get_db_revision()
+    assert current_rev is None, f"Expected None at base, got: {current_rev}"
 
     # Upgrade again (round-trip)
     alembic.command.upgrade(alembic_cfg, "head")
-    current_head = script.get_current_head()
-    assert current_head is not None, "Round-trip failed: expected a head after final upgrade"
+    current_rev = get_db_revision()
+    assert current_rev is not None, "Round-trip failed: expected a revision after final upgrade"

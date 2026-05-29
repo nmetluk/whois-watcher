@@ -9,7 +9,7 @@ depends_on: []
 branch: task/0013-mypy-narrowing-whois
 owner: claude
 session: ""
-pr: ""
+pr: "https://github.com/nmetluk/whois-watcher/pull/8"
 created: 2026-05-29
 ---
 

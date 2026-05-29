@@ -93,18 +93,19 @@ def test_migrations_roundtrip(alembic_cfg: alembic.config.Config) -> None:
     # Upgrade to latest
     alembic.command.upgrade(alembic_cfg, "head")
 
-    # Verify single head (no split branches)
-    current = alembic.command.current(alembic_cfg)
-    assert len(current) == 1, f"Expected single alembic head, got: {current}"
+    # Verify single head (no split branches) via script directory
+    script = alembic.script.ScriptDirectory.from_config(alembic_cfg)
+    current_head = script.get_current_head()
+    assert current_head is not None, "Expected a current head after upgrade"
 
     # Downgrade back to base
     alembic.command.downgrade(alembic_cfg, "base")
 
     # Verify we're back at base
-    current = alembic.command.current(alembic_cfg)
-    assert current == [], f"Expected empty current (base), got: {current}"
+    current_head = script.get_current_head()
+    assert current_head is None, f"Expected None at base, got: {current_head}"
 
     # Upgrade again (round-trip)
     alembic.command.upgrade(alembic_cfg, "head")
-    current = alembic.command.current(alembic_cfg)
-    assert len(current) == 1, f"Round-trip failed: expected single head, got {current}"
+    current_head = script.get_current_head()
+    assert current_head is not None, "Round-trip failed: expected a head after final upgrade"

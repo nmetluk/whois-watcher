@@ -41,9 +41,10 @@ def _get_postgres_url() -> str | None:
 def alembic_cfg() -> alembic.config.Config:
     """Alembic config pointing to the migrations directory.
 
-    Configured for **synchronous** execution (alembic.command.* uses sync DBAPI),
-    despite our runtime using asyncpg. This is correct: migration tests run
-    in CI with a live Postgres, not in the async bot process.
+    Configured for async execution (env.py uses async_engine_from_config),
+    matching our runtime stack. sqlalchemy.url set here gets overridden
+    by env.py → settings.postgres_dsn, but this ensures the config object
+    isn't empty before alembic loads env.py.
     """
     # Use alembic.ini from repo root (tests run from project root via pytest)
     cfg = alembic.config.Config("alembic.ini")
@@ -55,9 +56,7 @@ def alembic_cfg() -> alembic.config.Config:
     # Override sqlalchemy.url to the ephemeral CI Postgres (not production)
     db_url = _get_postgres_url()
     if db_url:
-        # Strip asyncpg+ → postgresql+ for alembic (sync driver required)
-        sync_url = db_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
-        cfg.set_main_option("sqlalchemy.url", sync_url)
+        cfg.set_main_option("sqlalchemy.url", db_url)
 
     return cfg
 

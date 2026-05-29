@@ -1,14 +1,14 @@
 ---
 id: TASK-0006
 title: Комплексный аудит v0.9.0 (поддомены/PSL)
-status: open
+status: done
 milestone: v0.9.0
 adr: 035
 area: audit
 depends_on: [TASK-0005]
 branch: ""
 owner: ""
-session: ""
+session: "docs/sessions/2026-05-29_audit-v0-9-0.md"
 pr: ""
 created: 2026-05-29
 ---

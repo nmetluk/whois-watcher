@@ -1,15 +1,15 @@
 ---
 id: TASK-0010
 title: Hardening tldextract — cache_dir, комментарий, no-network тест
-status: claimed
+status: done
 milestone: v0.9.2
 adr: 035
 area: code
 depends_on: [TASK-0007]
 branch: task/0010-tldextract-hardening
 owner: ""
-session: ""
-pr: ""
+session: docs/sessions/2026-05-29_task-0010_tldextract_hardening.md
+pr: https://github.com/nmetluk/whois-watcher/pull/10
 created: 2026-05-29
 ---
 

@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.9.0] — 2026-05-29
 
+Поддержка поддоменов и зон 3-го уровня через Public Suffix List
+([ADR 035](docs/decisions.md)). WHOIS берётся у registrable-родителя
+(eTLD+1), а DNS и SSL отслеживаются у самого поддомена. Реализовано
+подэтапами TASK-0002…0005.
+
+### Added — Public Suffix List и registrable-домен (ADR 035, подэтапы 2a–2c)
+
+- **Зависимость `tldextract`** с bundled-снапшотом PSL в оффлайн-режиме
+  (без сетевого автофетча, `include_psl_private_domains=False`). Покрывает
+  `co.uk`, `org.uk`, `com.br` и тысячи многоуровневых зон из коробки.
+- **Модуль `src/utils/domains.py`**: `registrable_domain` (eTLD+1),
+  `is_subdomain`, `is_public_suffix_only`, `split_domain` — чистые
+  функции на punycode-форме, без сети.
+- **WHOIS у родителя**: `a.pinbetting.ru` больше не показывается как
+  «свободен», если занят `pinbetting.ru`. WHOIS-операции (кэш, scheduler,
+  `lookup`) маршрутизируются по registrable-домену; несколько поддоменов
+  одного родителя делят один `whois_cache`-row. DNS/SSL — по самому
+  поддомену.
+
+### Database
+
+- Миграция `20260529_registrable_domain`: в `user_domains` добавлены
+  `registrable_domain` (Text, индекс `ix_user_domains_registrable_domain`)
+  и `is_subdomain`. Backfill существующих строк: `registrable_domain =
+  domain`. Применяется на чистой БД без потерь.
+
 ### Added — UX для поддоменов (TASK-0005, подэтап 2d)
 
 - **Поддомены в `/whois`**: при вводе поддомена (например `a.pinbetting.ru`)

@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-05-29
+
+### Added — UX для поддоменов (TASK-0005, подэтап 2d)
+
+- **Поддомены в `/whois`**: при вводе поддомена (например `a.pinbetting.ru`)
+  показывается баннер «🔎 a.pinbetting.ru — поддомен pinbetting.ru.
+  WHOIS показан для родителя», карточка WHOIS родителя, DNS/SSL-блоки
+  для поддомена.
+- **Поддомены в `/add`**: добавление поддомена создаёт запись с корректными
+  `registrable_domain`, `is_subdomain=true`, `track_dns=true`,
+  `track_ssl=true`. `notify_expiry` работает от родителя.
+- **Поддомены в `/list`**: поддомены помечаются значком `↳` и показывают
+  родительский expiry.
+- **Отклонение публичного суффикса**: ввод чистого публичного суффикса
+  (`co.uk`, `.ru` и т.п.) теперь возвращает специфичную ошибку
+  `errors.public_suffix_not_domain` вместо общего `invalid_domain`.
+- **Локализация**: новые ключи `commands.whois.subdomain_banner`,
+  `commands.add.subdomain_added`, `errors.public_suffix_not_domain`,
+  `subdomain_mark` в `/list` (ru/en).
+- **Тесты**: покрыты валидация публичных суффиксов, определение поддоменов,
+  разбиение доменов на компоненты, пометка поддоменов в `/list`.
+
+### Changed
+
+- **`format_list_row`**: теперь всегда передаёт `subdomain_mark` в шаблоны
+  `row_known` и `row_unknown` для корректного отображения поддоменов.
+
 ## [0.8.1] — 2026-05-28
 
 ### Fixed — Wishlist ↔ tracking auto-promote (ADR 034)

@@ -25,6 +25,7 @@ from src.locales import t
 from src.services.domains import DomainService
 from src.services.formatters import format_add_success
 from src.services.whois_facade import WhoisFacade
+from src.utils.domains import is_public_suffix_only
 from src.utils.idn import from_punycode
 
 logger = logging.getLogger(__name__)
@@ -54,6 +55,11 @@ async def cmd_add(
         await message.answer(t("commands.cmd_arg.prompt", lang, cmd="add"))
         return
     domain_input = command.args.strip().split()[0]
+
+    # TASK-0005: проверка на публичный суффикс
+    if is_public_suffix_only(domain_input):
+        await message.answer(t("errors.public_suffix_not_domain", lang))
+        return
 
     async with get_session() as session:
         domain_repo = DomainRepository(session)

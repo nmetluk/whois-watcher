@@ -12,6 +12,12 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from src.db.models import UserDomain, WhoisCache
 from src.db.repositories.base import BaseRepository
+from src.utils.domains import (
+    is_subdomain as is_domain_subdomain,
+)
+from src.utils.domains import (
+    registrable_domain as get_registrable_domain,
+)
 from src.utils.idn import from_punycode, to_punycode
 
 # Дефолтные значения флагов уведомлений (ADR 012).
@@ -65,8 +71,18 @@ class DomainRepository(BaseRepository):
 
         Вызывающая сторона должна заранее проверить ``exists`` и лимит:
         репозиторий пробросит ``IntegrityError`` при нарушении UNIQUE.
+
+        Заполняет ``registrable_domain`` и ``is_subdomain`` через PSL.
         """
-        row = UserDomain(user_id=user_id, domain=domain, note=note)
+        registrable = get_registrable_domain(domain)
+        is_sub = is_domain_subdomain(domain)
+        row = UserDomain(
+            user_id=user_id,
+            domain=domain,
+            registrable_domain=registrable,
+            is_subdomain=is_sub,
+            note=note,
+        )
         self.session.add(row)
         await self.session.flush()
         await self.session.refresh(row)
@@ -79,7 +95,15 @@ class DomainRepository(BaseRepository):
         фактическое количество вставленных строк (``ON CONFLICT DO NOTHING``
         отсеет уже добавленные).
         """
-        rows = [{"user_id": user_id, "domain": d} for d in domains]
+        rows = [
+            {
+                "user_id": user_id,
+                "domain": d,
+                "registrable_domain": get_registrable_domain(d),
+                "is_subdomain": is_domain_subdomain(d),
+            }
+            for d in domains
+        ]
         if not rows:
             return 0
         stmt = (
@@ -437,11 +461,15 @@ class DomainRepository(BaseRepository):
         ставим ``is_wishlist=True`` поверх (и выключаем notify_*, чтобы не
         дублировать с tracking).
         """
+        registrable = get_registrable_domain(domain)
+        is_sub = is_domain_subdomain(domain)
         stmt = (
             pg_insert(UserDomain)
             .values(
                 user_id=user_id,
                 domain=domain,
+                registrable_domain=registrable,
+                is_subdomain=is_sub,
                 is_wishlist=True,
                 notify_expiry=False,
                 notify_ns_change=False,

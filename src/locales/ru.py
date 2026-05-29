@@ -243,6 +243,7 @@ LOCALE: dict[str, str] = {
         "❌ Укажите домен. Пример: /unnotify example.com\nЧтобы посмотреть домены: /list"
     ),
     "errors.invalid_domain": "❌ Не похоже на домен. Пример: example.com",
+    "errors.public_suffix_not_domain": "❌ Это публичный суффикс (co.uk, .ru и т.п.), а не домен.",
     "errors.not_in_list": "❌ Этот домен не отслеживается",
     "errors.limit_reached": (
         "❌ Достигнут лимит {limit} доменов. Удалите ненужные через /rmv или /list."
@@ -294,6 +295,11 @@ LOCALE: dict[str, str] = {
     ),
     "commands.add.promoted_from_wishlist": "✅ {domain} перенесён из wishlist в обычное отслеживание",
     "commands.add.already_tracked": "ℹ️ {domain} уже у вас в списке",
+    "commands.add.subdomain_added": "✅ {domain} добавлен на слежение (поддомен {parent})",
+    # ------------------------------------------------------------------
+    # /whois
+    # ------------------------------------------------------------------
+    "commands.whois.subdomain_banner": "🔎 {subdomain} — поддомен {parent}\n\nWHOIS показан для родителя.",
     # ------------------------------------------------------------------
     # /rmv
     # ------------------------------------------------------------------
@@ -371,8 +377,8 @@ LOCALE: dict[str, str] = {
     # ------------------------------------------------------------------
     # /list — строка
     # ------------------------------------------------------------------
-    "commands.list.row_known": "{emoji} {domain} — {days_until} ({date}){muted}",
-    "commands.list.row_unknown": "{emoji} {domain} — нет данных{muted}",
+    "commands.list.row_known": "{emoji} {subdomain_mark}{domain} — {days_until} ({date}){muted}",
+    "commands.list.row_unknown": "{emoji} {subdomain_mark}{domain} — нет данных{muted}",
     "commands.list.row_wishlist": "🎯 {domain} — жду освобождения",
     "commands.list.muted_suffix": " 🔕",
     "commands.list.unknown_value": "—",

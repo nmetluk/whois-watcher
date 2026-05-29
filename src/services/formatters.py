@@ -135,10 +135,17 @@ def format_list_row(
     """Одна строка списка ``/list``: эмодзи + домен + дни до истечения + 🔕.
 
     Wishlist-домены (Этап 9) рендерятся отдельным шаблоном — иконка 🎯
-    и подпись «жду освобождения», без дней до истечения.
+    и подпись «жу освобождения», без дней до истечения.
+
+    Поддомены (TASK-0005) помечаются значком `↳` и показывают родительский expiry.
     """
     moment = now if now is not None else datetime.now(tz=UTC)
     display = _display_domain(user_domain.domain)
+
+    # Поддомен — добавляем значок ↳
+    is_sub = getattr(user_domain, "is_subdomain", False)
+    subdomain_mark = "↳ " if is_sub else ""
+
     if getattr(user_domain, "is_wishlist", False):
         return t("commands.list.row_wishlist", lang, domain=display)
 
@@ -153,6 +160,7 @@ def format_list_row(
             emoji=emoji,
             domain=display,
             muted=muted_suffix,
+            subdomain_mark=subdomain_mark,
         )
     days_left, days_text = format_days_until(cache.expires_at, lang=lang, now=moment)
     return t(
@@ -163,6 +171,7 @@ def format_list_row(
         days_until=days_text,
         date=format_date(cache.expires_at, lang=lang),
         muted=muted_suffix,
+        subdomain_mark=subdomain_mark,
     )
 
 

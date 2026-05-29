@@ -32,6 +32,7 @@ from src.services.domains import DomainService
 from src.services.formatters import format_dns_block, format_ssl_block, format_whois_response
 from src.services.formatters_full import build_full_text_from_cache_row
 from src.services.whois_facade import WhoisFacade
+from src.utils.domains import is_public_suffix_only, is_subdomain, registrable_domain
 from src.utils.idn import from_punycode
 
 logger = logging.getLogger(__name__)
@@ -64,6 +65,10 @@ async def cmd_whois(
         await message.answer(t("errors.no_domain", lang))
         return
     domain_input = command.args.strip().split()[0]
+    # TASK-0005: проверка на публичный суффикс
+    if is_public_suffix_only(domain_input):
+        await message.answer(t("errors.public_suffix_not_domain", lang))
+        return
     await _send_whois_card(
         message=message,
         domain_input=domain_input,
@@ -100,39 +105,68 @@ async def _send_whois_card(
                 t("errors.whois_failed", lang, domain=from_punycode(domain_input), reason=reason)
             )
             return
-        is_tracked = await domain_repo.exists(user.id, result.data.domain)
+
+        # TASK-0005: определяем поддомен
+        is_sub = is_subdomain(domain_input)
+        parent = registrable_domain(domain_input) if is_sub else None
+        lookup_domain = parent if is_sub else result.data.domain
+
+        is_tracked = await domain_repo.exists(user.id, lookup_domain)
         # ``fetched_at`` для «откуда данные» — берём из самой свежей записи кэша.
-        cached = await cache_repo.get(result.data.domain)
+        cached = await cache_repo.get(lookup_domain)
         fetched_at = cached.fetched_at if cached is not None else None
         # ADR 030: SSL-блок берём из общего ssl_cache. Если данных ещё нет —
         # планируем фоновую проверку, чтобы карточка в следующий раз показала
         # сертификат. Сама задача защищена от задвоения redis-флагом.
         ssl_repo = SSLCacheRepository(session)
-        ssl_cache = await ssl_repo.get(result.data.domain)
+        # TASK-0005: для поддоменов берём SSL из поддомена, а не родителя
+        ssl_target = domain_input if is_sub else lookup_domain
+        ssl_cache = await ssl_repo.get(ssl_target)
         if ssl_cache is None:
-            await ssl_repo.upsert(result.data.domain)
-            await arq_redis.enqueue_job("check_ssl", result.data.domain)
+            await ssl_repo.upsert(ssl_target)
+            await arq_redis.enqueue_job("check_ssl", ssl_target)
         # ADR 032: DNS-блок аналогично — bootstrap + enqueue check_dns. Сама
         # задача защищена redis-флагом dns_check_in_progress.
         dns_repo = DNSCacheRepository(session)
-        dns_cache = await dns_repo.get(result.data.domain)
+        # TASK-0005: для поддоменов берём DNS из поддомена, а не родителя
+        dns_target = domain_input if is_sub else lookup_domain
+        dns_cache = await dns_repo.get(dns_target)
         if dns_cache is None:
-            await dns_repo.upsert(result.data.domain)
-            await arq_redis.enqueue_job("check_dns", result.data.domain)
+            await dns_repo.upsert(dns_target)
+            await arq_redis.enqueue_job("check_dns", dns_target)
         whois_ns = list(cached.name_servers or []) if cached is not None else None
 
-    body = format_whois_response(result.data, lang=lang, fetched_at=fetched_at)
+    # Формируем тело карточки
+    body_parts = []
+    # TASK-0005: баннер для поддомена
+    if is_sub and parent:
+        body_parts.append(
+            t(
+                "commands.whois.subdomain_banner",
+                lang,
+                subdomain=from_punycode(domain_input),
+                parent=from_punycode(parent),
+            )
+        )
+        body_parts.append("")
+
+    body_parts.append(format_whois_response(result.data, lang=lang, fetched_at=fetched_at))
     ssl_block = format_ssl_block(ssl_cache, lang=lang)
     if ssl_block:
-        body = body + "\n\n" + ssl_block
+        body_parts.append(ssl_block)
     dns_block = format_dns_block(dns_cache, whois_ns=whois_ns, lang=lang)
     if dns_block:
-        body = body + "\n\n" + dns_block
+        body_parts.append(dns_block)
     if result.is_stale:
-        body = t("errors.whois_stale", lang, days=result.stale_age_days) + "\n\n" + body
+        body_parts.insert(
+            0 if not is_sub else 2,
+            t("errors.whois_stale", lang, days=result.stale_age_days),
+        )
+
+    body = "\n\n".join(body_parts)
     await message.answer(
         body,
-        reply_markup=whois_actions(result.data.domain, is_tracked=is_tracked, lang=lang),
+        reply_markup=whois_actions(lookup_domain, is_tracked=is_tracked, lang=lang),
     )
 
 

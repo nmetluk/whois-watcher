@@ -229,6 +229,7 @@ LOCALE: dict[str, str] = {
         "❌ Specify a domain. Example: /unnotify example.com\nTo list your domains: /list"
     ),
     "errors.invalid_domain": "❌ Doesn't look like a domain. Example: example.com",
+    "errors.public_suffix_not_domain": "❌ This is a public suffix (co.uk, .ru, etc.), not a domain.",
     "errors.not_in_list": "❌ This domain is not being tracked",
     "errors.limit_reached": (
         "❌ Reached the limit of {limit} domains. Remove unused ones via /rmv or /list."
@@ -281,6 +282,7 @@ LOCALE: dict[str, str] = {
     ),
     "commands.add.promoted_from_wishlist": "✅ {domain} moved from wishlist to regular tracking",
     "commands.add.already_tracked": "ℹ️ {domain} is already in your list",
+    "commands.add.subdomain_added": "✅ {domain} added (subdomain of {parent})",
     # ------------------------------------------------------------------
     # /rmv
     # ------------------------------------------------------------------
@@ -356,11 +358,12 @@ LOCALE: dict[str, str] = {
     "commands.whois.source_just_now": "ℹ️ Fetched: just now",
     "commands.whois.source_cached": "ℹ️ From cache, updated {ago}",
     "commands.whois.free": "🌐 {domain} — not registered\n\nThe domain is available for registration.",
+    "commands.whois.subdomain_banner": "🔎 {subdomain} — subdomain of {parent}\n\nWHOIS is shown for the parent domain.",
     # ------------------------------------------------------------------
     # /list — row template
     # ------------------------------------------------------------------
-    "commands.list.row_known": "{emoji} {domain} — {days_until} ({date}){muted}",
-    "commands.list.row_unknown": "{emoji} {domain} — no data{muted}",
+    "commands.list.row_known": "{emoji} {subdomain_mark}{domain} — {days_until} ({date}){muted}",
+    "commands.list.row_unknown": "{emoji} {subdomain_mark}{domain} — no data{muted}",
     "commands.list.row_wishlist": "🎯 {domain} — waiting for it to drop",
     "commands.list.muted_suffix": " 🔕",
     "commands.list.unknown_value": "—",

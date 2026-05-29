@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock
 import pytest
 
 from src.db.models import UserDomain, WhoisCache
-from src.db.repositories.domains import DEFAULT_NOTIFICATION_FLAGS
 from src.services.domains import DomainService
 
 
@@ -153,9 +152,7 @@ class TestPromoteFromWishlist:
         cache_repo = AsyncMock()
         cache_repo.get.return_value = None
         facade = AsyncMock()
-        service = _make_service(
-            domain_repo=domain_repo, cache_repo=cache_repo, facade=facade
-        )
+        service = _make_service(domain_repo=domain_repo, cache_repo=cache_repo, facade=facade)
 
         result = await service.add_for_user(
             user_id=1, notify_days=[30, 7, 1], domain_input="newdomain.com"

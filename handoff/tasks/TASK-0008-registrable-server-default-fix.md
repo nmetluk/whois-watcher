@@ -1,15 +1,15 @@
 ---
 id: TASK-0008
 title: Убрать server_default с registrable_domain в миграции
-status: open
+status: claimed
 milestone: v0.9.0
 adr: ""
 area: code
 depends_on: [TASK-0007]
-branch: ""
+branch: task/0008-registrable-server-default-fix
 owner: ""
-session: "docs/sessions/2026-05-29_task-0008_registrable_server_default.md"
-pr: ""
+session: docs/sessions/2026-05-29_task-0008_registrable_server_default.md
+pr: https://github.com/nmetluk/whois-watcher/pull/5
 created: 2026-05-29
 ---
 

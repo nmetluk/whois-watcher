@@ -112,10 +112,17 @@ async def _send_whois_card(
             )
             return
 
+        # Mypy narrowing: после проверки выше result.data гарантированно не None
+        assert result.data is not None
+
         # TASK-0005: определяем поддомен
         is_sub = is_subdomain(domain_input)
         parent = registrable_domain(domain_input) if is_sub else None
-        lookup_domain = parent if is_sub else result.data.domain
+        # Явное разделение для mypy narrowing (ternary не работает)
+        if is_sub:
+            lookup_domain = registrable_domain(domain_input)
+        else:
+            lookup_domain = result.data.domain
 
         is_tracked = await domain_repo.exists(user.id, lookup_domain)
         # ``fetched_at`` для «откуда данные» — берём из самой свежей записи кэша.

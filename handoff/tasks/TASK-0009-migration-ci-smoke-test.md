@@ -1,13 +1,13 @@
 ---
 id: TASK-0009
 title: Smoke-test Alembic-миграций на эфемерном Postgres в CI
-status: open
+status: claimed
 milestone: v0.9.0
 adr: 035
 area: infra
 depends_on: [TASK-0008]
-branch: ""
-owner: ""
+branch: task/0009-migration-ci-smoke-test
+owner: claude
 session: ""
 pr: ""
 created: 2026-05-29

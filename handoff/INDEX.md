@@ -7,8 +7,8 @@
 | ID | Статус | Майлстоун | ADR | Область | Тема | Ветка |
 |----|--------|-----------|-----|---------|------|-------|
 | TASK-0010 | open | v0.9.2 | 035 | code | Hardening tldextract — cache_dir, комментарий, no-network тест | — |
-| TASK-0011 | open | v0.9.2 | 035 | docs | Доки — добавить tldextract/PSL в CLAUDE.md и architecture.md | — |
 | TASK-0012 | open | v0.10.0 | 036 | docs | Дизайн ADR 036 — domain intelligence v0.10 (MX/SPF/DKIM/DMARC, subdomain enum) | — |
+| TASK-0011 | claimed | v0.9.2 | 035 | docs | Доки — добавить tldextract/PSL в CLAUDE.md и architecture.md | task/0011-docs-tldextract-psl |
 | TASK-0001 | done | v0.8.1 | 034 | code | Багфикс wishlist ↔ tracked (авто-промоут) | task/0001-wishlist-tracked-fix |
 | TASK-0002 | done | v0.9.0 | 035 | code | PSL — зависимость tldextract + src/utils/domains.py | task/0002-psl-utils-domains |
 | TASK-0003 | done | v0.9.0 | 035 | code | Схема user_domains (registrable_domain, is_subdomain) + WHOIS-джойны | task/0003-subdomain-schema-whois-joins |

@@ -251,6 +251,29 @@ CREATE INDEX ON system_events(event_type, created_at DESC);
 CREATE INDEX ON system_events(severity, created_at DESC) WHERE severity IN ('error', 'critical');
 ```
 
+## Разбор доменов / PSL (ADR 035)
+
+Модуль `src/utils/domains.py` отвечает за разбор доменов через Public Suffix List (tldextract):
+
+- `split_domain(domain)` — разбивает домен на subdomain, registrable и suffix
+- `registrable_domain(domain)` — возвращает registrable-домен (eTLD+1)
+- `is_subdomain(domain)` — проверяет, является ли домен поддоменом
+- `is_public_suffix_only(domain)` — проверяет, является ли домен публичным суффиксом
+
+**Инварианты:**
+- Полностью оффлайн — bundled snapshot из tldextract, без сетевых вызовов
+- Дисковый кэш отключён (`cache_dir=None`) для работы в read-only контейнерах
+- PSL-данные доступны из bundled snapshot (`co.uk` → public suffix, `example.co.uk` → registrable)
+
+**Роутинг WHOIS:**
+Запросы WHOIS всегда выполняются для registrable-домена (eTLD+1), а не для поддоменов. Например:
+- `www.example.co.uk` → WHOIS для `example.co.uk`
+- `a.b.foo.com` → WHOIS для `foo.com`
+
+DNS/SSL-проверки выполняются для исходного домена (включая поддомены).
+
+Подробнее см. ADR 035 в `docs/decisions.md`.
+
 ## Адаптивный TTL проверок
 
 После каждой успешной проверки `next_check_at` пересчитывается:

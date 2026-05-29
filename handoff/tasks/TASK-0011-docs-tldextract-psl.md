@@ -1,12 +1,12 @@
 ---
 id: TASK-0011
 title: Доки — добавить tldextract/PSL в CLAUDE.md и architecture.md
-status: open
+status: claimed
 milestone: v0.9.2
 adr: 035
 area: docs
 depends_on: [TASK-0007]
-branch: ""
+branch: task/0011-docs-tldextract-psl
 owner: ""
 session: ""
 pr: ""

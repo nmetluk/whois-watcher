@@ -25,6 +25,9 @@ WHOIS-данных доменов и автоматических напомин
 - **whoisit** — RDAP-клиент (через proxy gateway)
 - **cryptography** — парсинг X.509-сертификатов (SSL monitoring)
 - **idna** — поддержка IDN-доменов
+- **tldextract** — разбор доменов по Public Suffix List (PSL),
+  определение registrable-домена (eTLD+1); bundled snapshot,
+  оффлайн-режим (ADR 035)
 - **pydantic v2** + **pydantic-settings** — конфиг и валидация
 - **structlog** — логирование (JSON в production, ConsoleRenderer в dev)
 - **Sentry SDK** — отлов ошибок (опционально), с фильтром секретов
@@ -59,6 +62,22 @@ Fallback при падении proxy: прямой RDAP + WHOIS:43 через
 - `src/whois/rdap.py`, `whois_protocol.py`, `parser.py`
 - `src/whois/scheduler.py` — adaptive TTL
 - `src/whois/diff.py` — сравнение для уведомлений
+
+### PSL / Domain Parsing (ADR 035)
+
+Разбор доменов через Public Suffix List (tldextract). Определяет
+registrable-домен (eTLD+1), классифицирует поддомены vs публичные
+суффиксы. WHOIS-запросы идут на registrable-родителя, DNS/SSL — на
+исходный домен (поддомен).
+
+Инварианты:
+- Полностью оффлайн — bundled snapshot, без сетевых вызовов
+- Дисковый кэш отключён (`cache_dir=None`) для read-only сред
+- PSL-данные доступны из bundled snapshot (`co.uk` → public suffix)
+
+Модули:
+- `src/utils/domains.py` — `split_domain`, `registrable_domain`,
+  `is_subdomain`, `is_public_suffix_only`
 
 ### SSL Certificate Monitoring (ADR 030)
 

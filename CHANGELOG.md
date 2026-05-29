@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2] — 2026-05-29
+
+### Changed
+
+- **tldextract hardening (ADR 035):** PSL-экстрактор инициализируется с
+  явным `cache_dir=None` — дисковый кэш отключён (по умолчанию tldextract
+  пишет в `~/.cache/python-tldextract/`, что ломается в read-only
+  контейнерах). Поправлен неверный комментарий в `src/utils/domains.py`
+  (TASK-0010).
+
+### Tests
+
+- Тест оффлайн-режима PSL теперь реально блокирует сеть
+  (`socket.socket` / `getaddrinfo`) и падает, если кто-то вернёт сетевой
+  автофетч — раньше проверка была номинальной (TASK-0010).
+
+### Docs
+
+- Добавлено описание подсистемы разбора доменов / PSL (`tldextract`,
+  `src/utils/domains.py`, маршрутизация WHOIS на registrable) в `CLAUDE.md`
+  и `docs/architecture.md` (TASK-0011).
+
 ## [0.9.1] — 2026-05-29
 
 ### Fixed

@@ -8,7 +8,7 @@ area: code
 depends_on: []
 branch: task/0013-mypy-narrowing-whois
 owner: claude
-session: ""
+session: "docs/sessions/2026-05-29_task-0013_mypy_narrowing_whois.md"
 pr: "https://github.com/nmetluk/whois-watcher/pull/8"
 created: 2026-05-29
 ---

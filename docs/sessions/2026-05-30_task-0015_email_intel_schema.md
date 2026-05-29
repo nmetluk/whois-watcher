@@ -69,7 +69,22 @@
 - **ruff check:** чисто
 - **black --check:** чисто
 - **mypy src:** чисто
-- **docker:** недоступен, smoke-test миграции на Postgres пропущен — пройдёт на CI
+- **CI:** зелёный (после исправления JSONB импорта в миграции)
+
+## Исправления
+
+### migration JSONB import
+
+Initial CI failed: `AttributeError: module 'sqlalchemy' has no attribute 'JSONB'`
+
+Fix: использовать `postgresql.JSONB()` вместо `sa.JSONB()` (урок из других миграций):
+```python
+from sqlalchemy.dialects import postgresql
+
+sa.Column("mx_records", postgresql.JSONB(), ...)
+```
+
+Коммит: `fix(TASK-0015): исправить JSONB импорт в миграции`
 
 ## Инварианты (ADR 036)
 

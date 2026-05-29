@@ -28,6 +28,7 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "20260529_email_intel"
@@ -72,7 +73,7 @@ def upgrade() -> None:
         # MX records
         sa.Column(
             "mx_records",
-            sa.JSONB(),
+            postgresql.JSONB(),
             nullable=True,
             comment='Список MX-записей [{"priority": 10, "host": "mail.example.com"}]',
         ),
@@ -111,7 +112,7 @@ def upgrade() -> None:
         # DKIM
         sa.Column(
             "dkim_selectors",
-            sa.JSONB(),
+            postgresql.JSONB(),
             nullable=True,
             comment="Список найденных DKIM-селекторов",
         ),

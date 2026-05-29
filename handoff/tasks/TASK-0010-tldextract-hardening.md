@@ -2,7 +2,7 @@
 id: TASK-0010
 title: Hardening tldextract — cache_dir, комментарий, no-network тест
 status: open
-milestone: v0.9.0
+milestone: v0.9.2
 adr: 035
 area: code
 depends_on: [TASK-0007]

@@ -9,7 +9,7 @@ depends_on: [TASK-0007]
 branch: task/0008-fix-registrable-migration
 owner: claude
 session: "docs/sessions/2026-05-29_task-0008_fix_registrable_migration.md"
-pr: ""
+pr: "https://github.com/nmetluk/whois-watcher/pull/6"
 created: 2026-05-29
 ---
 

@@ -5,72 +5,46 @@ to catch DDL/backfill defects before they reach production (see TASK-0008).
 
 Local run without Postgres: gracefully skipped via pytest.skip.
 CI run: Postgres service is always available (see .github/workflows/ci.yml).
+
+Migration runs are isolated in a subprocess to prevent resource leaks
+(unclosed sockets/event loops) from affecting other tests. See TASK-0009.
 """
 
 from __future__ import annotations
 
 import os
-from urllib.parse import quote_plus
+import subprocess
+import sys
 
-import alembic.command
-import alembic.config
 import pytest
 
 
-def _get_postgres_url() -> str | None:
-    """Build DATABASE_URL from POSTGRES_* env vars (mirrors src/config/settings.py).
+def _run_alembic(*args: str) -> subprocess.CompletedProcess[str]:
+    """Run alembic command in a subprocess with proper isolation.
 
-    Returns None if critical env vars are missing → local run without Postgres.
+    Uses the current Python interpreter and copies the environment
+    (including POSTGRES_* vars set in CI). Captures output for debugging.
     """
-    host = os.getenv("POSTGRES_HOST", "localhost")
-    port = os.getenv("POSTGRES_PORT", "5432")
-    user = os.getenv("POSTGRES_USER", "whoiswatcher")
-    password = os.getenv("POSTGRES_PASSWORD")
-    db = os.getenv("POSTGRES_DB", "whoiswatcher")
+    # alembic.ini is in the repo root; pytest runs from there by default
+    cmd = [sys.executable, "-m", "alembic", "-c", "alembic.ini", *args]
 
-    if not password:
-        # Likely local run without POSTGRES_PASSWORD set → skip
-        return None
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        env=os.environ.copy(),
+        check=False,  # We assert on returncode instead
+    )
 
-    # URL-encode password (may contain special chars)
-    encoded_password = quote_plus(password)
-    return f"postgresql+asyncpg://{user}:{encoded_password}@{host}:{port}/{db}"
+    if result.returncode != 0:
+        # Provide full context for failure diagnosis
+        raise AssertionError(
+            f"alembic {' '.join(args)} failed (exit {result.returncode})\n"
+            f"STDOUT:\n{result.stdout}\n"
+            f"STDERR:\n{result.stderr}"
+        )
 
-
-@pytest.fixture(scope="module")
-def alembic_cfg() -> alembic.config.Config:
-    """Alembic config pointing to the migrations directory.
-
-    Configured for async execution (env.py uses async_engine_from_config),
-    matching our runtime stack. sqlalchemy.url set here gets overridden
-    by env.py → settings.postgres_dsn, but this ensures the config object
-    isn't empty before alembic loads env.py.
-    """
-    # Use alembic.ini from repo root (tests run from project root via pytest)
-    cfg = alembic.config.Config("alembic.ini")
-
-    # Suppress alembic deprecation warning about path_separator
-    # (alembic.ini uses version_path_separator; legacy warning not actionable)
-    cfg.set_main_option("path_separator", "os")
-
-    # Override sqlalchemy.url to the ephemeral CI Postgres (not production)
-    db_url = _get_postgres_url()
-    if db_url:
-        cfg.set_main_option("sqlalchemy.url", db_url)
-
-    return cfg
-
-
-@pytest.fixture(scope="module")
-def postgres_available(alembic_cfg: alembic.config.Config) -> bool:
-    """Check if Postgres is available (CI yes, local maybe no).
-
-    Used to skip the entire test module gracefully without failing imports.
-    """
-    db_url = _get_postgres_url()
-    if db_url:
-        return True
-    return False
+    return result
 
 
 @pytest.mark.skipif(
@@ -78,21 +52,22 @@ def postgres_available(alembic_cfg: alembic.config.Config) -> bool:
     not os.getenv("CI"),
     reason="Postgres smoke-test only runs in CI (set CI=1 to enable)",
 )
-def test_migrations_roundtrip(alembic_cfg: alembic.config.Config) -> None:
+def test_migrations_roundtrip() -> None:
     """Run full migration roundtrip: upgrade head → downgrade base → upgrade head.
+
+    Runs alembic commands via subprocess to isolate resources (sockets, event
+    loops). Each call gets a fresh process, preventing leaks from affecting
+    other tests (see TASK-0009: in-process calls left unclosed resources).
 
     Ensures:
     - All revisions apply cleanly on a fresh DB.
     - downgrade is reversible (no orphan objects).
     """
-    # Clean slate: stamp base (no actual tables yet)
-    alembic.command.stamp(alembic_cfg, "base", purge=True)
+    # Upgrade to latest (applies all pending migrations)
+    _run_alembic("upgrade", "head")
 
-    # Upgrade to latest
-    alembic.command.upgrade(alembic_cfg, "head")
+    # Downgrade back to base (tests reversibility)
+    _run_alembic("downgrade", "base")
 
-    # Downgrade back to base
-    alembic.command.downgrade(alembic_cfg, "base")
-
-    # Upgrade again (round-trip)
-    alembic.command.upgrade(alembic_cfg, "head")
+    # Upgrade again (round-trip verification)
+    _run_alembic("upgrade", "head")

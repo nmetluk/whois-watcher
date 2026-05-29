@@ -9,8 +9,12 @@
 
 ## Цель
 
-Починить падение CI на `tests/unit/test_locales.py::TestT::test_missing_key_returns_key_and_warns`
-и `tests/integration/test_migrations.py::test_migrations_roundtrip`.
+Починить падение CI на PR #7:
+1. `tests/unit/test_locales.py::TestT::test_missing_key_returns_key_and_warns` — логгер
+   гасился alembic
+2. `tests/unit/test_send_reminders.py::TestSendExpiryReminder::test_happy_path_sends_and_records`
+   — ЖЕРТВА ResourceWarning от теста миграций (pytest.PytestUnraisableExceptionWarning →
+   ExceptionGroup из 3 ResourceWarning: unclosed socket + unclosed event loop)
 
 ## Шаг 1 — Диагностика ошибки CI
 
@@ -40,6 +44,16 @@ cfg.set_main_option("sqlalchemy.url", sync_url)
 **Фикс #2:** убрать фиктивную замену драйвера, оставить URL как есть
 (коммит `b571dd6`).
 
+**Найденная проблема #3:** In-process вызовы `alembic.command.*` в тесте миграций
+оставляли unclosed sockets и event loops. GC собирал их ПОСЛЕ завершения теста и
+вешал на следующий тест (`test_send_reminders`) как ResourceWarning.
+В `pyproject.toml` стоит `filterwarnings = ["error"]` → это падало как
+`pytest.PytestUnraisableExceptionWarning`.
+
+**Фикс #3:** переписать тест для запуска alembic через subprocess
+(коммит `d9c906e`). Каждый вызов `alembic upgrade/downgrade` теперь в отдельном
+процессе → ресурсы изолированы, утечки не утекают в главный процесс.
+
 ## Что сделано
 
 ### Фикс #1: migrations/env.py
@@ -65,6 +79,29 @@ cfg.set_main_option("sqlalchemy.url", db_url)
 
 Обновлён docstring фикстуры `alembic_cfg` — теперь он корректно описывает
 async execution.
+
+### Фикс #3: tests/integration/test_migrations.py — subprocess изоляция
+
+Переписан тест для запуска alembic через `subprocess.run()` вместо in-process
+`alembic.command.*`:
+
+```python
+def _run_alembic(*args: str) -> subprocess.CompletedProcess[str]:
+    cmd = [sys.executable, "-m", "alembic", "-c", "alembic.ini", *args]
+    result = subprocess.run(cmd, capture_output=True, text=True, env=os.environ.copy())
+    if result.returncode != 0:
+        raise AssertionError(f"alembic {' '.join(args)} failed:\n{result.stdout}\n{result.stderr}")
+    return result
+
+# roundtrip:
+_run_alembic("upgrade", "head")
+_run_alembic("downgrade", "base")
+_run_alembic("upgrade", "head")
+```
+
+Удалены ненужные хелперы: `_get_postgres_url`, `alembic_cfg` fixture,
+`postgres_available` fixture, импорты `alembic.command`, `alembic.config`,
+`urllib.parse.quote_plus`.
 
 ### Проверка
 
@@ -99,19 +136,22 @@ VALIDATE: OK (13 задач)
    (disable_existing_loggers=False)
 2. `b571dd6` — fix(test): убрать фиктивную замену asyncpg на psycopg2 в тесте
    миграций
+3. `d9c906e` — fix(test): запускать миграции через subprocess для изоляции
+   ресурсов (предотвращает ResourceWarning на других тестах)
 
 ## Definition of Done
 
 - [x] `migrations/env.py` исправлен: `disable_existing_loggers=False`
-- [x] `tests/integration/test_migrations.py` исправлен: убрана фиктивная замена
-  драйвера на psycopg2 (который не установлен)
+- [x] `tests/integration/test_migrations.py` переписан для subprocess изоляции
+- [x] Убраны ненужные импорты и хелперы (ruff F401, mypy чисто)
 - [x] Тест локалей проходит локально с CI env
 - [x] `ruff` / `black --check` / `mypy src` чисто
 - [x] `handoff.py validate` OK
-- [x] Изменения запушены в `task/0009-migration-ci-smoke-test`
+- [x] Изменения запущены в `task/0009-migration-ci-smoke-test`
 - [ ] CI зелёный на PR #7 (ждём проверки)
 
 ## Статус
 
-Два коммита запушены. Ожидаем зелёный CI — исправлены обе проблемы:
-1) логгеры не гасятся alembic, 2) тест миграций использует правильный драйвер.
+Три коммита запущены. Ожидаем зелёный CI — исправлены все три проблемы:
+1) логгеры не гасятся alembic, 2) тест миграций использует правильный драйвер,
+3) ресурсы изолированы в subprocess → нет ResourceWarning на других тестах.

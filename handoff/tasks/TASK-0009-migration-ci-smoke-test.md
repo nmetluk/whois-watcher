@@ -9,7 +9,7 @@ depends_on: [TASK-0008]
 branch: task/0009-migration-ci-smoke-test
 owner: claude
 session: ""
-pr: ""
+pr: "https://github.com/nmetluk/whois-watcher/pull/7"
 created: 2026-05-29
 ---
 

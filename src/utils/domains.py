@@ -26,13 +26,14 @@ class DomainParts:
 
 
 # Инициализация tldextract с оффлайн-снапшотом и БЕЗ сетевого автофетча.
-# suffix_list_urls=() отключает загрузку из сети, cache_dir фиксирует путь.
+# suffix_list_urls=() отключает загрузку из сети.
+# cache_dir=None отключает дисковый кэш (по умолчанию tldextract использует
+# ~/.cache/python-tldextract/, что ломается в read-only контейнерах).
 # include_psl_private_domains=False — только публичные суффиксы.
 _TLD_EXTRACTOR = tldextract.TLDExtract(
     suffix_list_urls=(),  # Без сетевого автофетча
     include_psl_private_domains=False,
-    # cache_dir=None используется по умолчанию — tldextract сам найдёт
-    # bundled snapshot в установленном пакете.
+    cache_dir=None,  # Отключаем дисковый кэш для read-only сред
 )
 
 

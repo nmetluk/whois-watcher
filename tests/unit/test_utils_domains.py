@@ -160,11 +160,16 @@ class TestIsPublicSuffixOnly:
 class TestOfflineMode:
     """Проверка, что tldextract не ходит в сеть."""
 
-    def test_no_network_calls(self) -> None:
-        # tldextract инициализирован с suffix_list_urls=(),
-        # значит не должен делать сетевые запросы.
-        # Если бы шёл запрос, pytest с маркером slow/network мог бы упасть.
-        # Базовая проверка — функции просто работают.
+    def test_no_network_calls(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Блокируем все сетевые вызовы — если tldextract попытается
+        # сходить в сеть, тест упадёт с явным исключением.
+        def _blocking_socket(*args: object, **kwargs: object) -> None:
+            raise RuntimeError("Network call blocked: tldextract must use bundled snapshot")
+
+        monkeypatch.setattr("socket.socket", _blocking_socket)
+        monkeypatch.setattr("socket.getaddrinfo", _blocking_socket)
+
+        # Функции должны работать на bundled snapshot без сети.
         assert registrable_domain("example.com") == "example.com"
         assert is_subdomain("www.example.com")
         assert not is_public_suffix_only("example.com")

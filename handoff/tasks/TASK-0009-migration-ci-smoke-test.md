@@ -18,6 +18,32 @@ created: 2026-05-29
 > 🟠 high. Тело самодостаточно. Перед стартом:
 > `git checkout main && git pull --rebase origin main`, затем `claim`.
 
+## 🔁 Ревью PR #7 — нужна доработка (это НЕ flaky)
+
+CI на PR #7 падает на `tests/unit/test_locales.py::...test_missing_key_returns_key_and_warns`.
+Это **не flaky и не чужой код** — это побочка нового теста миграций:
+
+- `test_migrations_roundtrip` гоняет `alembic.command.*`, а `migrations/env.py:19`
+  вызывает `fileConfig(config.config_file_name)` с дефолтным
+  `disable_existing_loggers=True` → отключает логгер `src.locales`.
+- Дальше `test_missing_key_returns_key_and_warns` (через `caplog`) не видит
+  WARNING от отключённого логгера → assert падает.
+- Локально зелено, потому что тест миграций `@skipif(not os.getenv("CI"))` —
+  локально скипается, `fileConfig` не вызывается. В CI (`CI=true`) он
+  запускается, а порядок сбора (`tests/integration/` до `tests/unit/`)
+  гарантирует, что локали ломаются после.
+
+**Фикс (в этом же PR #7, НЕ в skip-list):** в `migrations/env.py` строка 19:
+
+```python
+fileConfig(config.config_file_name, disable_existing_loggers=False)
+```
+
+Одна строка — alembic перестаёт гасить логгеры приложения. Добавлять
+`test_locales.py` в skip — **запрещено**: это спрячет реальный баг конфигурации
+логирования. После правки прогнать весь `pytest` (включая интеграционные) в
+одном процессе и убедиться, что CI зелёный.
+
 ## Цель
 
 CI прогоняет `alembic upgrade head` (и `downgrade base`) на эфемерном

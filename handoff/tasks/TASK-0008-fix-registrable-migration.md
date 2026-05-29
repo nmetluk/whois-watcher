@@ -24,6 +24,34 @@ created: 2026-05-29
 > затем `python scripts/handoff.py claim TASK-0008 --owner <agent>`.
 > `down_revision` сверить с актуальным alembic-head на свежем main.
 
+## ⛔ Ревью PR #5 — ОТКЛОНЁН. Переделать по этой спеке
+
+Первая попытка (ветка `task/0008-registrable-server-default-fix`, PR #5)
+**не принята**. Что сделано не так:
+
+1. Добавлена **новая** миграция `20260529_0001_remove_registrable_server_default`
+   с `op.alter_column(... server_default=None)`, а исходная
+   `20260529_0000_add_registrable_domain_fields.py` **оставлена сломанной**.
+   `alembic upgrade head` выполняет ревизии по порядку: `_0000` падает первой
+   (пустой `DEFAULT` + backfill `WHERE … = ""`), и `_0001` никогда не
+   выполняется. Корень не починен.
+2. Ветка отрезана от **устаревшего main** (до коммита `b27700e`): правит файл
+   таска `TASK-0008-registrable-server-default-fix.md`, которого на актуальном
+   main уже нет, и расходится по `INDEX.md`.
+3. «710 тестов проходят» проблему не закрывает — миграции тестами не покрыты
+   (это TASK-0009), а sqlite молча принимает `""` как строку и прячет баг.
+
+**Действия для переделки:**
+
+- Начать с **чистого свежего main** и **новой** ветки
+  `task/0008-fix-registrable-migration` (старую ветку/PR #5 закрыть).
+- **Удалить** добавленную `20260529_0001_remove_registrable_server_default.py`.
+- Чинить **in-place в `..._0000`** (см. «Изменения по файлам» ниже).
+- Проверить реально на **Postgres** (`alembic upgrade head` → `downgrade`),
+  не на sqlite.
+- mypy-фикс в `whois.py` из PR #5 можно перенести, но лучше отдельным
+  коммитом/таском — не мешать его с миграцией.
+
 ## Цель
 
 Миграция `20260529_0000_add_registrable_domain_fields.py` применяется на

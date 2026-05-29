@@ -21,7 +21,8 @@ RIR/ASN-фундамент. Введён новый рабочий процес�
 |------|-------|-----|-----------|
 | Багфикс wishlist ↔ tracked | v0.8.1 | 034 ✅ | TASK-0001 done, **релиз v0.8.1 выпущен** |
 | Поддомены / PSL / DNS-SSL у поддомена | v0.9.0 | 035 ✅ | код done; аудит выявил 🔴 в миграции → блок тега до TASK-0008 (0008-0011) |
-| Domain intelligence (MX/SPF/DKIM/DMARC, subdomain enum) | v0.10+ | 036 | дизайн (TASK-0012) |
+| Email/policy-записи (MX/SPF/DKIM/DMARC) | v0.10 | 036 ✅ | дизайн готов; исполнение TASK-0015…0018 |
+| Subdomain enumeration (CT-логи/crt.sh) | v0.11 | 037 | план (вынесено из 036) |
 
 ADR 034 и 035 дописаны в `docs/decisions.md`. Цепочка зависимостей
 v0.9.0: 0002→0003→0004→0005→0006 (аудит); все depend на TASK-0001.
@@ -67,10 +68,18 @@ alembic `fileConfig` гасил логгер локалей (→ caplog-тест
 
 ✅ **Релиз v0.9.2 выпущен** (тег `v0.9.2` → `1ea7170`): TASK-0010 (tldextract
 `cache_dir=None` + реальный no-network тест) и TASK-0011 (доки tldextract/PSL).
+Весь раздел v0.9.x закрыт.
 
-Открыто только **TASK-0012** — дизайн ADR 036 (v0.10 domain intelligence,
-MX/SPF/DKIM/DMARC, subdomain enum). Это архитекторская задача для отдельной
-сессии. Весь раздел v0.9.x закрыт.
+✅ **ADR 036 написан** (TASK-0012, design — done). Решения: v0.10 = только
+email/policy-записи (**MX/SPF/DKIM/DMARC**, сбор + базовая диагностика),
+параллельная подсистема `email_intel_cache` + per-domain toggle'ы (стиль
+ADR 029); subdomain enumeration вынесен в **v0.11** (источник — CT-логи/crt.sh,
+будущий ADR 037).
+
+Заведены исполнительские таски v0.10: **TASK-0015** (схема/миграция) →
+**0016** (парсеры MX/SPF/DKIM/DMARC + diff) → **0017** (ARQ-задачи/scheduler/
+уведомления) → **0018** (UX `/whois` + toggle'ы + локали). Цепочка
+последовательная (каждый depends на предыдущем). После 0018 — релиз v0.10.0.
 
 ## Последняя сессия
 

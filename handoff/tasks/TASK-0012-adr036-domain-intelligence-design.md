@@ -1,14 +1,14 @@
 ---
 id: TASK-0012
 title: Дизайн ADR 036 — domain intelligence v0.10 (MX/SPF/DKIM/DMARC, subdomain enum)
-status: open
+status: done
 milestone: v0.10.0
 adr: 036
 area: docs
 depends_on: [TASK-0008]
 branch: ""
-owner: ""
-session: ""
+owner: architect
+session: docs/decisions.md
 pr: ""
 created: 2026-05-29
 ---

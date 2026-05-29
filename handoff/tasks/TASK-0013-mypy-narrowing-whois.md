@@ -1,13 +1,13 @@
 ---
 id: TASK-0013
 title: Починить mypy type-narrowing в whois.py (красный CI с TASK-0005)
-status: open
+status: claimed
 milestone: v0.9.0
 adr: ""
 area: code
 depends_on: []
-branch: ""
-owner: ""
+branch: task/0013-mypy-narrowing-whois
+owner: claude
 session: ""
 pr: ""
 created: 2026-05-29

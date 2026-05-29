@@ -6,10 +6,9 @@
 
 | ID | Статус | Майлстоун | ADR | Область | Тема | Ветка |
 |----|--------|-----------|-----|---------|------|-------|
-| TASK-0016 | open | v0.10.0 | 036 | code | Сбор и парсеры MX/SPF/DKIM/DMARC + базовая диагностика (ADR 036) | — |
 | TASK-0017 | open | v0.10.0 | 036 | code | ARQ-задачи и scheduler email-intel + уведомления (ADR 036) | — |
 | TASK-0018 | open | v0.10.0 | 036 | code | UX email-intel — блок в /whois, toggle'ы, локали (ADR 036) | — |
-| TASK-0015 | claimed | v0.10.0 | 036 | code | Схема email_intel_cache + toggle'ы уведомлений (ADR 036) | task/0015-email-intel-schema |
+| TASK-0016 | claimed | v0.10.0 | 036 | code | Сбор и парсеры MX/SPF/DKIM/DMARC + базовая диагностика (ADR 036) | task/0016-email-intel-parsers |
 | TASK-0001 | done | v0.8.1 | 034 | code | Багфикс wishlist ↔ tracked (авто-промоут) | task/0001-wishlist-tracked-fix |
 | TASK-0002 | done | v0.9.0 | 035 | code | PSL — зависимость tldextract + src/utils/domains.py | task/0002-psl-utils-domains |
 | TASK-0003 | done | v0.9.0 | 035 | code | Схема user_domains (registrable_domain, is_subdomain) + WHOIS-джойны | task/0003-subdomain-schema-whois-joins |
@@ -24,3 +23,4 @@
 | TASK-0012 | done | v0.10.0 | 036 | docs | Дизайн ADR 036 — domain intelligence v0.10 (MX/SPF/DKIM/DMARC, subdomain enum) | — |
 | TASK-0013 | done | v0.9.0 | — | code | Починить mypy type-narrowing в whois.py (красный CI с TASK-0005) | task/0013-mypy-narrowing-whois |
 | TASK-0014 | done | v0.9.1 | — | docs | Релиз v0.9.1 — починенная миграция + CI/mypy фиксы | task/0014-release-v0-9-1 |
+| TASK-0015 | done | v0.10.0 | 036 | code | Схема email_intel_cache + toggle'ы уведомлений (ADR 036) | task/0015-email-intel-schema |

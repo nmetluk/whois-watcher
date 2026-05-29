@@ -14,8 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Миграция `20260529_registrable_domain` теперь применяется на PostgreSQL**
   — в v0.9.0 была дефектна из-за `server_default=sa.text("")` и backfill
   `WHERE registrable_domain = ""` (пустая строка не NULL). В v0.9.1 миграция
-  исправлена: строковый литерал `''` в `server_default`, валидный backfill
-  на `IS NULL`, снятие `server_default` после заполнения (TASK-0008).
+  исправлена: строковый литерал `''` в `server_default`, корректный backfill
+  (`WHERE registrable_domain = ''`), снятие `server_default` после заполнения
+  (TASK-0008).
 - **`mypy`**: устранён type-narrowing в `src/bot/handlers/whois.py` — шаг
   `mypy` в CI снова зелёный (TASK-0013).
 - **CI**: добавлен smoke-test Alembic-миграций на Postgres (`CI=1 pytest

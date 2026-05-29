@@ -1,15 +1,15 @@
 ---
 id: TASK-0008
 title: Починить миграцию registrable_domain (не применяется на Postgres)
-status: claimed
+status: done
 milestone: v0.9.0
 adr: 035
 area: code
 depends_on: [TASK-0007]
 branch: task/0008-fix-registrable-migration
 owner: claude
-session: "docs/sessions/2026-05-29_task-0008_fix_registrable_migration.md"
-pr: "https://github.com/nmetluk/whois-watcher/pull/6"
+session: docs/sessions/2026-05-29_task-0008_fix_registrable_migration.md
+pr: https://github.com/nmetluk/whois-watcher/pull/6
 created: 2026-05-29
 ---
 

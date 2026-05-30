@@ -207,6 +207,12 @@ LOCALE: dict[str, str] = {
     "notify_config.type.dns_aaaa_change": "Смена AAAA-записей",
     "notify_config.type.dns_ns_change": "Смена NS (включая mismatch с WHOIS)",
     "notify_config.type.dns_unreachable": "DNS недоступен",
+    # Email-intel (ADR 036)
+    "notify_config.type.track_email": "Мониторинг email",
+    "notify_config.type.email_mx": "Смена MX-записей",
+    "notify_config.type.email_spf": "Смена SPF",
+    "notify_config.type.email_dmarc": "Смена DMARC",
+    "notify_config.type.email_dkim": "Смена DKIM",
     "button.privacy": "📜 Политика конфиденциальности",
     "button.github": "💻 GitHub",
     "button.list_prev": "◀️ Назад",
@@ -628,6 +634,28 @@ LOCALE: dict[str, str] = {
         "Если ты не вносил изменений — это срочно."
     ),
     "notifications.dns_change.reachable": ("✅ <b>{domain}</b> — DNS снова работает"),
+    # Email-intel (ADR 036)
+    "notifications.email_change.mx": (
+        "📧 <b>{domain}</b> — изменились MX-записи\n\n"
+        "Список почтовых серверов изменился. Проверьте, что изменения ожидаемые."
+    ),
+    "notifications.email_change.spf": (
+        "📧 <b>{domain}</b> — изменилась SPF-запись\n\n"
+        "SPF-политика изменилась. Проверьте, что изменения ожидаемые."
+    ),
+    "notifications.email_change.dmarc": (
+        "📧 <b>{domain}</b> — изменился DMARC\n\n"
+        "DMARC-политика изменилась. Проверьте, что изменения ожидаемые."
+    ),
+    "notifications.email_change.dkim": (
+        "📧 <b>{domain}</b> — изменились DKIM-селекторы\n\n"
+        "Список DKIM-селекторов изменился. Проверьте, что изменения ожидаемые."
+    ),
+    "notifications.email_change.unreachable": (
+        "⚠️ <b>{domain}</b> — DNS для email-записей недоступен\n\n"
+        "Не удаётся резолвить MX/SPF/DMARC. Домен может быть истёкшим или удалённым."
+    ),
+    "notifications.email_change.reachable": ("✅ <b>{domain}</b> — email-записи снова доступны"),
     "notifications.ack.muted": "🔕 Уведомления для этого домена выключены",
     "notifications.ack.refresh_started": "🔄 Запустил повторную проверку",
     "notifications.ack.no_access": "❌ Этот домен не в вашем списке",

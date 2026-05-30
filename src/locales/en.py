@@ -193,6 +193,12 @@ LOCALE: dict[str, str] = {
     "notify_config.type.dns_aaaa_change": "AAAA records change",
     "notify_config.type.dns_ns_change": "NS change (including WHOIS mismatch)",
     "notify_config.type.dns_unreachable": "DNS unreachable",
+    # Email-intel (ADR 036)
+    "notify_config.type.track_email": "Email monitoring",
+    "notify_config.type.email_mx": "MX records change",
+    "notify_config.type.email_spf": "SPF change",
+    "notify_config.type.email_dmarc": "DMARC change",
+    "notify_config.type.email_dkim": "DKIM change",
     "button.privacy": "📜 Privacy policy",
     "button.github": "💻 GitHub",
     "button.list_prev": "◀️ Prev",
@@ -607,6 +613,28 @@ LOCALE: dict[str, str] = {
         "If you didn't make changes — this is urgent."
     ),
     "notifications.dns_change.reachable": ("✅ <b>{domain}</b> — DNS is back online"),
+    # Email-intel (ADR 036)
+    "notifications.email_change.mx": (
+        "📧 <b>{domain}</b> — MX records changed\n\n"
+        "The list of mail servers has changed. Verify that the changes are expected."
+    ),
+    "notifications.email_change.spf": (
+        "📧 <b>{domain}</b> — SPF record changed\n\n"
+        "SPF policy has changed. Verify that the changes are expected."
+    ),
+    "notifications.email_change.dmarc": (
+        "📧 <b>{domain}</b> — DMARC changed\n\n"
+        "DMARC policy has changed. Verify that the changes are expected."
+    ),
+    "notifications.email_change.dkim": (
+        "📧 <b>{domain}</b> — DKIM selectors changed\n\n"
+        "The list of DKIM selectors has changed. Verify that the changes are expected."
+    ),
+    "notifications.email_change.unreachable": (
+        "⚠️ <b>{domain}</b> — DNS for email records unreachable\n\n"
+        "Cannot resolve MX/SPF/DMARC. Domain may be expired or deleted."
+    ),
+    "notifications.email_change.reachable": ("✅ <b>{domain}</b> — email records back online"),
     "notifications.ack.muted": "🔕 Notifications for this domain are off",
     "notifications.ack.refresh_started": "🔄 Refresh started",
     "notifications.ack.no_access": "❌ This domain isn't in your list",

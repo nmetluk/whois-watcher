@@ -101,6 +101,12 @@ async def cmd_subdomains(
             )
             return
 
+        # Формируем список поддоменов для сообщения
+        subdomain_list = "\n".join(
+            t("commands.subdomains.list_item", lang, subdomain=from_punycode(sub))
+            for sub in cached.subdomains[:_MAX_DISPLAY_SUBDOMAINS]
+        )
+
         # Рендерим список с кнопками
         await message.answer(
             t(
@@ -109,7 +115,8 @@ async def cmd_subdomains(
                 domain=display,
                 count=count,
                 fetched_at=fetched_at,
-            ),
+            )
+            + f"\n\n{subdomain_list}",
             reply_markup=subdomains_keyboard(registrable, cached.subdomains, lang=lang),
         )
         return

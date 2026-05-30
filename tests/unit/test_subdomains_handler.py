@@ -203,3 +203,66 @@ class TestCallbackTrackAll:
 
         # Должен показать ошибку "no_cache"
         query.answer.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Фикс 1: Кнопки с именами поддоменов
+# ---------------------------------------------------------------------------
+
+
+class TestSubdomainKeyboardButtons:
+    def test_button_contains_subdomain_name(self) -> None:
+        """Кнопки клавиатуры должны содержать имя поддомена."""
+        from src.bot.keyboards import subdomains_keyboard
+
+        subdomains = ["www.example.com", "mail.example.com"]
+        kb = subdomains_keyboard("example.com", subdomains, lang="en")
+
+        # Кнопки должны содержать имена поддоменов
+        button_texts = []
+        for row in kb.inline_keyboard:
+            for button in row:
+                button_texts.append(button.text)
+
+        # Проверяем что есть кнопки с поддоменами
+        assert any("www" in text for text in button_texts)
+        assert any("mail" in text for text in button_texts)
+        # Все кнопки кроме track_all и refresh должны начинаться с 📌
+        track_buttons = [t for t in button_texts if t.startswith("📌") and "all" not in t.lower()]
+        assert len(track_buttons) == len(subdomains)
+
+
+# ---------------------------------------------------------------------------
+# Фикс 2: Список поддоменов в сообщении
+# ---------------------------------------------------------------------------
+
+
+class TestSubdomainListInMessage:
+    async def test_message_contains_subdomain_list(self) -> None:
+        """Сообщение должно содержать список поддоменов."""
+        message = _message("not used")
+        command = _command("example.com")
+
+        cached = _cache(
+            subdomains=["www.example.com", "mail.example.com"],
+            fetched_at=datetime.now(tz=UTC) - timedelta(days=1),
+        )
+
+        with patch("src.db.repositories.SubdomainEnumCacheRepository.get") as get_mock:
+            get_mock.return_value = cached
+
+            await handler.cmd_subdomains(
+                message=message,
+                command=command,
+                user=_user(),
+                lang="ru",
+                arq_redis=AsyncMock(),
+                redis=AsyncMock(),
+            )
+
+        # Проверяем что в сообщении есть список поддоменов
+        text = message.answer.await_args.args[0]
+        assert "www.example.com" in text or "www" in text.lower()
+        assert "mail.example.com" in text or "mail" in text.lower()
+        # Проверяем что есть формат списка (•)
+        assert "•" in text or "-" in text

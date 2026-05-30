@@ -663,15 +663,18 @@ def subdomains_keyboard(
 ) -> InlineKeyboardMarkup:
     """Клавиатура для списка поддоменов с кнопками opt-in (ADR 037).
 
-    Для каждого поддомена — кнопка «📌 Отслеживать».
+    Для каждого поддомена — кнопка с именем поддомена.
     Внизу — «📌 Отслеживать все» и «🔄 Обновить».
     """
+    from src.utils.idn import from_punycode
+
     builder = InlineKeyboardBuilder()
 
-    # Кнопки по каждому поддомену
+    # Кнопки по каждому поддомену (с именем поддомена)
     for subdomain in subdomains[:_MAX_SUBDOMAIN_BUTTONS]:
+        display = from_punycode(subdomain)
         builder.button(
-            text=t("commands.subdomains.button_track", lang),
+            text=f"📌 {display}",
             callback_data=SubdomainAction(
                 action="track",
                 registrable=registrable,

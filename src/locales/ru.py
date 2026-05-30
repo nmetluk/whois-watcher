@@ -714,6 +714,7 @@ LOCALE: dict[str, str] = {
     "commands.subdomains.header": (
         "🔍 Поддомены <b>{domain}</b>\n\n" "Найдено: {count}\n" "Обновлено: {fetched_at}"
     ),
+    "commands.subdomains.list_item": "• {subdomain}",
     "commands.subdomains.empty": (
         "🔍 Поддомены <b>{domain}</b>\n\n" "Пока ничего не найдено. Попробуйте позже."
     ),

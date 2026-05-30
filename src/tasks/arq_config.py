@@ -100,6 +100,7 @@ def _build_functions() -> list[Any]:
     from src.tasks.check_domain import check_domain
     from src.tasks.check_email_intel import check_email_intel
     from src.tasks.check_ssl import check_ssl
+    from src.tasks.check_subdomains import check_subdomains
     from src.tasks.cleanup import cleanup_old_events, cleanup_orphan_cache
     from src.tasks.daily_stats import send_daily_summary
     from src.tasks.dns_scheduler import dns_scheduler_tick
@@ -147,6 +148,8 @@ def _build_functions() -> list[Any]:
         check_email_intel,
         email_intel_scheduler_tick,
         send_email_change_notice,
+        # Subdomain enumeration (Этап 18, ADR 037)
+        check_subdomains,
     ]
 
 

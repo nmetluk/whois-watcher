@@ -1,16 +1,17 @@
 ---
 id: TASK-0023
 title: crt.sh-клиент + парсер/нормализация + ARQ-задача (ADR 037)
-status: open
+status: completed
 milestone: v0.11.0
 adr: 037
 area: code
 depends_on: [TASK-0022]
-branch: ""
+branch: task/0023-subdomain-enum-client
 owner: ""
-session: ""
-pr: ""
+session: docs/sessions/2026-05-30_task_0023_subdomain_enum_client.md
+pr: "16"
 created: 2026-05-30
+completed: 2026-05-30
 ---
 
 # TASK-0023 — crt.sh-клиент и enumeration (ADR 037)
@@ -61,9 +62,9 @@ HTTP через `aiohttp` (уже в зависимостях).
 
 ## Definition of Done
 
-- [ ] `src/subdomains/` + ARQ-задача; кэш заполняется; degradation работает
-- [ ] `pytest` зелёный; `ruff`/`black --check`/`mypy src` чисто
-- [ ] Per-session отчёт; `handoff.py validate` OK; PR, CI зелёный
+- [x] `src/subdomains/` + ARQ-задача; кэш заполняется; degradation работает
+- [x] `pytest` зелёный; `ruff`/`black --check`/`mypy src` чисто
+- [x] Per-session отчёт; `handoff.py validate` OK; PR, CI зелёный
 
 ## Ссылки
 

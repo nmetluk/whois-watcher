@@ -9,7 +9,7 @@ depends_on: [TASK-0021]
 branch: task/0022-subdomain-enum-schema
 owner: ""
 session: docs/sessions/2026-05-30_task_0022_subdomain_enum_schema.md
-pr: ""
+pr: "15"
 created: 2026-05-30
 completed: 2026-05-30
 ---

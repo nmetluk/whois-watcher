@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-05-30
+
+Domain intelligence: мониторинг почтовой инфраструктуры и политик
+([ADR 036](docs/decisions.md)). Пятая ось наблюдения после WHOIS, SSL, DNS и
+RIR/ASN. Реализовано подэтапами TASK-0015…0018.
+
+### Added — Email/policy-записи (MX/SPF/DKIM/DMARC, ADR 036)
+
+- **Подсистема email-intel** — параллельная WHOIS/SSL/DNS (как ADR 030/032):
+  своя таблица `email_intel_cache`, ARQ-задачи (`check_email_intel`),
+  scheduler с собственным TTL, уведомления.
+- **Сбор + базовая диагностика**: MX (host+priority), SPF (наличие + режим
+  `-all`/`~all`/`?all`/`+all`, флаг >1 записи = RFC-нарушение), DMARC
+  (`p`/`sp`/`pct`), DKIM (пробинг распространённых селекторов). Рекурсивный
+  разбор SPF `include` и полный аудит-движок намеренно отложены.
+- **Блок email в карточке `/whois`** (после DNS/SSL); записи берутся у самого
+  домена/поддомена (ADR 035).
+- **Уведомления per-domain** об изменениях (MX/SPF/DMARC/DKIM, became
+  unreachable/reachable); toggle'ы `track_email` / `notify_email_change`
+  в `⚙️ Уведомления`; `is_muted` гасит. Первая загрузка не шлёт уведомление.
+- **Локализация**: новые ключи ru/en для блока, toggle'ов и уведомлений.
+
+### Database
+
+- Новая таблица **`email_intel_cache`** (PK `domain`): scheduling-поля,
+  `is_reachable`, `mx_records`/`dkim_selectors` (JSONB), `spf_record`/
+  `spf_mode`, `dmarc_policy`/`dmarc_subpolicy`/`dmarc_pct`, failure-tracking.
+  Индекс `ix_email_intel_cache_next_check_at`.
+- 2 новые колонки в **`user_domains`**: `track_email`, `notify_email_change`
+  (миграция `20260529_email_intel`).
+
+### Added — операционное (входит также в hotfix v0.9.3)
+
+- **Instance-тег в админ-канале (ADR 019)**: каждое сообщение начинается с
+  `[label · domain · ip]` из конфига (`INSTANCE_NAME`, домен из
+  `WEBHOOK_BASE_URL`, `SERVER_IP`) — различение деплоев (TASK-0019).
+
+## [0.9.3] — 2026-05-30
+
+### Added
+
+- **Instance-тег в сообщениях админ-канала (ADR 019)** — hotfix-релиз от
+  v0.9.2: каждое сообщение начинается с `[label · domain · ip]`. Новые
+  env-переменные `INSTANCE_NAME`, `SERVER_IP` (TASK-0019).
+
+### Changed
+
+- Конвенция логирования (`CLAUDE.md`): runtime IP не логируется в structlog,
+  но допускается в приватном админ-канале (ADR 019) через `SERVER_IP`.
+
 ## [0.9.2] — 2026-05-29
 
 ### Changed

@@ -130,8 +130,37 @@ UX toggles/FSM-интервал + локали) → **0030** (комплексн
 обратим. CI зелёный (в т.ч. migration round-trip на Postgres).
 
 **Следующий шаг**: **деплой v0.11.1** (`bash scripts/deploy.sh`) — выкатить
-багфикс в прод. Затем передать исполнителю **TASK-0027** (первый в цепочке
-v0.12, мониторинг поддоменов).
+багфикс в прод. Затем разблокировать стек v0.12 (см. ниже).
+
+⚠️ **v0.12 стек застрял и устарел — нужен ребейз (часть TASK-0027).** Ветки
+`task/0027-subdomain-monitor-schema` ⊂ `0028-...-diff-scheduler` ⊂
+`0029-...-notify-ux` срезаны со старой базы `552fbbd` (до v0.11.1) и отстают
+от main на 12 коммитов; таски ещё `open`, схема (`track_subdomains` и пр.) на
+main НЕ влита. Между базой и сейчас прошёл релиз v0.11.1 (wishlist → отдельная
+таблица, колонка `user_domains.is_wishlist` **удалена**). Это НЕ новая задача —
+это доведение существующего TASK-0027 (и стека) до мержа.
+
+Исполнителю: ребейзнуть стек на свежий `origin/main` (по порядку
+0027→0028→0029, напр. `git rebase --update-refs --onto origin/main 552fbbd
+task/0029-...`), разрешив конфликты. **Критичные точки:**
+- `src/db/models.py` (UserDomain): стек ещё содержит `is_wishlist` (на main
+  удалён) — при резолве **выбросить**, НЕ возвращать; сохранить с main
+  отсутствие `is_wishlist` + модель `Wishlist`; добавить из стека
+  `track_subdomains`/`notify_subdomain_new`/`notify_subdomain_removed`/
+  `subdomain_check_interval_override` + `User.subdomain_check_interval_days`.
+- миграция стека `20260530_subdomain_monitor`: перецелить `down_revision`
+  `20260530_subdomain_enum` → **`20260530_wishlist`** (текущий head); `alembic
+  heads` = один; round-trip на Postgres зелёный.
+- `keyboards.py` (убранный wishlist-фильтр + `is_wishlisted`-кнопка с main И
+  toggle'ы поддоменов из стека), `repositories/domains.py` (wishlist-методы на
+  main удалены — держать удалёнными), `locales/ru.py`+`en.py` (смержить ключи,
+  `test_all_ru_keys_present_in_en` зелёный). `INDEX.md` — `handoff.py board`,
+  `uv.lock` — перегенерить.
+- Anti-drift: `grep -rn is_wishlist src tests` → пусто; моки `spec`/`autospec`.
+
+Прогон `pytest`/`ruff`/`black --check`/`mypy src`, push `--force-with-lease`,
+**TASK-0027 → `in_review`**. Дальше архитектор ревьюит и мержит 0027→0028→0029,
+затем TASK-0030 (аудит v0.12) и релиз **v0.12.0**.
 
 ---
 

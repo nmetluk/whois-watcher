@@ -79,7 +79,8 @@ async def check_subdomains(ctx: dict[str, Any], registrable_domain: str) -> dict
                 current_fail_count = old_cache.fail_count if old_cache else 0
                 next_check_at = calculate_next_subdomain_check(
                     has_subdomains=False,
-                    fail_count=current_fail_count,
+                    fail_count=current_fail_count
+                    + 1,  # счётчик ПОСЛЕ фейла, согласован с update_fail
                 )
 
                 await repo.update_fail(

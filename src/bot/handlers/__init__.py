@@ -19,12 +19,13 @@
 13. ``admin``        — ``/admin`` (доступ ограничен ADMIN_USER_IDS)
 14. ``version``      — скрытая ``/version`` (диагностика, не в меню/help)
 15. ``wishlist``     — ``/wishlist`` + callback'и уведомления «домен освободился»
-16. ``stubs``        — пустой роутер (зарезервирован под будущие команды)
-17. ``awaiting_arg`` — FSM-flow для команд без аргумента (ADR 033). ВАЖНО:
+16. ``subdomains``   — ``/subdomains`` + callback'и (ADR 037)
+17. ``stubs``        — пустой роутер (зарезервирован под будущие команды)
+18. ``awaiting_arg`` — FSM-flow для команд без аргумента (ADR 033). ВАЖНО:
    должен идти ПОСЛЕ всех command-роутеров и ПЕРЕД ``text``-fallback'ом —
    тогда команды разбираются обычным path'ом, а текст в state'е
    подхватывается этим роутером, а не plain-text-роутером.
-18. ``text``         — обработка не-команд (последний)
+19. ``text``         — обработка не-команд (последний)
 """
 
 from aiogram import Router
@@ -45,6 +46,7 @@ from src.bot.handlers import (
     start,
     stats,
     stubs,
+    subdomains,
     text,
     version,
     whois,
@@ -68,6 +70,7 @@ ROUTERS: tuple[Router, ...] = (
     admin.router,
     version.router,
     wishlist.router,
+    subdomains.router,  # Этап 18 — subdomain enumeration (ADR 037)
     stubs.router,
     awaiting_arg.router,  # ADR 033 — FSM-flow для команд без аргумента
     text.router,

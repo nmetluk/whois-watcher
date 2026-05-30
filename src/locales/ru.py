@@ -88,6 +88,7 @@ LOCALE: dict[str, str] = {
         "<b>Проверка домена</b>\n"
         "/whois &lt;домен&gt; — показать WHOIS\n"
         "/check &lt;домен&gt; — принудительная проверка (раз в сутки)\n"
+        "/subdomains &lt;домен&gt; — найти поддомены (через crt.sh)\n"
         "\n"
         "<b>Слежение</b>\n"
         "/add &lt;домен&gt; — добавить домен\n"
@@ -703,6 +704,41 @@ LOCALE: dict[str, str] = {
     "commands.wishlist.tracked_now": (
         "✅ <b>{domain}</b> теперь у вас в обычном /list. Удачной регистрации!"
     ),
+    # ------------------------------------------------------------------
+    # Subdomain enumeration (Этап 18, ADR 037)
+    # ------------------------------------------------------------------
+    "commands.subdomains.searching": (
+        "🔍 Ищу поддомены <b>{domain}</b>...\n\n"
+        "Запрос к crt.sh может занять время. Результат пришлю отдельно."
+    ),
+    "commands.subdomains.header": (
+        "🔍 Поддомены <b>{domain}</b>\n\n" "Найдено: {count}\n" "Обновлено: {fetched_at}"
+    ),
+    "commands.subdomains.list_item": "• {subdomain}",
+    "commands.subdomains.empty": (
+        "🔍 Поддомены <b>{domain}</b>\n\n" "Пока ничего не найдено. Попробуйте позже."
+    ),
+    "commands.subdomains.no_cache": (
+        "🔍 Поддомены <b>{domain}</b>\n\n" "Кэш пуст или устарел. Попробуйте команду позже."
+    ),
+    "commands.subdomains.unavailable": (
+        "⚠️ Не удалось получить поддомены <b>{domain}</b>\n\n"
+        "crt.sh временно недоступен. Попробуйте позже."
+    ),
+    "commands.subdomains.invalid_domain": "❌ Некорректный домен",
+    "commands.subdomains.public_suffix": "❌ Это публичный суффикс, а не домен",
+    "commands.subdomains.button_track": "📌 Отслеживать",
+    "commands.subdomains.button_track_all": "📌 Отслеживать все",
+    "commands.subdomains.button_refresh": "🔄 Обновить",
+    "commands.subdomains.too_many": (
+        "⚠️ Найдено {count} поддоменов.\n\n"
+        "Лимит отображения: {max}.\n"
+        "Попробуйте выбрать конкретный поддомен или воспользуйтесь фильтром."
+    ),
+    "commands.subdomains.track_all_result": (
+        "✅ Добавлено: {added}\n" "⏭ Уже отслеживается: {skipped}\n" "{errors_msg}"
+    ),
+    "commands.subdomains.track_all_result_errors": "❌ Ошибок: {errors}",
     # ------------------------------------------------------------------
     # Inline-кнопки приветствия (callbacks из start_keyboard)
     # ------------------------------------------------------------------

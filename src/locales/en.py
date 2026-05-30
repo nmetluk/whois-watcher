@@ -74,6 +74,7 @@ LOCALE: dict[str, str] = {
         "<b>Domain lookup</b>\n"
         "/whois &lt;domain&gt; — show WHOIS\n"
         "/check &lt;domain&gt; — force refresh (once per day)\n"
+        "/subdomains &lt;domain&gt; — find subdomains (via crt.sh)\n"
         "\n"
         "<b>Tracking</b>\n"
         "/add &lt;domain&gt; — add a domain\n"
@@ -681,6 +682,41 @@ LOCALE: dict[str, str] = {
     "commands.wishlist.tracked_now": (
         "✅ <b>{domain}</b> is now in your normal /list. Good luck with registration!"
     ),
+    # ------------------------------------------------------------------
+    # Subdomain enumeration (Stage 18, ADR 037)
+    # ------------------------------------------------------------------
+    "commands.subdomains.searching": (
+        "🔍 Searching subdomains for <b>{domain}</b>...\n\n"
+        "Request to crt.sh may take time. I'll send the result separately."
+    ),
+    "commands.subdomains.header": (
+        "🔍 Subdomains of <b>{domain}</b>\n\n" "Found: {count}\n" "Updated: {fetched_at}"
+    ),
+    "commands.subdomains.list_item": "• {subdomain}",
+    "commands.subdomains.empty": (
+        "🔍 Subdomains of <b>{domain}</b>\n\n" "Nothing found yet. Try again later."
+    ),
+    "commands.subdomains.no_cache": (
+        "🔍 Subdomains of <b>{domain}</b>\n\n" "Cache is empty or stale. Try the command later."
+    ),
+    "commands.subdomains.unavailable": (
+        "⚠️ Couldn't get subdomains for <b>{domain}</b>\n\n"
+        "crt.sh is temporarily unavailable. Try again later."
+    ),
+    "commands.subdomains.invalid_domain": "❌ Invalid domain",
+    "commands.subdomains.public_suffix": "❌ This is a public suffix, not a domain",
+    "commands.subdomains.button_track": "📌 Track",
+    "commands.subdomains.button_track_all": "📌 Track all",
+    "commands.subdomains.button_refresh": "🔄 Refresh",
+    "commands.subdomains.too_many": (
+        "⚠️ Found {count} subdomains.\n\n"
+        "Display limit: {max}.\n"
+        "Try selecting a specific subdomain or use a filter."
+    ),
+    "commands.subdomains.track_all_result": (
+        "✅ Added: {added}\n" "⏭ Already tracked: {skipped}\n" "{errors_msg}"
+    ),
+    "commands.subdomains.track_all_result_errors": "❌ Errors: {errors}",
     # ------------------------------------------------------------------
     # Inline buttons from the welcome screen (start_keyboard callbacks)
     # ------------------------------------------------------------------

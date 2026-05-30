@@ -146,6 +146,22 @@ class NotifyAction(CallbackData, prefix="notif"):
     domain: str
 
 
+class SubdomainAction(CallbackData, prefix="sub"):
+    """Кнопки выбора поддоменов для отслеживания (ADR 037).
+
+    - ``track`` — отслеживать конкретный поддомен (идёт в /add)
+    - ``track_all`` — отслеживать все найденные поддомены
+    - ``refresh`` — обновить список (запустить новый check_subdomains)
+
+    ``idx`` — индекс поддомена в cached.subdomains (для action="track").
+    Telegram режет callback_data до 64 байт, поэтому pack'им idx, не полный FQDN.
+    """
+
+    action: str  # "track" | "track_all" | "refresh"
+    registrable: str  # registrable-домен
+    idx: int = -1  # индекс поддомена в cached.subdomains (для action="track")
+
+
 # ---------------------------------------------------------------------------
 # Готовые клавиатуры
 # ---------------------------------------------------------------------------
@@ -643,3 +659,49 @@ def download_preview(new_count: int, *, has_invalid: bool, lang: str) -> InlineK
         )
     builder.adjust(2, 1)
     return builder.as_markup()
+
+
+def subdomains_keyboard(
+    registrable: str, subdomains: list[str], *, lang: str
+) -> InlineKeyboardMarkup:
+    """Клавиатура для списка поддоменов с кнопками opt-in (ADR 037).
+
+    Для каждого поддомена — кнопка с именем поддомена.
+    Внизу — «📌 Отслеживать все» и «🔄 Обновить».
+    Telegram режет callback_data до 64 байт, поэтому pack'им idx, не полный FQDN.
+    """
+    from src.utils.idn import from_punycode
+
+    builder = InlineKeyboardBuilder()
+
+    # Кнопки по каждому поддомену (с именем поддомена)
+    for idx, subdomain in enumerate(subdomains[:_MAX_SUBDOMAIN_BUTTONS]):
+        display = from_punycode(subdomain)
+        builder.button(
+            text=f"📌 {display}",
+            callback_data=SubdomainAction(
+                action="track",
+                registrable=registrable,
+                idx=idx,
+            ).pack(),
+        )
+
+    # Кнопка «Отслеживать все»
+    builder.button(
+        text=t("commands.subdomains.button_track_all", lang),
+        callback_data=SubdomainAction(action="track_all", registrable=registrable).pack(),
+    )
+
+    # Кнопка «Обновить»
+    builder.button(
+        text=t("commands.subdomains.button_refresh", lang),
+        callback_data=SubdomainAction(action="refresh", registrable=registrable).pack(),
+    )
+
+    # Раскладка: каждая кнопка track — одна, внизу 2 кнопки (track_all, refresh)
+    shown = min(len(subdomains), _MAX_SUBDOMAIN_BUTTONS)
+    builder.adjust(*([1] * shown + [2]))
+    return builder.as_markup()
+
+
+_MAX_SUBDOMAIN_BUTTONS = 50  # Лимит кнопок (Telegram restriction ~100 байт на callback)

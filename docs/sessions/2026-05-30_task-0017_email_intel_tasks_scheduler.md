@@ -47,11 +47,12 @@ author: claude
 
 ### Тесты
 
-- **`tests/unit/test_check_email_intel_task.py`** — 7 тестов:
+- **`tests/unit/test_check_email_intel_task.py`** — 8 тестов:
   - Skip при удержанном Redis-флаге
   - First fetch не шлёт уведомления
   - MX change enqueue для подписчиков
   - Muted подписчик не получает уведомления
+  - **notify_email_change=False не шлёт уведомления** (ревью-фикс)
   - First failure → became_unreachable + enqueue
   - Repeat failure не дублирует уведомления
   - NXDOMAIN не enqueue
@@ -61,7 +62,7 @@ author: claude
   - Enqueue due domains
   - Skip when nothing due
 
-Все тесты прошли (10/10), полный suite — 779 passed.
+Все тесты прошли (11/11), полный suite — 780 passed.
 
 ## Инварианты (защищены тестами)
 
@@ -80,6 +81,19 @@ author: claude
 
 3. **Unused variables**: в notify_email_changes.py остались unused imports
    после упрощения (cache_repo, cache). Удалены.
+
+## 🔁 Ревью-фикс (первый PR отклонён)
+
+**Проблема:** использовались несуществующие поля `notify_email_mx`/`spf`/`dmarc`/`dkim`,
+которых нет в схеме UserDomain. В TASK-0015 добавлены только `track_email` и
+`notify_email_change` (один toggle по ADR 036).
+
+**Исправлено:**
+- `_enqueue_change_notices`: гейт по `notify_email_change` вместо гранулярных полей
+- `_TYPE_MAP` в `notify_email_changes.py`: упрощён до `(locale_key, notif_type)`
+- Тесты: добавлен `spec=UserDomain` к MagicMock, тест для `notify_email_change=False`
+
+**Коммит:** `0c97851` — fix(TASK-0017): исправить гейт notify_email_change (ревью-фикс)
 
 ## PR
 

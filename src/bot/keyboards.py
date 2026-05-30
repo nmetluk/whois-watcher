@@ -146,6 +146,19 @@ class NotifyAction(CallbackData, prefix="notif"):
     domain: str
 
 
+class SubdomainAction(CallbackData, prefix="sub"):
+    """Кнопки выбора поддоменов для отслеживания (ADR 037).
+
+    - ``track`` — отслеживать конкретный поддомен (идёт в /add)
+    - ``track_all`` — отслеживать все найденные поддомены
+    - ``refresh`` — обновить список (запустить новый check_subdomains)
+    """
+
+    action: str  # "track" | "track_all" | "refresh"
+    registrable: str  # registrable-домен
+    subdomain: str = ""  # конкретный поддомен (для action="track")
+
+
 # ---------------------------------------------------------------------------
 # Готовые клавиатуры
 # ---------------------------------------------------------------------------
@@ -643,3 +656,44 @@ def download_preview(new_count: int, *, has_invalid: bool, lang: str) -> InlineK
         )
     builder.adjust(2, 1)
     return builder.as_markup()
+
+
+def subdomains_keyboard(
+    registrable: str, subdomains: list[str], *, lang: str
+) -> InlineKeyboardMarkup:
+    """Клавиатура для списка поддоменов с кнопками opt-in (ADR 037).
+
+    Для каждого поддомена — кнопка «📌 Отслеживать».
+    Внизу — «📌 Отслеживать все» и «🔄 Обновить».
+    """
+    builder = InlineKeyboardBuilder()
+
+    # Кнопки по каждому поддомену
+    for subdomain in subdomains[:_MAX_SUBDOMAIN_BUTTONS]:
+        builder.button(
+            text=t("commands.subdomains.button_track", lang),
+            callback_data=SubdomainAction(
+                action="track",
+                registrable=registrable,
+                subdomain=subdomain,
+            ).pack(),
+        )
+
+    # Кнопка «Отслеживать все»
+    builder.button(
+        text=t("commands.subdomains.button_track_all", lang),
+        callback_data=SubdomainAction(action="track_all", registrable=registrable).pack(),
+    )
+
+    # Кнопка «Обновить»
+    builder.button(
+        text=t("commands.subdomains.button_refresh", lang),
+        callback_data=SubdomainAction(action="refresh", registrable=registrable).pack(),
+    )
+
+    # Раскладка: по 2 кнопки в ряд
+    builder.adjust(2)
+    return builder.as_markup(resize_keyboard=True)
+
+
+_MAX_SUBDOMAIN_BUTTONS = 50  # Лимит кнопок (Telegram restriction ~100 байт на callback)

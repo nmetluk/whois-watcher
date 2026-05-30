@@ -1,16 +1,17 @@
 ---
 id: TASK-0024
 title: UX — команда /subdomains + opt-in отслеживание + локали (ADR 037)
-status: open
+status: completed
 milestone: v0.11.0
 adr: 037
 area: code
 depends_on: [TASK-0023]
-branch: ""
-owner: ""
-session: ""
+branch: "task/0024-subdomain-enum-ux"
+owner: "claude"
+session: "docs/sessions/2025-05-30-task-0024.md"
 pr: ""
 created: 2026-05-30
+completed: 2026-05-30
 ---
 
 # TASK-0024 — UX subdomain enumeration (ADR 037)

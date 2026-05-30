@@ -116,7 +116,6 @@ class TestListRowSubdomainMark:
             notify_dns_aaaa_change=True,
             notify_dns_ns_change=True,
             notify_dns_unreachable=True,
-            is_wishlist=False,
         )
 
     def _whois_cache(self, expires_at: datetime | None) -> WhoisCache:

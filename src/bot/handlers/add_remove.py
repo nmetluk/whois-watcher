@@ -93,9 +93,6 @@ async def cmd_add(
         await redis.sadd(key, str(user.id))
         await redis.expire(key, _PENDING_FOLLOWUP_TTL)
         await message.answer(t("commands.add.success_no_data", lang, domain=display))
-    elif result.status == "promoted":
-        # Промоут из wishlist
-        await message.answer(t("commands.add.promoted_from_wishlist", lang, domain=display))
     elif result.status == "already_tracked":
         await message.answer(t("commands.add.already_tracked", lang, domain=display))
     elif result.status == "limit_reached":

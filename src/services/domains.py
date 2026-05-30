@@ -85,20 +85,10 @@ class DomainService:
                 normalized_domain=normalized,
                 limit=self._limits.max_domains_per_user,
             )
-        # Сначала проверяем: может это wishlist?
+        # Проверка дубля (wishlist не учитывается — независимые списки, ADR 039)
         existing = await self._domains.get_for_user(user_id, normalized)
         if existing is not None:
-            if existing.is_wishlist:
-                # Промоут wishlist → tracked
-                await self._domains.promote_from_wishlist(user_id, normalized)
-                cached = await self._cache.get(registrable)
-                return AddDomainResult(
-                    status="promoted",
-                    normalized_domain=normalized,
-                    whois_data=_cache_to_data(cached, normalized) if cached else None,
-                    notify_days_label=_format_days(notify_days),
-                )
-            # Ужеtracked
+            # Уже tracked
             cached = await self._cache.get(registrable)
             return AddDomainResult(
                 status="already_tracked",

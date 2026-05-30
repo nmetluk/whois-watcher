@@ -227,6 +227,7 @@ LOCALE: dict[str, str] = {
     "button.delete": "🗑 Delete",
     "button.notify_settings": "⚙️ Notification settings",
     "button.wishlist_add": "🎯 Watch for drop",
+    "button.wishlist_remove": "❌ Remove from wishlist",
     "button.download_add": "✅ Add {count}",
     "button.download_show_invalid": "📄 Show invalid",
     # ------------------------------------------------------------------
@@ -401,7 +402,6 @@ LOCALE: dict[str, str] = {
     "list.search.empty": "Nothing found for <code>{query}</code>.",
     "list.filter.critical": "🚨 With problems",
     "list.filter.expired": "💀 Expired",
-    "list.filter.wishlist": "🎯 Wishlist",
     # ------------------------------------------------------------------
     # /stats
     # ------------------------------------------------------------------
@@ -682,6 +682,12 @@ LOCALE: dict[str, str] = {
     "commands.wishlist.tracked_now": (
         "✅ <b>{domain}</b> is now in your normal /list. Good luck with registration!"
     ),
+    "commands.wishlist.already_added": (
+        "⚠️ <b>{domain}</b> is already in wishlist. "
+        "You'll be notified when the domain becomes available."
+    ),
+    "commands.wishlist.removed": "🎯 <b>{domain}</b> removed from wishlist.",
+    "commands.wishlist.not_found": "⚠️ Domain not found in wishlist.",
     # ------------------------------------------------------------------
     # Subdomain enumeration (Stage 18, ADR 037)
     # ------------------------------------------------------------------

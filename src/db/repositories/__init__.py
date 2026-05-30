@@ -19,6 +19,7 @@ from src.db.repositories.ssl_cache import SSLCacheRepository
 from src.db.repositories.subdomain_enum_cache import SubdomainEnumCacheRepository
 from src.db.repositories.users import UserRepository
 from src.db.repositories.whois_cache import WhoisCacheRepository
+from src.db.repositories.wishlist import WishlistRepository
 
 __all__ = [
     "BaseRepository",
@@ -30,4 +31,5 @@ __all__ = [
     "SubdomainEnumCacheRepository",
     "UserRepository",
     "WhoisCacheRepository",
+    "WishlistRepository",
 ]

@@ -82,6 +82,12 @@ class User(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    wishlist_items: Mapped[list[Wishlist]] = relationship(
+        "Wishlist",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<User id={self.id} tg={self.telegram_id} lang={self.language!r}>"
@@ -183,11 +189,6 @@ class UserDomain(Base):
     added_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
-
-    # Wishlist-режим (Этап 9). Если True — пользователь ждёт когда домен
-    # станет available; в обычном /list не показываем, проверяем раз в сутки,
-    # одноразовое уведомление по освобождению (см. tasks/notify_wishlist).
-    is_wishlist: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
 
     user: Mapped[User] = relationship("User", back_populates="domains")
 
@@ -575,6 +576,52 @@ class EmailIntelCache(Base):
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<EmailIntelCache domain={self.domain!r} mx={len(self.mx_records) if self.mx_records else 0}>"
+
+
+# ---------------------------------------------------------------------------
+# wishlist (ADR 039)
+# ---------------------------------------------------------------------------
+class Wishlist(Base):
+    """Wishlist: домены, за которыми пользователь следит (ожидание освобождения) (ADR 039).
+
+    Независимая таблица от ``user_domains``. После TASK-0031/0032 один домен может
+    одновременно быть и в tracking (``/list``), и в wishlist (``/wishlist``).
+    """
+
+    __tablename__ = "wishlist"
+    __table_args__ = (
+        UniqueConstraint("user_id", "domain", name="uq_wishlist_user_domain"),
+        Index("ix_wishlist_user_id", "user_id"),
+        Index("ix_wishlist_domain", "domain"),
+        Index("ix_wishlist_registrable_domain", "registrable_domain"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        comment="ID пользователя (FK → users.id ON DELETE CASCADE)",
+    )
+    # punycode-форма (нормализация на стороне приложения, см. utils/idn.py)
+    domain: Mapped[str] = mapped_column(Text, nullable=False)
+    # registrable-домен (eTLD+1) — для WHOIS-джойна, ADR 035
+    registrable_domain: Mapped[str] = mapped_column(Text, nullable=False)
+    # Признак поддомена: True если domain != registrable_domain
+    is_subdomain: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    # Когда добавлен в wishlist
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    # Когда последнее уведомление об освобождении (для одноразовости)
+    last_notified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    user: Mapped[User] = relationship("User", back_populates="wishlist_items")
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<Wishlist user={self.user_id} domain={self.domain!r}>"
 
 
 # ---------------------------------------------------------------------------

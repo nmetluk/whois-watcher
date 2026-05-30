@@ -1,17 +1,15 @@
-"""ARQ-задача ``send_wishlist_available_notice`` (Этап 9).
+"""ARQ-задача ``send_wishlist_available_notice`` (ADR 039).
 
 Срабатывает из ``check_domain._enqueue_wishlist_notices`` когда отслеживаемый
 wishlist-домен переходит из ``is_registered=True`` в ``False`` (освободился).
 
 Что делает:
 
-1. Перечитывает user_domain (могло измениться: пользователь снял с wishlist).
-2. Если запись актуальна и is_wishlist=True — шлёт сообщение с кнопками
-   «📌 Начать отслеживать» / «OK».
+1. Проверяет что домен всё ещё в wishlist (через WishlistRepository.exists).
+2. Шлёт сообщение с кнопками «📌 Начать отслеживать» / «OK».
 3. Регистрирует факт в ``sent_notifications`` (audit log).
-4. Удаляет user_domain — wishlist-уведомление одноразовое. При повторном
-   /wishlist <domain> пользователь снова попадёт в очередь, когда домен
-   снова станет available.
+4. Удаляет запись из wishlist — уведомление одноразовое. При повторном
+   /wishlist <domain> пользователь снова попадёт в очередь.
 """
 
 from __future__ import annotations
@@ -23,7 +21,7 @@ from aiogram import Bot
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 
-from src.db.repositories import DomainRepository, NotificationRepository, UserRepository
+from src.db.repositories import NotificationRepository, UserRepository, WishlistRepository
 from src.db.session import get_session
 from src.locales import t
 from src.utils.idn import from_punycode
@@ -42,12 +40,12 @@ async def send_wishlist_available_notice(
     bot: Bot = ctx["bot"]
 
     async with get_session() as session:
-        domain_repo = DomainRepository(session)
+        wishlist_repo = WishlistRepository(session)
         user_repo = UserRepository(session)
 
-        user_domain = await domain_repo.get_for_user(user_id, domain)
-        if user_domain is None or not user_domain.is_wishlist:
-            # Пользователь уже снял с wishlist (или удалил совсем) — выходим.
+        # Проверяем что домен всё ещё в wishlist
+        if not await wishlist_repo.exists(user_id, domain):
+            # Пользователь уже удалил из wishlist — выходим.
             return
 
         users = await user_repo.get_by_ids([user_id])
@@ -99,7 +97,8 @@ async def send_wishlist_available_notice(
             domain=domain,
             notification_type=NOTIFICATION_TYPE,
         )
-        await DomainRepository(session).remove_wishlist(user_id, domain)
+        # Удаляем из wishlist (mark_notified удаляет запись)
+        await WishlistRepository(session).mark_notified(user_id, domain)
 
 
 def _build_keyboard(domain: str, *, lang: str) -> Any:

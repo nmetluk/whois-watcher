@@ -42,7 +42,7 @@ class WhoisAction(CallbackData, prefix="whois"):
     (для Этапа 2 это не критично — заглушки и так не используют).
     """
 
-    action: str  # follow | unfollow | refresh | raw | wishlist (Этап 9)
+    action: str  # follow | unfollow | refresh | raw | wishlist | unwishlist (ADR 039)
     domain: str
 
 
@@ -190,13 +190,17 @@ def whois_actions(
     domain: str,
     *,
     is_tracked: bool,
+    is_wishlisted: bool = False,
     lang: str,
     show_wishlist: bool = True,
 ) -> InlineKeyboardMarkup:
     """Кнопки под карточкой ``/whois``.
 
-    ``show_wishlist`` (Этап 9) — выводить ли кнопку «🎯 Хочу когда
-    освободится». По умолчанию ``True``; хэндлер может скрыть в спец-случаях.
+    ``show_wishlist`` (Этап 9) — выводить ли кнопки wishlist.
+    По умолчанию ``True``; хэндлер может скрыть в спец-случаях.
+
+    ``is_wishlisted`` (ADR 039) — если True, показывает кнопку «убрать
+    из wishlist», иначе — «добавить в wishlist».
 
     Кнопка «⚙️ Уведомления» (Этап 11) показывается только если домен
     отслеживается (``is_tracked=True``) — для нетрекаемых доменов
@@ -227,10 +231,16 @@ def whois_actions(
             callback_data=NotifyConfig(action="open", domain=domain).pack(),
         )
     if show_wishlist:
-        builder.button(
-            text=t("button.wishlist_add", lang),
-            callback_data=WhoisAction(action="wishlist", domain=domain).pack(),
-        )
+        if is_wishlisted:
+            builder.button(
+                text=t("button.wishlist_remove", lang),
+                callback_data=WhoisAction(action="unwishlist", domain=domain).pack(),
+            )
+        else:
+            builder.button(
+                text=t("button.wishlist_add", lang),
+                callback_data=WhoisAction(action="wishlist", domain=domain).pack(),
+            )
     # Раскладка: первая кнопка (follow/unfollow) одна, потом по 2 в ряд.
     rows: list[int] = [1]
     extras = 2  # refresh + raw
@@ -410,7 +420,6 @@ def list_filters(lang: str) -> InlineKeyboardMarkup:
         ("expired", "list.filter.expired"),
         ("no_data", "button.filter_no_data"),
         ("muted", "button.filter_muted"),
-        ("wishlist", "list.filter.wishlist"),
     ):
         builder.button(text=t(key, lang), callback_data=ListFilter(name=name).pack())
     builder.button(

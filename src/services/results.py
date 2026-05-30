@@ -49,7 +49,6 @@ AddStatus = Literal[
     "added",  # успешно добавлено + есть свежие WHOIS-данные
     "added_pending",  # добавлено, данные подгружаются в фоне
     "already_tracked",  # домен уже у пользователя в списке
-    "promoted",  # промоут из wishlist в обычное отслеживание
     "limit_reached",  # достигнут MAX_DOMAINS_PER_USER
     "invalid_domain",  # не похоже на домен
 ]
@@ -98,7 +97,6 @@ ListFilter = Literal[
     "muted",
     "critical",  # Этап 9 — есть critical-статусы (clientHold / pendingDelete / …)
     "expired",  # Этап 9 — expires_at в прошлом
-    "wishlist",  # Этап 9 — режим «ждём освобождения»
 ]
 
 

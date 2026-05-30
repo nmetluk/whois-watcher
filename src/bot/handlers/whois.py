@@ -26,6 +26,7 @@ from src.db.repositories import (
     EmailIntelCacheRepository,
     SSLCacheRepository,
     WhoisCacheRepository,
+    WishlistRepository,
 )
 from src.db.session import get_session
 from src.locales import t
@@ -106,6 +107,7 @@ async def _send_whois_card(
     async with get_session() as session:
         cache_repo = WhoisCacheRepository(session)
         domain_repo = DomainRepository(session)
+        wishlist_repo = WishlistRepository(session)
         facade = WhoisFacade(cache_repo, arq_redis, limits)
         service = DomainService(
             domain_repo=domain_repo, cache_repo=cache_repo, facade=facade, limits=limits
@@ -132,6 +134,8 @@ async def _send_whois_card(
             lookup_domain = result.data.domain
 
         is_tracked = await domain_repo.exists(user.id, lookup_domain)
+        # ADR 039: проверяем наличие в wishlist для кнопки "убрать из wishlist"
+        is_wishlisted = await wishlist_repo.exists(user.id, lookup_domain)
         # ``fetched_at`` для «откуда данные» — берём из самой свежей записи кэша.
         cached = await cache_repo.get(lookup_domain)
         fetched_at = cached.fetched_at if cached is not None else None
@@ -198,7 +202,9 @@ async def _send_whois_card(
     body = "\n\n".join(body_parts)
     await message.answer(
         body,
-        reply_markup=whois_actions(lookup_domain, is_tracked=is_tracked, lang=lang),
+        reply_markup=whois_actions(
+            lookup_domain, is_tracked=is_tracked, is_wishlisted=is_wishlisted, lang=lang
+        ),
     )
 
 
@@ -264,6 +270,13 @@ async def on_whois_action(
             domain=domain,
             arq_redis=arq_redis,
             limits=limits,
+        )
+    elif action == "unwishlist":
+        await _remove_from_wishlist(
+            query.message,
+            user=user,
+            lang=lang,
+            domain=domain,
         )
 
 
@@ -417,6 +430,26 @@ async def _add_to_wishlist_shortcut(
         arq_redis=arq_redis,
         limits=limits,
     )
+
+
+async def _remove_from_wishlist(
+    message: Message,
+    *,
+    user: User,
+    lang: str,
+    domain: str,
+) -> None:
+    """Удаляет домен из wishlist (кнопка «убрать из wishlist»)."""
+    async with get_session() as session:
+        wishlist_repo = WishlistRepository(session)
+        removed = await wishlist_repo.remove(user.id, domain)
+
+    if removed:
+        display = from_punycode(domain)
+        await message.answer(t("commands.wishlist.removed", lang, domain=display))
+    else:
+        # Не было в wishlist — странно, но не критично
+        await message.answer(t("commands.wishlist.not_found", lang))
 
 
 async def _register_pending_followup(

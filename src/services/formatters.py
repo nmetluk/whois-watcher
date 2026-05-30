@@ -134,8 +134,8 @@ def format_list_row(
 ) -> str:
     """Одна строка списка ``/list``: эмодзи + домен + дни до истечения + 🔕.
 
-    Wishlist-домены (Этап 9) рендерятся отдельным шаблоном — иконка 🎯
-    и подпись «жду освобождения», без дней до истечения.
+    Wishlist (ADR 039) теперь в отдельной таблице — использует свой
+    путь через WishlistRepository, не format_list_row.
 
     Поддомены (TASK-0005) помечаются значком `↳` и показывают родительский expiry.
     """
@@ -145,9 +145,6 @@ def format_list_row(
     # Поддомен — добавляем значок ↳
     is_sub = getattr(user_domain, "is_subdomain", False)
     subdomain_mark = "↳ " if is_sub else ""
-
-    if getattr(user_domain, "is_wishlist", False):
-        return t("commands.list.row_wishlist", lang, domain=display)
 
     muted = _is_muted(user_domain)
     muted_suffix = t("commands.list.muted_suffix", lang) if muted else ""

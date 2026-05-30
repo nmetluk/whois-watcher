@@ -73,3 +73,46 @@ Fan-out уведомлений о diff + конфигурирование мон
 
 - ADR 038; образцы — `src/tasks/notify_ssl_changes.py`, `notify_config_keyboard`
   + `_TOGGLE_FIELDS`, `edit_ssl_days`-FSM (ADR 029/030).
+
+---
+
+## Ревью v1 — один фикс до мержа (2026-05-30)
+
+Стек 0027/0028/0029 (PR #19/#20/#21) проверен — качество высокое, схема/diff/
+scheduler/интеграция/fan-out корректны, локали ru/en симметричны. Один баг в
+`src/tasks/notify_subdomain_changes.py`.
+
+**Пустое уведомление, когда изменился только выключенный тип.** Гард «оба
+toggle выключены → skip» не ловит случай, где включённый toggle пуст:
+
+- diff = только `removed`; юзер `notify_subdomain_removed=False`,
+  `notify_subdomain_new=True` → блок `new` пропущен (нет new-элементов),
+  блок `removed` пропущен (toggle off), гард
+  `not notify_new and not notify_removed` = `False` → **уходит сообщение из
+  одного заголовка `<b>example.com</b> —` без тела.** Симметрично для new-only
+  при `notify_subdomain_new=False`.
+
+Это не редкость: кто отключил «исчезнувшие» (они шумнее), будет получать пустые
+«домен —» при любых удалениях.
+
+**Фикс — гард по факту добавленного контента, не по toggle'ам.** Заменить
+```python
+if not user_domain.notify_subdomain_new and not user_domain.notify_subdomain_removed:
+    continue
+```
+на проверку, что в сообщение реально добавлен контент, например:
+```python
+if len(lines) == 1:   # только заголовок «<b>domain</b> —», тела нет
+    continue
+```
+(гард поставить ПЕРЕД формированием `text_body`/отправкой).
+
+**Тесты (обязательно — сейчас покрыты только empty-diff + exists):**
+- removed-only при `notify_subdomain_removed=False`, `notify_subdomain_new=True`
+  → `bot.send_message` НЕ вызывается (нет пустого сообщения).
+- new-only при `notify_subdomain_new=False` → НЕ вызывается.
+- new-only при `notify_subdomain_new=True` → вызывается, в тексте есть поддомен.
+- mute / дедуп одному user (если ещё не покрыто).
+Моки со `spec`/`autospec` (anti-drift, CLAUDE.md).
+
+Дорабатывать в той же ветке `task/0029-subdomain-monitor-notify-ux`.

@@ -192,7 +192,7 @@ async def cb_subdomains_track(
         )
 
     display = from_punycode(result.normalized_domain or subdomain)
-    if result.status in ("added", "added_pending", "promoted"):
+    if result.status in ("added", "added_pending"):
         await callback.answer(
             t("commands.add.success_no_data", lang, domain=display),
             show_alert=True,
@@ -254,7 +254,7 @@ async def cb_subdomains_track_all(
                 notify_days=list(user.notify_days),
                 domain_input=subdomain,
             )
-            if result.status in ("added", "added_pending", "promoted"):
+            if result.status in ("added", "added_pending"):
                 added += 1
             elif result.status == "already_tracked":
                 skipped += 1

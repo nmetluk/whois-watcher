@@ -76,12 +76,15 @@ class TestSuccessfulFetch:
         cache_repo_mock.get.return_value = None  # старого нет
         domain_repo_mock = AsyncMock()
         domain_repo_mock.get_subscribers_for_domain.return_value = []
+        wishlist_repo_mock = AsyncMock()
+        wishlist_repo_mock.get_subscribers_for_domain.return_value = []
 
         monkeypatch.setattr("src.tasks.check_domain.get_session", _fake_session_factory)
         monkeypatch.setattr(
             "src.tasks.check_domain.WhoisCacheRepository", lambda _s: cache_repo_mock
         )
         monkeypatch.setattr("src.tasks.check_domain.DomainRepository", lambda _s: domain_repo_mock)
+        monkeypatch.setattr("src.db.repositories.WishlistRepository", lambda _s: wishlist_repo_mock)
 
         whois = WhoisData(
             domain="example.com",
@@ -117,10 +120,13 @@ class TestSuccessfulFetch:
         cache_repo_mock.get.return_value = None
         domain_repo_mock = AsyncMock()
         domain_repo_mock.get_subscribers_for_domain.return_value = []
+        wishlist_repo_mock = AsyncMock()
+        wishlist_repo_mock.get_subscribers_for_domain.return_value = []
         monkeypatch.setattr(
             "src.tasks.check_domain.WhoisCacheRepository", lambda _s: cache_repo_mock
         )
         monkeypatch.setattr("src.tasks.check_domain.DomainRepository", lambda _s: domain_repo_mock)
+        monkeypatch.setattr("src.db.repositories.WishlistRepository", lambda _s: wishlist_repo_mock)
 
         whois = WhoisData(domain="example.com", is_registered=True)
         with patch("src.tasks.check_domain.lookup_domain", new=AsyncMock(return_value=whois)):
@@ -149,6 +155,7 @@ class TestFailedFetch:
             "src.tasks.check_domain.WhoisCacheRepository", lambda _s: cache_repo_mock
         )
         monkeypatch.setattr("src.tasks.check_domain.DomainRepository", lambda _s: AsyncMock())
+        monkeypatch.setattr("src.db.repositories.WishlistRepository", lambda _s: AsyncMock())
 
         err = WhoisError(domain="example.com", error_type="timeout", message="timed out")
         with patch("src.tasks.check_domain.lookup_domain", new=AsyncMock(return_value=err)):
@@ -200,9 +207,10 @@ class TestFirstFetchAfterAdd:
 
         domain_repo_mock = AsyncMock()
         # Подписчик есть, но мы не должны до него дойти из-за guard'а.
-        sub = MagicMock()
+        from src.db.models import UserDomain
+
+        sub = MagicMock(spec=UserDomain)
         sub.user_id = 100
-        sub.is_wishlist = False
         sub.is_muted = False  # Этап 11: kill-switch
         sub.notify_expiry = True
         sub.notify_registrar_change = True
@@ -217,6 +225,9 @@ class TestFirstFetchAfterAdd:
             "src.tasks.check_domain.WhoisCacheRepository", lambda _s: cache_repo_mock
         )
         monkeypatch.setattr("src.tasks.check_domain.DomainRepository", lambda _s: domain_repo_mock)
+        wishlist_repo_mock = AsyncMock()
+        wishlist_repo_mock.get_subscribers_for_domain.return_value = []
+        monkeypatch.setattr("src.db.repositories.WishlistRepository", lambda _s: wishlist_repo_mock)
 
         fresh = WhoisData(
             domain="example.com",
@@ -270,9 +281,10 @@ class TestFirstFetchAfterAdd:
         cache_repo_mock.get.return_value = old
 
         domain_repo_mock = AsyncMock()
-        sub = MagicMock()
+        from src.db.models import UserDomain
+
+        sub = MagicMock(spec=UserDomain)
         sub.user_id = 100
-        sub.is_wishlist = False
         sub.is_muted = False  # Этап 11: kill-switch
         sub.notify_expiry = True
         sub.notify_registrar_change = True
@@ -287,6 +299,9 @@ class TestFirstFetchAfterAdd:
             "src.tasks.check_domain.WhoisCacheRepository", lambda _s: cache_repo_mock
         )
         monkeypatch.setattr("src.tasks.check_domain.DomainRepository", lambda _s: domain_repo_mock)
+        wishlist_repo_mock = AsyncMock()
+        wishlist_repo_mock.get_subscribers_for_domain.return_value = []
+        monkeypatch.setattr("src.db.repositories.WishlistRepository", lambda _s: wishlist_repo_mock)
 
         # Новые данные: тот же expires, но СМЕНИЛСЯ регистратор.
         fresh = WhoisData(

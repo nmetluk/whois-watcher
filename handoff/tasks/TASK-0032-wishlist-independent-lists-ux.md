@@ -1,14 +1,14 @@
 ---
 id: TASK-0032
 title: Развязка wishlist↔tracking по коду + кнопка «убрать из wishlist» (ADR 039)
-status: in_review
+status: done
 milestone: v0.11.1
 adr: 039
 area: code
 depends_on: [TASK-0031]
 branch: ""
 owner: ""
-session: ""
+session: docs/sessions/2026-05-30_task-0031-0032-wishlist-independent-lists.md
 pr: 22
 created: 2026-05-30
 ---

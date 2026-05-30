@@ -88,3 +88,14 @@ class AwaitingDomainArg(StatesGroup):
     """
 
     waiting = State()
+
+
+class NotifySubdomainIntervalStates(StatesGroup):
+    """FSM для редактирования ``UserDomain.subdomain_check_interval_override``
+    (TASK-0029, ADR 038).
+
+    Позволяет задать свой интервал проверки поддоменов (дни), или сбросить
+    override (``/default``) и использовать ``User.subdomain_check_interval_days``.
+    """
+
+    waiting_for_interval = State()

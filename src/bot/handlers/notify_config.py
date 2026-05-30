@@ -31,7 +31,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from src.bot.keyboards import NotifyConfig, notify_config_keyboard
-from src.bot.states import NotifyDaysStates, NotifySslDaysStates
+from src.bot.states import (
+    NotifyDaysStates,
+    NotifySslDaysStates,
+    NotifySubdomainIntervalStates,
+)
 from src.db.models import User, UserDomain
 from src.db.repositories import DomainRepository, UserRepository
 from src.db.session import get_session
@@ -166,6 +170,13 @@ async def on_notify_config(
         await state.set_state(NotifySslDaysStates.waiting_for_days)
         await state.update_data(domain=domain)
         await query.message.answer(t("notify_config.ssl_days_prompt", lang))
+        return
+
+    if action == "edit_subdomain_interval":
+        # TASK-0029, ADR 038: отдельная FSM для интервала поддоменов.
+        await state.set_state(NotifySubdomainIntervalStates.waiting_for_interval)
+        await state.update_data(domain=domain)
+        await query.message.answer(t("notify_config.subdomain_interval_prompt", lang))
         return
 
     loaded = await _load_user_domain(user.id, domain)
@@ -361,3 +372,60 @@ async def on_ssl_days_input(
 
 
 __all__ = ["router"]
+
+
+# ---------------------------------------------------------------------------
+# FSM: редактирование subdomain_check_interval_override (TASK-0029, ADR 038)
+# ---------------------------------------------------------------------------
+
+
+@router.message(Command("default"), NotifySubdomainIntervalStates.waiting_for_interval)
+async def on_subdomain_interval_default(
+    message: Message,
+    user: User,
+    lang: str,
+    state: FSMContext,
+) -> None:
+    """/default — сбросить subdomain interval override в NULL (использовать
+    ``User.subdomain_check_interval_days``)."""
+    data = await state.get_data()
+    domain = str(data.get("domain") or "")
+    await state.clear()
+    if not domain:
+        return
+    await _persist(user.id, domain, subdomain_check_interval_override=None)
+    await message.answer(t("notify_config.subdomain_interval_saved_default", lang))
+    await _send_refreshed_config(message, user, domain, lang)
+
+
+@router.message(NotifySubdomainIntervalStates.waiting_for_interval)
+async def on_subdomain_interval_input(
+    message: Message,
+    user: User,
+    lang: str,
+    state: FSMContext,
+) -> None:
+    """Принимает число — интервал проверки поддоменов (дни). /cancel перехватывается help_cancel."""
+    raw = (message.text or "").strip()
+    if not raw:
+        await message.answer(t("notify_config.subdomain_interval_prompt", lang))
+        return
+    try:
+        interval = int(raw)
+        if interval < 1:
+            raise ValueError
+    except ValueError:
+        await message.answer(t("notify_config.subdomain_interval_invalid", lang))
+        return
+
+    data = await state.get_data()
+    domain = str(data.get("domain") or "")
+    await state.clear()
+    if not domain:
+        return
+
+    await _persist(user.id, domain, subdomain_check_interval_override=interval)
+    await message.answer(
+        t("notify_config.subdomain_interval_saved_override", lang, days=str(interval))
+    )
+    await _send_refreshed_config(message, user, domain, lang)

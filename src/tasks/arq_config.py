@@ -111,6 +111,7 @@ def _build_functions() -> list[Any]:
     from src.tasks.notify_email_changes import send_email_change_notice
     from src.tasks.notify_problem import send_problem_notice
     from src.tasks.notify_ssl_changes import send_ssl_change_notice
+    from src.tasks.notify_subdomain_changes import notify_subdomain_changes
     from src.tasks.notify_wishlist import send_wishlist_available_notice
     from src.tasks.proxy_health import proxy_health_check
     from src.tasks.rir_health import rir_health_check
@@ -150,6 +151,8 @@ def _build_functions() -> list[Any]:
         send_email_change_notice,
         # Subdomain enumeration (Этап 18, ADR 037)
         check_subdomains,
+        # Subdomain monitoring (TASK-0029, ADR 038)
+        notify_subdomain_changes,
     ]
 
 

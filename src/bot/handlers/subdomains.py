@@ -17,7 +17,6 @@ from aiogram import F, Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import CallbackQuery, Message
 from arq import ArqRedis
-from redis.asyncio import Redis
 
 from src.bot.keyboards import SubdomainAction, subdomains_keyboard
 from src.config.limits import Limits
@@ -47,7 +46,6 @@ async def cmd_subdomains(
     user: User,
     lang: str,
     arq_redis: ArqRedis,
-    redis: Redis[str],
 ) -> None:
     """``/subdomains <domain>`` — показать поддомены registrable-домена."""
     if not command.args:
@@ -167,10 +165,17 @@ async def cb_subdomains_track(
     limits: Limits,
 ) -> None:
     """Кнопка «📌 Отслеживать» — добавить поддомен через /add путь."""
-    subdomain = callback_data.subdomain
-    if not subdomain:
-        await callback.answer(t("errors.invalid_domain", lang), show_alert=True)
+    registrable = callback_data.registrable
+    idx = callback_data.idx
+
+    # Получаем поддомен из кэша по idx
+    async with get_session() as session:
+        cache_repo = SubdomainEnumCacheRepository(session)
+        cached = await cache_repo.get(registrable)
+    if not cached or not cached.subdomains or idx < 0 or idx >= len(cached.subdomains):
+        await callback.answer(t("commands.subdomains.no_cache", lang), show_alert=True)
         return
+    subdomain = cached.subdomains[idx]
 
     # Используем DomainService.add_for_user (как /add)
     async with get_session() as session:
@@ -187,7 +192,7 @@ async def cb_subdomains_track(
         )
 
     display = from_punycode(result.normalized_domain or subdomain)
-    if result.status == "added":
+    if result.status in ("added", "added_pending", "promoted"):
         await callback.answer(
             t("commands.add.success_no_data", lang, domain=display),
             show_alert=True,
@@ -249,7 +254,7 @@ async def cb_subdomains_track_all(
                 notify_days=list(user.notify_days),
                 domain_input=subdomain,
             )
-            if result.status in ("added", "added_pending"):
+            if result.status in ("added", "added_pending", "promoted"):
                 added += 1
             elif result.status == "already_tracked":
                 skipped += 1

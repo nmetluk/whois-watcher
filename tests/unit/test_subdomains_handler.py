@@ -78,7 +78,6 @@ class TestValidationNoDb:
             user=_user(),
             lang="ru",
             arq_redis=AsyncMock(),
-            redis=AsyncMock(),
         )
 
         text = message.answer.await_args.args[0]
@@ -148,19 +147,120 @@ class TestCallbackTrack:
         query = MagicMock()
         query.answer = AsyncMock()
 
-        callback_data = SubdomainAction(action="track", registrable="example.com", subdomain="")
+        callback_data = SubdomainAction(action="track", registrable="example.com", idx=-1)
 
-        await handler.cb_subdomains_track(
-            callback=query,
-            callback_data=callback_data,
-            user=_user(),
-            lang="ru",
-            arq_redis=AsyncMock(),
-            limits=_limits(),
-        )
+        # Мокаем SubdomainEnumCacheRepository чтобы возвращать None (idx=-1 → out of range)
+        mock_cache_repo = MagicMock()
+        mock_cache_repo.get = AsyncMock(return_value=None)
+
+        with patch(
+            "src.bot.handlers.subdomains.SubdomainEnumCacheRepository", return_value=mock_cache_repo
+        ):
+            await handler.cb_subdomains_track(
+                callback=query,
+                callback_data=callback_data,
+                user=_user(),
+                lang="ru",
+                arq_redis=AsyncMock(),
+                limits=_limits(),
+            )
 
         # show_alert=True для ошибок
         assert query.answer.call_count >= 1
+
+    async def test_track_with_added_pending_status_shows_success(self) -> None:
+        """added_pending (типичный случай) показывает success, не invalid_domain."""
+        from unittest.mock import create_autospec
+
+        from src.services.domains import AddDomainResult, DomainService
+
+        query = MagicMock()
+        query.answer = AsyncMock()
+
+        # Мок для кэша с поддоменом
+        cached = _cache(subdomains=["www.example.com"])
+
+        # Мок для SubdomainEnumCacheRepository
+        mock_cache_repo = MagicMock()
+        mock_cache_repo.get = AsyncMock(return_value=cached)
+
+        # Мок для DomainService.add_for_user с autospec
+        mock_service = create_autospec(DomainService, instance=True)
+        mock_service.add_for_user.return_value = AddDomainResult(
+            status="added_pending",
+            normalized_domain="www.example.com",
+        )
+
+        with (
+            patch("src.bot.handlers.subdomains.DomainService", return_value=mock_service),
+            patch(
+                "src.bot.handlers.subdomains.SubdomainEnumCacheRepository",
+                return_value=mock_cache_repo,
+            ),
+        ):
+            callback_data = SubdomainAction(action="track", registrable="example.com", idx=0)
+
+            await handler.cb_subdomains_track(
+                callback=query,
+                callback_data=callback_data,
+                user=_user(),
+                lang="ru",
+                arq_redis=AsyncMock(),
+                limits=_limits(),
+            )
+
+        # Должен быть вызван с success (добавлен на слежение), НЕ с invalid_domain
+        answer_call = query.answer.call_args
+        answer_text = str(answer_call).lower()
+        assert "добавлен" in answer_text or "added" in answer_text
+        assert "invalid" not in answer_text
+
+    async def test_track_with_promoted_status_shows_success(self) -> None:
+        """promoted (поддомен → registrable) показывает success, не invalid_domain."""
+        from unittest.mock import create_autospec
+
+        from src.services.domains import AddDomainResult, DomainService
+
+        query = MagicMock()
+        query.answer = AsyncMock()
+
+        # Мок для кэша с поддоменом
+        cached = _cache(subdomains=["www.example.com"])
+
+        # Мок для SubdomainEnumCacheRepository
+        mock_cache_repo = MagicMock()
+        mock_cache_repo.get = AsyncMock(return_value=cached)
+
+        # Мок для DomainService.add_for_user с autospec
+        mock_service = create_autospec(DomainService, instance=True)
+        mock_service.add_for_user.return_value = AddDomainResult(
+            status="promoted",
+            normalized_domain="example.com",
+        )
+
+        with (
+            patch("src.bot.handlers.subdomains.DomainService", return_value=mock_service),
+            patch(
+                "src.bot.handlers.subdomains.SubdomainEnumCacheRepository",
+                return_value=mock_cache_repo,
+            ),
+        ):
+            callback_data = SubdomainAction(action="track", registrable="example.com", idx=0)
+
+            await handler.cb_subdomains_track(
+                callback=query,
+                callback_data=callback_data,
+                user=_user(),
+                lang="ru",
+                arq_redis=AsyncMock(),
+                limits=_limits(),
+            )
+
+        # Должен быть вызван с success (добавлен на слежение), НЕ с invalid_domain
+        answer_call = query.answer.call_args
+        answer_text = str(answer_call).lower()
+        assert "добавлен" in answer_text or "added" in answer_text
+        assert "invalid" not in answer_text
 
 
 # ---------------------------------------------------------------------------
@@ -175,38 +275,73 @@ class TestCallbackTrackAll:
 
         callback_data = SubdomainAction(action="track_all", registrable="example.com")
 
-        # Патчим SubdomainEnumCacheRepository.get чтобы вернуть None
-        with patch("src.db.repositories.SubdomainEnumCacheRepository.get") as get_mock:
-            get_mock.return_value = None
+        # Мокаем SubdomainEnumCacheRepository чтобы вернуть None
+        mock_cache_repo = MagicMock()
+        mock_cache_repo.get = AsyncMock(return_value=None)
 
-            with patch("src.bot.handlers.subdomains.get_session") as session_mock:
-                # Создаём мок сессии
-                session = MagicMock()
-                session.__aenter__ = AsyncMock(return_value=session)
-                session.__aexit__ = AsyncMock(return_value=None)
-
-                # Добавляем репозиторий в сессию
-                cache_repo = MagicMock()
-                cache_repo.get = get_mock
-                session.cache_repo = cache_repo
-
-                session_mock.return_value = session
-
-                await handler.cb_subdomains_track_all(
-                    callback=query,
-                    callback_data=callback_data,
-                    user=_user(),
-                    lang="ru",
-                    arq_redis=AsyncMock(),
-                    limits=_limits(),
-                )
+        with patch(
+            "src.bot.handlers.subdomains.SubdomainEnumCacheRepository", return_value=mock_cache_repo
+        ):
+            await handler.cb_subdomains_track_all(
+                callback=query,
+                callback_data=callback_data,
+                user=_user(),
+                lang="ru",
+                arq_redis=AsyncMock(),
+                limits=_limits(),
+            )
 
         # Должен показать ошибку "no_cache"
         query.answer.assert_called_once()
 
+    async def test_track_all_counts_promoted_as_added(self) -> None:
+        """promoted (поддомен → registrable) считается как added."""
+        from unittest.mock import create_autospec
+
+        from src.services.domains import AddDomainResult, DomainService
+
+        query = MagicMock()
+        query.answer = AsyncMock()
+
+        # Мок для кэша с поддоменами
+        cached = _cache(subdomains=["www.example.com", "mail.example.com"])
+
+        # Мок для SubdomainEnumCacheRepository
+        mock_cache_repo = MagicMock()
+        mock_cache_repo.get = AsyncMock(return_value=cached)
+
+        # Мок для DomainService.add_for_user с autospec
+        mock_service = create_autospec(DomainService, instance=True)
+        mock_service.add_for_user.return_value = AddDomainResult(
+            status="promoted",
+            normalized_domain="example.com",
+        )
+
+        with (
+            patch("src.bot.handlers.subdomains.DomainService", return_value=mock_service),
+            patch(
+                "src.bot.handlers.subdomains.SubdomainEnumCacheRepository",
+                return_value=mock_cache_repo,
+            ),
+        ):
+            callback_data = SubdomainAction(action="track_all", registrable="example.com")
+
+            await handler.cb_subdomains_track_all(
+                callback=query,
+                callback_data=callback_data,
+                user=_user(),
+                lang="ru",
+                arq_redis=AsyncMock(),
+                limits=_limits(),
+            )
+
+        # promoted считается как added
+        answer_call = query.answer.call_args
+        assert "added=2" in str(answer_call) or "добавлено: 2" in str(answer_call).lower()
+
 
 # ---------------------------------------------------------------------------
-# Фикс 1: Кнопки с именами поддоменов
+# Фикс 1: Кнопки с именами поддоменов + callback ≤ 64 байта
 # ---------------------------------------------------------------------------
 
 
@@ -231,6 +366,20 @@ class TestSubdomainKeyboardButtons:
         track_buttons = [t for t in button_texts if t.startswith("📌") and "all" not in t.lower()]
         assert len(track_buttons) == len(subdomains)
 
+    def test_callback_data_fits_64_bytes_on_long_fqdn(self) -> None:
+        """callback_data должен укладываться в 64 байта даже на длинных FQDN."""
+        from src.bot.keyboards import subdomains_keyboard
+
+        # Длинный FQDN — типичная выдача crt.sh
+        long_fqdn = ["autodiscover.internal.staging.example.co.uk"]
+        kb = subdomains_keyboard("example.co.uk", long_fqdn, lang="ru")
+
+        # Проверяем каждый callback_data
+        for row in kb.inline_keyboard:
+            for btn in row:
+                if btn.callback_data and btn.callback_data.startswith("sub:track"):
+                    assert len(btn.callback_data.encode()) <= 64
+
 
 # ---------------------------------------------------------------------------
 # Фикс 2: Список поддоменов в сообщении
@@ -248,16 +397,19 @@ class TestSubdomainListInMessage:
             fetched_at=datetime.now(tz=UTC) - timedelta(days=1),
         )
 
-        with patch("src.db.repositories.SubdomainEnumCacheRepository.get") as get_mock:
-            get_mock.return_value = cached
+        # Мок для SubdomainEnumCacheRepository
+        mock_cache_repo = MagicMock()
+        mock_cache_repo.get = AsyncMock(return_value=cached)
 
+        with patch(
+            "src.bot.handlers.subdomains.SubdomainEnumCacheRepository", return_value=mock_cache_repo
+        ):
             await handler.cmd_subdomains(
                 message=message,
                 command=command,
                 user=_user(),
                 lang="ru",
                 arq_redis=AsyncMock(),
-                redis=AsyncMock(),
             )
 
         # Проверяем что в сообщении есть список поддоменов

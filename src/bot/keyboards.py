@@ -152,11 +152,14 @@ class SubdomainAction(CallbackData, prefix="sub"):
     - ``track`` — отслеживать конкретный поддомен (идёт в /add)
     - ``track_all`` — отслеживать все найденные поддомены
     - ``refresh`` — обновить список (запустить новый check_subdomains)
+
+    ``idx`` — индекс поддомена в cached.subdomains (для action="track").
+    Telegram режет callback_data до 64 байт, поэтому pack'им idx, не полный FQDN.
     """
 
     action: str  # "track" | "track_all" | "refresh"
     registrable: str  # registrable-домен
-    subdomain: str = ""  # конкретный поддомен (для action="track")
+    idx: int = -1  # индекс поддомена в cached.subdomains (для action="track")
 
 
 # ---------------------------------------------------------------------------
@@ -665,20 +668,21 @@ def subdomains_keyboard(
 
     Для каждого поддомена — кнопка с именем поддомена.
     Внизу — «📌 Отслеживать все» и «🔄 Обновить».
+    Telegram режет callback_data до 64 байт, поэтому pack'им idx, не полный FQDN.
     """
     from src.utils.idn import from_punycode
 
     builder = InlineKeyboardBuilder()
 
     # Кнопки по каждому поддомену (с именем поддомена)
-    for subdomain in subdomains[:_MAX_SUBDOMAIN_BUTTONS]:
+    for idx, subdomain in enumerate(subdomains[:_MAX_SUBDOMAIN_BUTTONS]):
         display = from_punycode(subdomain)
         builder.button(
             text=f"📌 {display}",
             callback_data=SubdomainAction(
                 action="track",
                 registrable=registrable,
-                subdomain=subdomain,
+                idx=idx,
             ).pack(),
         )
 
@@ -694,9 +698,10 @@ def subdomains_keyboard(
         callback_data=SubdomainAction(action="refresh", registrable=registrable).pack(),
     )
 
-    # Раскладка: по 2 кнопки в ряд
-    builder.adjust(2)
-    return builder.as_markup(resize_keyboard=True)
+    # Раскладка: каждая кнопка track — одна, внизу 2 кнопки (track_all, refresh)
+    shown = min(len(subdomains), _MAX_SUBDOMAIN_BUTTONS)
+    builder.adjust(*([1] * shown + [2]))
+    return builder.as_markup()
 
 
 _MAX_SUBDOMAIN_BUTTONS = 50  # Лимит кнопок (Telegram restriction ~100 байт на callback)

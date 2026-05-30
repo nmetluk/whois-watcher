@@ -1,21 +1,21 @@
-"""Хэндлер ``/wishlist`` и связанные callback'и (Этап 9).
+"""Хэндлер ``/wishlist`` и связанные callback'и (ADR 039).
 
 Wishlist — режим, где пользователь добавляет ЗАНЯТЫЙ домен и получает
 **одноразовое** уведомление, когда WHOIS показывает, что домен освободился
-(``is_registered=False``). После уведомления подписка автоматически
-снимается — см. ``src.tasks.notify_wishlist``.
+(``is_registered=False``). После уведомления запись автоматически удаляется
+(см. ``src.tasks.notify_wishlist``).
 
 Команды:
 
 - ``/wishlist <domain>`` — добавить
-- ``/wishlist`` — показать текущий wishlist (как /list с фильтром wishlist)
+- ``/wishlist`` — показать текущий wishlist
 
-Inline-кнопка ``WhoisAction(action='wishlist')`` из карточки /whois
-переводит фокус-домен в wishlist одним нажатием.
+Inline-кнопка ``WhoisAction(action='wishlist')`` из карточки /whois добавляет
+домен в wishlist (теперь независимо от tracking).
 
 Callback ``WishlistAction(action='track')`` из уведомления «домен
-освободился» добавляет тот же домен обратно, но уже как обычную
-подписку (через DomainService.add_for_user).
+освободился» добавляет тот же домен как обычную подписку (через
+DomainService.add_for_user) и удаляет из wishlist.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ from redis.asyncio import Redis
 from src.bot.keyboards import WishlistAction, list_pagination
 from src.config.limits import Limits
 from src.db.models import User
-from src.db.repositories import DomainRepository, WhoisCacheRepository
+from src.db.repositories import WhoisCacheRepository, WishlistRepository
 from src.db.session import get_session
 from src.locales import t
 from src.services.domains import DomainService
@@ -81,10 +81,9 @@ async def cmd_wishlist(
 
 async def _show_wishlist(*, message: Message, user: User, lang: str) -> None:
     async with get_session() as session:
-        domain_repo = DomainRepository(session)
-        rows, total = await domain_repo.list_with_whois_filtered(
+        wishlist_repo = WishlistRepository(session)
+        rows, total = await wishlist_repo.list_with_whois(
             user.id,
-            filter_type="wishlist",
             limit=_LIST_PAGE_SIZE,
             offset=0,
         )
@@ -100,7 +99,9 @@ async def _show_wishlist(*, message: Message, user: User, lang: str) -> None:
         page=1,
         total_pages=max(1, (total + _LIST_PAGE_SIZE - 1) // _LIST_PAGE_SIZE),
     )
-    body_rows = [format_list_row(user_domain, cache, lang=lang) for user_domain, cache in rows]
+    # format_list_row ожидает UserDomain, но Wishlist имеет те же поля для отображения
+    # (domain, registrable_domain, is_subdomain, added_at) — используем type: ignore
+    body_rows = [format_list_row(wishlist, cache, lang=lang) for wishlist, cache in rows]  # type: ignore[arg-type]
     body = header + "\n\n" + "\n".join(body_rows)
     keyboard = list_pagination(
         0, max(1, (total + _LIST_PAGE_SIZE - 1) // _LIST_PAGE_SIZE), lang=lang
@@ -117,11 +118,11 @@ async def _add_to_wishlist(
     arq_redis: ArqRedis,
     limits: Limits,
 ) -> None:
-    """Нормализует домен, проверяет лимиты, ставит is_wishlist=True.
+    """Нормализует домен, проверяет лимиты, добавляет в wishlist.
 
     Если домен СЕЙЧАС свободен (по кэшу) — не добавляем, а советуем /add.
     Если домена нет в кэше вообще — добавляем и ставим первичную проверку:
-    после неё may immediately fire wishlist-уведомление (если домен
+    после неё может сразу сработать wishlist-уведомление (если домен
     оказался свободным).
     """
     try:
@@ -131,12 +132,11 @@ async def _add_to_wishlist(
         return
 
     async with get_session() as session:
-        domain_repo = DomainRepository(session)
+        wishlist_repo = WishlistRepository(session)
         cache_repo = WhoisCacheRepository(session)
 
-        # Лимит: используем ту же квоту, что и tracking — wishlist живёт
-        # в той же таблице. Спецификация может ужесточить позже.
-        current = await domain_repo.count_by_user(user.id)
+        # Лимит wishlist — та же квота, что и tracking
+        current = await wishlist_repo.count_by_user(user.id)
         if current >= limits.max_domains_per_user:
             await message.answer(t("errors.limit_reached", lang, limit=limits.max_domains_per_user))
             return
@@ -149,7 +149,14 @@ async def _add_to_wishlist(
 
         # Если домен в кэше зарегистрирован — добавляем в wishlist.
         # Если в кэше пусто — добавляем + триггерим проверку.
-        await domain_repo.add_to_wishlist(user.id, normalized)
+        added = await wishlist_repo.add(user.id, normalized)
+        if added is None:
+            # Уже в wishlist
+            await message.answer(
+                t("commands.wishlist.already_added", lang, domain=from_punycode(normalized))
+            )
+            return
+
         if cached is None or cached.expires_at is None:
             await cache_repo.upsert(normalized)
             facade = WhoisFacade(cache_repo, arq_redis, limits)
@@ -173,7 +180,7 @@ async def on_wishlist_action(
     limits: Limits,
     redis: Redis[str],
 ) -> None:
-    """``track`` — добавить как обычный домен; ``dismiss`` — просто закрыть."""
+    """``track`` — добавить как обычный домен и убрать из wishlist; ``dismiss`` — просто закрыть."""
     del redis
     domain = callback_data.domain
     await query.answer()
@@ -186,7 +193,10 @@ async def on_wishlist_action(
 
     if callback_data.action == "track":
         async with get_session() as session:
+            from src.db.repositories import DomainRepository
+
             domain_repo = DomainRepository(session)
+            wishlist_repo = WishlistRepository(session)
             cache_repo = WhoisCacheRepository(session)
             facade = WhoisFacade(cache_repo, arq_redis, limits)
             service = DomainService(
@@ -200,6 +210,9 @@ async def on_wishlist_action(
                 notify_days=list(user.notify_days),
                 domain_input=domain,
             )
+            # Убираем из wishlist (переход «слежу вместо ожидания»)
+            await wishlist_repo.remove(user.id, domain)
+
         display = from_punycode(result.normalized_domain or domain)
         if result.status in ("added", "added_pending"):
             await query.message.answer(t("commands.wishlist.tracked_now", lang, domain=display))

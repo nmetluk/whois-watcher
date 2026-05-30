@@ -241,6 +241,7 @@ LOCALE: dict[str, str] = {
     "button.delete": "🗑 Удалить",
     "button.notify_settings": "⚙️ Настроить уведомления",
     "button.wishlist_add": "🎯 Хочу когда освободится",
+    "button.wishlist_remove": "❌ Убрать из wishlist",
     "button.download_add": "✅ Добавить {count}",
     "button.download_show_invalid": "📄 Показать невалидные",
     # ------------------------------------------------------------------
@@ -704,6 +705,12 @@ LOCALE: dict[str, str] = {
     "commands.wishlist.tracked_now": (
         "✅ <b>{domain}</b> теперь у вас в обычном /list. Удачной регистрации!"
     ),
+    "commands.wishlist.already_added": (
+        "⚠️ <b>{domain}</b> уже есть в wishlist. "
+        "Вы получите уведомление, когда домен освободится."
+    ),
+    "commands.wishlist.removed": "🎯 <b>{domain}</b> убран из wishlist.",
+    "commands.wishlist.not_found": "⚠️ Домен не найден в wishlist.",
     # ------------------------------------------------------------------
     # Subdomain enumeration (Этап 18, ADR 037)
     # ------------------------------------------------------------------

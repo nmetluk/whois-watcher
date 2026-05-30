@@ -133,12 +133,20 @@ async def _handle_success(
     """UPSERT в кэш, diff, постановка уведомлений, followup, wishlist-trigger."""
     now = datetime.now(tz=UTC)
 
-    # Прочитаем подписчиков один раз: нужны и для wishlist-определения
-    # частоты проверок (Этап 9), и для рассылки change-notice.
+    # Прочитаем подписчиков: нужны для diff-рассылки и для определения TTL.
+    # После ADR 039 подписчики разделяются на tracking (user_domains) и wishlist.
     async with get_session() as session:
-        subscribers = await DomainRepository(session).get_subscribers_for_domain(domain)
-    only_wishlist = bool(subscribers) and all(s.is_wishlist for s in subscribers)
+        from src.db.repositories import WishlistRepository
 
+        domain_repo = DomainRepository(session)
+        wishlist_repo = WishlistRepository(session)
+
+        subscribers = await domain_repo.get_subscribers_for_domain(domain)
+        wishlist_subscribers = await wishlist_repo.get_subscribers_for_domain(domain)
+
+    # Если есть только wishlist-подписчики (без tracking) → 24h TTL.
+    # Иначе — adaptive TTL по expires_at (tracking имеет приоритет).
+    only_wishlist = bool(wishlist_subscribers) and not bool(subscribers)
     next_check = calculate_next_check(
         new_data.expires_at,
         now=now,
@@ -198,15 +206,20 @@ async def _enqueue_wishlist_notices(
 ) -> None:
     """Шлём ``send_wishlist_available_notice`` всем wishlist-подписчикам.
 
-    Сам task удаляет user_domain-запись после успешной отправки — так
+    Сам task удаляет wishlist-запись после успешной отправки — так
     реализована «одноразовость» уведомления.
     """
     from arq import ArqRedis
 
     arq_redis: ArqRedis = ctx["redis"]
-    for sub in subscribers:
-        if not sub.is_wishlist:
-            continue
+
+    # Берём wishlist-подписчиков из отдельной таблицы (ADR 039)
+    async with get_session() as session:
+        from src.db.repositories import WishlistRepository
+
+        wishlist_subscribers = await WishlistRepository(session).get_subscribers_for_domain(domain)
+
+    for sub in wishlist_subscribers:
         await arq_redis.enqueue_job("send_wishlist_available_notice", sub.user_id, domain)
 
 

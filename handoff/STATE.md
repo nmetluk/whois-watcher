@@ -5,7 +5,7 @@
 > архитектором — после merge крупных кусков; исполнителем — раздел
 > «Последняя сессия». Дата последнего обновления — обязательна.
 
-**Обновлено:** 2026-05-30 (TASK-0022 смержен — схема subdomain_enum_cache) · **Релиз на main:** v0.10.1 · **Последний ADR:** 037
+**Обновлено:** 2026-05-30 (TASK-0023 смержен — crt.sh-клиент/парсер/ARQ) · **Релиз на main:** v0.10.1 · **Последний ADR:** 037
 
 ## Где мы сейчас
 
@@ -63,16 +63,26 @@ opt-in через `/add`, авто-добавления нет, лимит 50k);
 `subdomain_enum_cache` + graceful degradation. Периодический мониторинг новых
 поддоменов + алерты → v0.12 (ADR 038).
 
-✅ **TASK-0022 смержен** (PR #15 → merge-commit `940eea1`): схема
-`subdomain_enum_cache` (PK registrable, JSONB subdomains, scheduling/reachability/
-failure-поля), модель, репозиторий (get/upsert/update_fail/delete_orphans),
-миграция от head `20260529_email_intel` с SQL-литеральными дефолтами (now()/0,
-урок TASK-0008). Round-trip миграции покрыт CI-smoke на Postgres.
+✅ **TASK-0022 смержен** (PR #15 → `940eea1`): схема `subdomain_enum_cache`
+(PK registrable, JSONB subdomains, scheduling/reachability/failure-поля),
+модель, репозиторий, миграция от head `20260529_email_intel` (дефолты
+SQL-литералами now()/0, урок TASK-0008). Round-trip покрыт CI-smoke на Postgres.
 
-**Следующий шаг — исполнение v0.11**: цепочка ~~TASK-0022~~ ✅ →
-**TASK-0023** (crt.sh-клиент/парсер/нормализация/ARQ — *следующий, разблокирован*) →
-**0024** (UX `/subdomains` + opt-in + локали). После 0024 — релиз v0.11.0.
-Передавать исполнителю по одному, сейчас — TASK-0023.
+✅ **TASK-0023 смержен** (PR #16 → merge-commit `8ed53cd`): `src/subdomains/`
+(client/parser/scheduler/types) + ARQ-задача `check_subdomains` (redis-guard
+`ctx[sync_redis]`, upsert/update_fail, graceful degradation), регистрация в
+`arq_config` (functions, on-demand без cron). Парсер: dedup/wildcard/IDN-punycode/
+registrable-фильтр, 19 юнит-тестов. Ревью-долги вынесены в **TASK-0025**.
+
+⚠️ **TASK-0025 (fast-follow, до тега v0.11.0)**: юнит-тесты `scheduler`
+(CLAUDE.md требует тесты schedule-расчётов — сейчас нет), `update_fail` →
+upsert (первый фейл сейчас теряется, т.к. row создаётся только при успехе),
+мелочи в `client.py` (unused `QUERY_TIMEOUT`, унификация `error_type`).
+
+**Следующий шаг — исполнение v0.11**: ~~0022~~ ✅ → ~~0023~~ ✅ →
+**TASK-0024** (UX `/subdomains` + opt-in + локали — *следующий, разблокирован*)
+и **TASK-0025** (fast-follow по долгам 0023). Оба на v0.11.0; после них —
+релиз. Передавать по одному, сейчас — TASK-0024.
 
 ---
 

@@ -1,16 +1,17 @@
 ---
 id: TASK-0028
 title: Diff + scheduler мониторинга поддоменов + интеграция в check_subdomains (ADR 038)
-status: open
+status: done
 milestone: v0.12.0
 adr: 038
 area: code
 depends_on: [TASK-0027]
-branch: ""
-owner: ""
-session: ""
+branch: task/0028-subdomain-monitor-diff-scheduler
+owner: claude-code
+session: docs/sessions/2026-05-30_task_0028_subdomain_monitor_diff_scheduler.md
 pr: ""
 created: 2026-05-30
+completed: 2026-05-30
 ---
 
 # TASK-0028 — Diff + scheduler мониторинга поддоменов (ADR 038)

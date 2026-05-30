@@ -164,6 +164,7 @@ def _build_cron_jobs() -> list[Any]:
     from src.tasks.scheduler import scheduler_tick
     from src.tasks.ssl_reminders_scheduler import ssl_reminders_scheduler
     from src.tasks.ssl_scheduler import ssl_scheduler_tick
+    from src.tasks.subdomain_scheduler import subdomain_scheduler_tick
 
     return [
         cron(
@@ -211,6 +212,13 @@ def _build_cron_jobs() -> list[Any]:
         cron(
             email_intel_scheduler_tick,
             name="email_intel_scheduler_tick",
+            minute={0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55},
+            run_at_startup=True,
+        ),
+        # ADR 038: Subdomain scheduler — каждые 5 минут, как WHOIS/SSL/DNS.
+        cron(
+            subdomain_scheduler_tick,
+            name="subdomain_scheduler_tick",
             minute={0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55},
             run_at_startup=True,
         ),

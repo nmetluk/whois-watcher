@@ -9,7 +9,7 @@ depends_on: [TASK-0028]
 branch: task/0029-subdomain-monitor-notify-ux
 owner: claude-code
 session: docs/sessions/2026-05-30_task_0029_subdomain_monitor_notify_ux.md
-pr: ""
+pr: "#21"
 created: 2026-05-30
 completed: 2026-05-30
 ---

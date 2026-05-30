@@ -575,3 +575,72 @@ class EmailIntelCache(Base):
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<EmailIntelCache domain={self.domain!r} mx={len(self.mx_records) if self.mx_records else 0}>"
+
+
+# ---------------------------------------------------------------------------
+# subdomain_enum_cache (ADR 037)
+# ---------------------------------------------------------------------------
+class SubdomainEnumCache(Base):
+    """Кэш результатов subdomain enumeration через crt.sh (ADR 037).
+
+    Параллельно ``whois_cache``, ``ssl_cache``, ``dns_cache``, ``email_intel_cache``:
+    одна запись на registrable-домен (PK ``registrable_domain``), обслуживает
+    всех подписчиков. Хранит найденные поддомены из CT-логов с TTL.
+
+    Хранит разобранные данные:
+    - ``subdomains`` — список найденных поддоменов (JSONB, нормализованных)
+    - Scheduling-поля для adaptive TTL (scheduler в будущем ADR 038)
+    - Reachability/failure tracking для graceful degradation
+    """
+
+    __tablename__ = "subdomain_enum_cache"
+    __table_args__ = (Index("ix_subdomain_enum_cache_next_check_at", "next_check_at"),)
+
+    registrable_domain: Mapped[str] = mapped_column(
+        Text,
+        primary_key=True,
+        comment="Registrable-домен (eTLD+1, ADR 035)",
+    )
+
+    # Subdomains (результат enumeration)
+    subdomains: Mapped[list[str] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment="Список найденных поддоменов (нормализованных: lowercase, punycode, без wildcard)",
+    )
+
+    # Scheduling
+    fetched_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Когда последний раз запрашивали у crt.sh",
+    )
+    next_check_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        comment="Когда можно снова обновить (TTL кэша)",
+    )
+
+    # Reachability
+    is_reachable: Mapped[bool | None] = mapped_column(
+        Boolean,
+        nullable=True,
+        comment="True если crt.sh доступен, False при ошибках, NULL до первой проверки",
+    )
+
+    # Failure tracking
+    fail_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        server_default="0",
+        comment="Количество последовательных неудач",
+    )
+    last_error: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Текст последней ошибки (если была)",
+    )
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<SubdomainEnumCache registrable={self.registrable_domain!r} subdomains={len(self.subdomains) if self.subdomains else 0}>"

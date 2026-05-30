@@ -1,7 +1,7 @@
 ---
 id: TASK-0022
 title: Схема subdomain_enum_cache + миграция (ADR 037)
-status: completed
+status: done
 milestone: v0.11.0
 adr: 037
 area: code

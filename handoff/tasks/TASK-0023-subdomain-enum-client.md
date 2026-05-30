@@ -1,7 +1,7 @@
 ---
 id: TASK-0023
 title: crt.sh-клиент + парсер/нормализация + ARQ-задача (ADR 037)
-status: completed
+status: done
 milestone: v0.11.0
 adr: 037
 area: code

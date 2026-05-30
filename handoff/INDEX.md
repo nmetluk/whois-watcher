@@ -28,6 +28,6 @@
 | TASK-0019 | done | v0.9.3 | 019 | code | Идентификатор инстанса (label + домен + IP) в каждом сообщении админ-канала | task/0019-admin-alert-instance-tag |
 | TASK-0020 | done | v0.10.1 | — | code | Срочный фикс — кнопка «Мои домены» в /start не работает | task/0020-fix-start-my-domains-button |
 | TASK-0021 | done | v0.11.0 | 037 | docs | Дизайн ADR 037 — subdomain enumeration через CT-логи (v0.11) | — |
-| TASK-0022 | completed | v0.11.0 | 037 | code | Схема subdomain_enum_cache + миграция (ADR 037) | task/0022-subdomain-enum-schema |
-| TASK-0023 | completed | v0.11.0 | 037 | code | crt.sh-клиент + парсер/нормализация + ARQ-задача (ADR 037) | task/0023-subdomain-enum-client |
-| TASK-0024 | completed | v0.11.0 | 037 | code | UX — команда /subdomains + opt-in отслеживание + локали (ADR 037) | task/0024-subdomain-enum-ux |
+| TASK-0022 | done | v0.11.0 | 037 | code | Схема subdomain_enum_cache + миграция (ADR 037) | task/0022-subdomain-enum-schema |
+| TASK-0023 | done | v0.11.0 | 037 | code | crt.sh-клиент + парсер/нормализация + ARQ-задача (ADR 037) | task/0023-subdomain-enum-client |
+| TASK-0024 | done | v0.11.0 | 037 | code | UX — команда /subdomains + opt-in отслеживание + локали (ADR 037) | task/0024-subdomain-enum-ux |

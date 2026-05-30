@@ -17,7 +17,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.db.models import EmailIntelCache
+from src.db.models import EmailIntelCache, UserDomain
 from src.email_intel.types import (
     DKIMInfo,
     DMARCRecord,
@@ -151,11 +151,11 @@ class TestSuccessfulFetch:
         cache_repo.get.return_value = old
         cache_repo.upsert = AsyncMock()
 
-        sub = MagicMock()
+        sub = MagicMock(spec=UserDomain)
         sub.user_id = 42
         sub.is_muted = False
         sub.track_email = True
-        sub.notify_email_mx = True
+        sub.notify_email_change = True
 
         domain_repo = AsyncMock()
         domain_repo.get_subscribers_for_domain.return_value = [sub]
@@ -199,11 +199,54 @@ class TestSuccessfulFetch:
         cache_repo.get.return_value = old
         cache_repo.upsert = AsyncMock()
 
-        sub = MagicMock()
+        sub = MagicMock(spec=UserDomain)
         sub.user_id = 42
         sub.is_muted = True  # kill-switch
         sub.track_email = True
-        sub.notify_email_mx = True
+        sub.notify_email_change = True
+
+        domain_repo = AsyncMock()
+        domain_repo.get_subscribers_for_domain.return_value = [sub]
+
+        monkeypatch.setattr("src.tasks.check_email_intel.get_session", _fake_session)
+        monkeypatch.setattr(
+            "src.tasks.check_email_intel.EmailIntelCacheRepository", lambda _session: cache_repo
+        )
+        monkeypatch.setattr(
+            "src.tasks.check_email_intel.DomainRepository", lambda _session: domain_repo
+        )
+        monkeypatch.setattr(
+            "src.tasks.check_email_intel.fetch_email_intel",
+            AsyncMock(return_value=new_result),
+        )
+
+        from src.tasks.check_email_intel import check_email_intel
+
+        await check_email_intel(ctx, "example.com")
+
+        arq_redis.enqueue_job.assert_not_called()
+
+    async def test_notify_email_change_false_does_not_enqueue(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Проверка что notify_email_change=False блокирует уведомления."""
+        sync_redis = AsyncMock()
+        sync_redis.set.return_value = True
+        arq_redis = AsyncMock()
+        ctx = _ctx(sync_redis=sync_redis, arq_redis=arq_redis)
+
+        old = _make_cache()
+        new_result = _make_result(mx_records=[MXRecord(host="mx2.example.com", priority=10)])
+
+        cache_repo = AsyncMock()
+        cache_repo.get.return_value = old
+        cache_repo.upsert = AsyncMock()
+
+        sub = MagicMock(spec=UserDomain)
+        sub.user_id = 42
+        sub.is_muted = False
+        sub.track_email = True
+        sub.notify_email_change = False  # toggle выключен
 
         domain_repo = AsyncMock()
         domain_repo.get_subscribers_for_domain.return_value = [sub]
@@ -247,11 +290,11 @@ class TestFailedFetch:
         cache_repo.get.return_value = old
         cache_repo.update_fail = AsyncMock()
 
-        sub = MagicMock()
+        sub = MagicMock(spec=UserDomain)
         sub.user_id = 42
         sub.is_muted = False
         sub.track_email = True
-        sub.notify_email_mx = True
+        sub.notify_email_change = True
 
         domain_repo = AsyncMock()
         domain_repo.get_subscribers_for_domain.return_value = [sub]

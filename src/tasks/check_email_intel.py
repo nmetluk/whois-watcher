@@ -179,21 +179,22 @@ async def _enqueue_change_notices(
     """Подбор подписчиков и постановка ``send_email_change_notice``."""
     arq_redis: ArqRedis = ctx["redis"]
 
-    pairs: list[tuple[str, str]] = []
+    # Собираем все типы изменений для уведомления
+    change_types: list[str] = []
     if diff.mx_changed:
-        pairs.append(("mx_changed", "notify_email_mx"))
+        change_types.append("mx_changed")
     if diff.spf_changed:
-        pairs.append(("spf_changed", "notify_email_spf"))
+        change_types.append("spf_changed")
     if diff.dmarc_changed:
-        pairs.append(("dmarc_changed", "notify_email_dmarc"))
+        change_types.append("dmarc_changed")
     if diff.dkim_changed:
-        pairs.append(("dkim_changed", "notify_email_dkim"))
+        change_types.append("dkim_changed")
     if diff.became_unreachable:
-        pairs.append(("became_unreachable", "notify_email_mx"))
+        change_types.append("became_unreachable")
     if diff.became_reachable:
-        pairs.append(("became_reachable", "notify_email_mx"))
+        change_types.append("became_reachable")
 
-    if not pairs:
+    if not change_types:
         return
 
     async with get_session() as session:
@@ -201,11 +202,10 @@ async def _enqueue_change_notices(
         subscribers = await domain_repo.get_subscribers_for_domain(domain)
 
     for sub in subscribers:
-        if sub.is_muted or not sub.track_email:
+        if sub.is_muted or not sub.track_email or not sub.notify_email_change:
             continue
-        for change_type, user_flag in pairs:
-            if not getattr(sub, user_flag, False):
-                continue
+        # Отправляем уведомление для каждого типа изменения
+        for change_type in change_types:
             await arq_redis.enqueue_job(
                 "send_email_change_notice",
                 sub.user_id,

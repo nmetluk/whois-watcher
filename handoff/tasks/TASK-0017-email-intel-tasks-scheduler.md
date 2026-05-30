@@ -1,7 +1,7 @@
 ---
 id: TASK-0017
 title: ARQ-задачи и scheduler email-intel + уведомления (ADR 036)
-status: claimed
+status: done
 milestone: v0.10.0
 adr: 036
 area: code

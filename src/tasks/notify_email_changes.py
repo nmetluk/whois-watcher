@@ -29,37 +29,31 @@ from src.locales import t
 logger = logging.getLogger(__name__)
 
 
-# change_type → (locale_key, notification_type для журнала, поле UserDomain)
-_TYPE_MAP: dict[str, tuple[str, str, str]] = {
+# change_type → (locale_key, notification_type для журнала)
+_TYPE_MAP: dict[str, tuple[str, str]] = {
     "mx_changed": (
         "notifications.email_change.mx",
         "email_mx_change",
-        "notify_email_mx",
     ),
     "spf_changed": (
         "notifications.email_change.spf",
         "email_spf_change",
-        "notify_email_spf",
     ),
     "dmarc_changed": (
         "notifications.email_change.dmarc",
         "email_dmarc_change",
-        "notify_email_dmarc",
     ),
     "dkim_changed": (
         "notifications.email_change.dkim",
         "email_dkim_change",
-        "notify_email_dkim",
     ),
     "became_unreachable": (
         "notifications.email_change.unreachable",
         "email_unreachable",
-        "notify_email_mx",
     ),
     "became_reachable": (
         "notifications.email_change.reachable",
         "email_reachable",
-        "notify_email_mx",
     ),
 }
 
@@ -77,7 +71,7 @@ async def send_email_change_notice(
     if mapping is None:
         logger.warning("send_email_change_notice: unknown change_type %r", change_type)
         return
-    locale_key, notif_type, user_flag = mapping
+    locale_key, notif_type = mapping
 
     async with get_session() as session:
         domain_repo = DomainRepository(session)
@@ -85,8 +79,6 @@ async def send_email_change_notice(
 
         user_domain = await domain_repo.get_for_user(user_id, domain)
         if user_domain is None or user_domain.is_muted or not user_domain.track_email:
-            return
-        if not getattr(user_domain, user_flag, False):
             return
 
         users = await user_repo.get_by_ids([user_id])

@@ -9,7 +9,7 @@ depends_on: [TASK-0022]
 branch: task/0023-subdomain-enum-client
 owner: ""
 session: docs/sessions/2026-05-30_task_0023_subdomain_enum_client.md
-pr: ""
+pr: "16"
 created: 2026-05-30
 completed: 2026-05-30
 ---

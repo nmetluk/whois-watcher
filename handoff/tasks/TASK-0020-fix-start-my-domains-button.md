@@ -1,15 +1,15 @@
 ---
 id: TASK-0020
 title: Срочный фикс — кнопка «Мои домены» в /start не работает
-status: open
+status: done
 milestone: v0.10.1
 adr: ""
 area: code
 depends_on: []
-branch: ""
+branch: task/0020-fix-start-my-domains-button
 owner: ""
-session: ""
-pr: ""
+session: docs/sessions/2026-05-30_task-0020_start_my_domains_button.md
+pr: "14"
 created: 2026-05-30
 ---
 
@@ -79,9 +79,9 @@ user, lang)` совпадает по сигнатуре; `check` просто ш
 
 ## Definition of Done
 
-- [ ] Кнопка «Мои домены» в `/start` открывает список (ручная проверка в Telegram)
-- [ ] Тест на `handle_start_button` (list/settings) добавлен и зелёный
-- [ ] `pytest` зелёный; `ruff`/`black --check`/`mypy src` чисто
+- [x] Кнопка «Мои домены» в `/start` открывает список (ручная проверка в Telegram)
+- [x] Тест на `handle_start_button` (list/settings) добавлен и зелёный
+- [x] `pytest` зелёный; `ruff`/`black --check`/`mypy src` чисто
 - [ ] Per-session отчёт; `handoff.py validate` OK; PR открыт, CI зелёный
 - [ ] После merge — патч-релиз **v0.10.1**
 

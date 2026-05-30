@@ -10,6 +10,7 @@ from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from arq import ArqRedis
+from redis.asyncio import Redis
 
 from src.bot.handlers.list_domains import cmd_list
 from src.bot.handlers.settings import cmd_settings
@@ -39,6 +40,8 @@ async def handle_start_button(
     lang: str,
     arq_redis: ArqRedis,
     limits: Limits,
+    state: FSMContext,
+    redis: Redis[str],
 ) -> None:
     """Кнопки приветственного меню.
 
@@ -53,6 +56,14 @@ async def handle_start_button(
     if callback_data.action == "check":
         await query.message.answer(t("start.check_prompt", lang))
     elif callback_data.action == "list":
-        await cmd_list(query.message, user=user, lang=lang, arq_redis=arq_redis, limits=limits)
+        await cmd_list(
+            query.message,
+            user=user,
+            lang=lang,
+            arq_redis=arq_redis,
+            limits=limits,
+            redis=redis,
+            state=state,
+        )
     elif callback_data.action == "settings":
         await cmd_settings(query.message, user=user, lang=lang)

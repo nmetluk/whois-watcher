@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1] — 2026-05-30
+
+### Fixed
+
+- **Кнопка «📋 Мои домены» в `/start` снова работает.** Падала с `TypeError`:
+  `handle_start_button` вызывал `cmd_list` без обязательных `redis` и `state`
+  (они появились в `cmd_list` под FSM/сброс поиска, а start-кнопку не
+  обновили). Теперь оба прокидываются через DI. Добавлен тест на
+  `handle_start_button` (list/settings/check), которого раньше не было —
+  именно его отсутствие скрыло баг (TASK-0020).
+
+### Internal
+
+- Конвенция **anti-drift** в `CLAUDE.md` и шаблоне аудита: моки внутренних
+  объектов со `spec`/`autospec`, grep всех вызовов при смене сигнатуры
+  переиспользуемого хэндлера, миграции — только на реальном Postgres.
+
 ## [0.10.0] — 2026-05-30
 
 Domain intelligence: мониторинг почтовой инфраструктуры и политик

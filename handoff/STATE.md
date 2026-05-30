@@ -5,7 +5,7 @@
 > архитектором — после merge крупных кусков; исполнителем — раздел
 > «Последняя сессия». Дата последнего обновления — обязательна.
 
-**Обновлено:** 2026-05-30 (TASK-0024 смержен — UX /subdomains) · **Релиз на main:** v0.10.1 · **Последний ADR:** 037
+**Обновлено:** 2026-05-30 (TASK-0025 смержен — вся v0.11 закрыта, готово к релизу) · **Релиз на main:** v0.10.1 · **Последний ADR:** 037
 
 ## Где мы сейчас
 
@@ -82,16 +82,24 @@ registrable-фильтр, 19 юнит-тестов. Ревью-долги вын
 убран неиспользуемый `redis`-параметр. Тесты: guard `callback≤64`, success-пути
 `added_pending`/`promoted`, track_all `promoted`.
 
-⚠️ **TASK-0025 (fast-follow, последнее до тега v0.11.0)**: юнит-тесты
-`scheduler` (CLAUDE.md требует тесты schedule-расчётов — сейчас нет),
-`update_fail` → upsert (первый фейл сейчас теряется, т.к. row создаётся только
-при успехе), мелочи в `client.py` (unused `QUERY_TIMEOUT`, унификация
-`error_type`).
+✅ **TASK-0025 смержен** (PR #18 → merge-commit `79c1f7f`): fast-follow по
+долгам 0023 — юнит-тесты `scheduler` (11, все TTL-ветки + tz-guard),
+`update_fail` → UPSERT (первый фейл персистится: `fail_count=1`/инкремент,
+`is_reachable=False`), `error_type` унифицирован (`parse_error`/`unavailable`),
+`QUERY_TIMEOUT` удалён. Ревью v1: исправлен off-by-one в `check_subdomains`
+(`fail_count=current+1` — счётчик ПОСЛЕ фейла) + guard-тесты на первый/второй
+фейл (`next_check_at ≈ 1ч`).
 
-**Следующий шаг — исполнение v0.11**: ~~0022~~ ✅ → ~~0023~~ ✅ → ~~0024~~ ✅ →
-**TASK-0025** (fast-follow по долгам 0023 — *последнее, разблокирован*).
-После 0025 — **релиз v0.11.0** (bump pyproject, CHANGELOG, тег). Сейчас
-исполнителю — TASK-0025.
+**🟢 Вся v0.11 (ADR 037, subdomain enumeration) закрыта на main**: ~~0022~~ ✅
+(схема) → ~~0023~~ ✅ (crt.sh-клиент/парсер/ARQ) → ~~0024~~ ✅ (UX /subdomains
++ opt-in) → ~~0025~~ ✅ (fast-follow). Открытых задач — 0. `handoff.py validate`
+зелёный.
+
+**Следующий шаг — релиз v0.11.0**: bump `pyproject.toml` → `0.11.0`, секция
+`[0.11.0]` в `CHANGELOG.md` (subdomain enumeration через crt.sh: команда
+`/subdomains` + opt-in, кэш `subdomain_enum_cache`, ARQ-задача), тег `v0.11.0`,
+деплой. На горизонте — ADR 038 / v0.12 (периодический мониторинг новых
+поддоменов + алерты, вынесено из 037).
 
 ---
 

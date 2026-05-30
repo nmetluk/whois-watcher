@@ -2,11 +2,12 @@
 
 > АВТО-генерируется `python scripts/handoff.py board`. Не править руками.
 
-Всего задач: 18
+Всего задач: 19
 
 | ID | Статус | Майлстоун | ADR | Область | Тема | Ветка |
 |----|--------|-----------|-----|---------|------|-------|
 | TASK-0018 | open | v0.10.0 | 036 | code | UX email-intel — блок в /whois, toggle'ы, локали (ADR 036) | — |
+| TASK-0019 | open | v0.9.3 | 019 | code | Идентификатор инстанса (label + домен + IP) в каждом сообщении админ-канала | — |
 | TASK-0001 | done | v0.8.1 | 034 | code | Багфикс wishlist ↔ tracked (авто-промоут) | task/0001-wishlist-tracked-fix |
 | TASK-0002 | done | v0.9.0 | 035 | code | PSL — зависимость tldextract + src/utils/domains.py | task/0002-psl-utils-domains |
 | TASK-0003 | done | v0.9.0 | 035 | code | Схема user_domains (registrable_domain, is_subdomain) + WHOIS-джойны | task/0003-subdomain-schema-whois-joins |

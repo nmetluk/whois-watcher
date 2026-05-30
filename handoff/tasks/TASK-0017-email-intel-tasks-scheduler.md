@@ -1,12 +1,12 @@
 ---
 id: TASK-0017
 title: ARQ-задачи и scheduler email-intel + уведомления (ADR 036)
-status: open
+status: done
 milestone: v0.10.0
 adr: 036
 area: code
 depends_on: [TASK-0016]
-branch: ""
+branch: task/0017-email-intel-tasks-scheduler
 owner: ""
 session: ""
 pr: ""

@@ -9,7 +9,7 @@ depends_on: [TASK-0026]
 branch: task/0027-subdomain-monitor-schema
 owner: claude-code
 session: docs/sessions/2026-05-30_task_0027_subdomain_monitor_schema.md
-pr: ""
+pr: "#19"
 created: 2026-05-30
 completed: 2026-05-30
 ---

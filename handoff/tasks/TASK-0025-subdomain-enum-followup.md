@@ -1,14 +1,14 @@
 ---
 id: TASK-0025
 title: Fast-follow по TASK-0023 — тесты scheduler, update_fail upsert, мелочи (ADR 037)
-status: open
+status: done
 milestone: v0.11.0
 adr: 037
 area: code
 depends_on: [TASK-0023]
-branch: ""
-owner: ""
-session: ""
+branch: task/0025-subdomain-enum-followup
+owner: claude
+session: docs/sessions/2026-05-30_task_0025_subdomain_enum_followup.md
 pr: ""
 created: 2026-05-30
 ---
@@ -74,9 +74,9 @@ TASK-0023 (PR #16) смержен функционально готовым. Р�
 
 ## Definition of Done
 
-- [ ] Scheduler покрыт тестами; `update_fail` — upsert; client-мелочи закрыты
-- [ ] `pytest` зелёный; `ruff`/`black --check`/`mypy src` чисто
-- [ ] Per-session отчёт; `handoff.py validate` OK; PR, CI зелёный
+- [x] Scheduler покрыт тестами; `update_fail` — upsert; client-мелочи закрыты
+- [x] `pytest` зелёный; `ruff`/`black --check`/`mypy src` чисто
+- [x] Per-session отчёт; `handoff.py validate` OK; PR, CI зелёный
 
 ## Ссылки
 

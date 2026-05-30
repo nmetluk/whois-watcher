@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, cast
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import CursorResult
 
@@ -59,19 +59,37 @@ class SubdomainEnumCacheRepository(BaseRepository):
         error: str,
         *,
         next_check_at: datetime,
-    ) -> None:
-        """Зарегистрировать неудачную проверку. Инкрементит ``fail_count``,
-        пишет ``last_error``/``next_check_at``."""
+    ) -> SubdomainEnumCache:
+        """Зарегистрировать неудачную проверку.
+
+        UPSERT-семантика: при первом фейле создаёт запись с ``fail_count=1``,
+        при повторном — инкрементит ``fail_count``. Также пишет ``last_error``,
+        ``next_check_at``, ``is_reachable=False``.
+        """
         stmt = (
-            update(SubdomainEnumCache)
-            .where(SubdomainEnumCache.registrable_domain == registrable_domain)
+            pg_insert(SubdomainEnumCache)
             .values(
-                fail_count=SubdomainEnumCache.fail_count + 1,
+                registrable_domain=registrable_domain,
+                fail_count=1,
                 last_error=error,
                 next_check_at=next_check_at,
+                is_reachable=False,
+            )
+            .on_conflict_do_update(
+                index_elements=[SubdomainEnumCache.registrable_domain],
+                set_={
+                    "fail_count": SubdomainEnumCache.fail_count + 1,
+                    "last_error": error,
+                    "next_check_at": next_check_at,
+                    "is_reachable": False,
+                },
             )
         )
         await self.session.execute(stmt)
+        await self.session.flush()
+        refreshed = await self.session.get(SubdomainEnumCache, registrable_domain)
+        assert refreshed is not None  # invariant
+        return refreshed
 
     async def delete_orphans(self) -> int:
         """Удаляет subdomain_enum_cache записи, на которые никто не подписан.

@@ -6,7 +6,6 @@
 
 | ID | Статус | Майлстоун | ADR | Область | Тема | Ветка |
 |----|--------|-----------|-----|---------|------|-------|
-| TASK-0025 | open | v0.11.0 | 037 | code | Fast-follow по TASK-0023 — тесты scheduler, update_fail upsert, мелочи (ADR 037) | — |
 | TASK-0001 | done | v0.8.1 | 034 | code | Багфикс wishlist ↔ tracked (авто-промоут) | task/0001-wishlist-tracked-fix |
 | TASK-0002 | done | v0.9.0 | 035 | code | PSL — зависимость tldextract + src/utils/domains.py | task/0002-psl-utils-domains |
 | TASK-0003 | done | v0.9.0 | 035 | code | Схема user_domains (registrable_domain, is_subdomain) + WHOIS-джойны | task/0003-subdomain-schema-whois-joins |
@@ -31,3 +30,4 @@
 | TASK-0022 | done | v0.11.0 | 037 | code | Схема subdomain_enum_cache + миграция (ADR 037) | task/0022-subdomain-enum-schema |
 | TASK-0023 | done | v0.11.0 | 037 | code | crt.sh-клиент + парсер/нормализация + ARQ-задача (ADR 037) | task/0023-subdomain-enum-client |
 | TASK-0024 | done | v0.11.0 | 037 | code | UX — команда /subdomains + opt-in отслеживание + локали (ADR 037) | task/0024-subdomain-enum-ux |
+| TASK-0025 | done | v0.11.0 | 037 | code | Fast-follow по TASK-0023 — тесты scheduler, update_fail upsert, мелочи (ADR 037) | task/0025-subdomain-enum-followup |

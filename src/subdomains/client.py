@@ -20,7 +20,6 @@ from src.utils.idn import normalize_domain
 logger = logging.getLogger(__name__)
 
 # Таймауты crt.sh (seconds)
-QUERY_TIMEOUT = 30  # crt.sh бывает медленным
 TOTAL_TIMEOUT = 45
 
 # crt.sh endpoint
@@ -42,7 +41,7 @@ async def fetch_subdomains(registrable_domain: str) -> SubdomainEnumResultOrErro
     except Exception as exc:
         return SubdomainEnumError(
             registrable_domain=registrable_domain,
-            error_type="parser_error",
+            error_type="parse_error",
             message=f"Invalid domain syntax: {exc}",
         )
 
@@ -122,13 +121,12 @@ async def fetch_subdomains(registrable_domain: str) -> SubdomainEnumResultOrErro
         logger.warning("crt.sh unexpected error for %s: %s", normalized, exc)
         return SubdomainEnumError(
             registrable_domain=normalized,
-            error_type="internal_error",
+            error_type="unavailable",
             message=f"Unexpected error: {exc}",
         )
 
 
 __all__ = [
-    "QUERY_TIMEOUT",
     "TOTAL_TIMEOUT",
     "fetch_subdomains",
 ]

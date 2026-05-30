@@ -20,13 +20,23 @@ from src.services.alerts import (
     _dedup_key,
     _format_alert,
     _format_daily_summary,
+    instance_tag,
 )
 
 
-def _make_settings(*, channel_id: int | None = -1001234567890) -> MagicMock:
+def _make_settings(
+    *,
+    channel_id: int | None = -1001234567890,
+    instance_name: str = "",
+    instance_domain: str = "",
+    server_ip: str = "",
+) -> MagicMock:
     s = MagicMock(spec=Settings)
     s.admin_channel_id = channel_id
     s.environment = "development"
+    s.instance_name = instance_name
+    s.instance_domain = instance_domain
+    s.server_ip = server_ip
     return s
 
 
@@ -112,8 +122,9 @@ class TestAlertService:
 
     async def test_send_daily_summary_formats_dict(self) -> None:
         bot = AsyncMock()
+        redis = _make_redis()
         alerts = AlertService(
-            bot=bot, redis=_make_redis(), settings=_make_settings(), limits=_make_limits()
+            bot=bot, redis=redis, settings=_make_settings(), limits=_make_limits()
         )
         await alerts.send_daily_summary(
             {"new_users": 3, "domains_added": 12, "notifications": {"expiry": 5}}
@@ -122,6 +133,24 @@ class TestAlertService:
         assert "#daily" in text
         assert "new_users: 3" in text
         assert "expiry: 5" in text
+
+    async def test_send_with_instance_tag(self) -> None:
+        bot = AsyncMock()
+        redis = _make_redis()
+        alerts = AlertService(
+            bot=bot,
+            redis=redis,
+            settings=_make_settings(
+                instance_name="prod-admin",
+                instance_domain="whois.example.com",
+                server_ip="5.188.88.78",
+            ),
+            limits=_make_limits(),
+        )
+        await alerts.send_critical("title", "details")
+        text = bot.send_message.call_args.kwargs["text"]
+        assert "[prod-admin · whois.example.com · 5.188.88.78]" in text
+        assert "#critical" in text
 
 
 class TestFormatters:
@@ -161,3 +190,45 @@ class TestFormatters:
 
     def test_format_daily_summary_empty_dict(self) -> None:
         assert _format_daily_summary({}) == "(no data)"
+
+
+class TestInstanceTag:
+    def test_instance_tag_collects_all_parts(self) -> None:
+        s = MagicMock(spec=Settings)
+        s.instance_name = "prod-admin"
+        s.instance_domain = "whois.example.com"
+        s.server_ip = "5.188.88.78"
+        assert instance_tag(s) == "prod-admin · whois.example.com · 5.188.88.78"
+
+    def test_instance_tag_skips_empty_parts(self) -> None:
+        s = MagicMock(spec=Settings)
+        s.instance_name = ""
+        s.instance_domain = "whois.example.com"
+        s.server_ip = ""
+        assert instance_tag(s) == "whois.example.com"
+
+    def test_instance_tag_empty_when_all_empty(self) -> None:
+        s = MagicMock(spec=Settings)
+        s.instance_name = ""
+        s.instance_domain = ""
+        s.server_ip = ""
+        assert instance_tag(s) == ""
+
+    def test_instance_tag_name_only(self) -> None:
+        s = MagicMock(spec=Settings)
+        s.instance_name = "worker-1"
+        s.instance_domain = ""
+        s.server_ip = ""
+        assert instance_tag(s) == "worker-1"
+
+    def test_format_alert_includes_tag_when_provided(self) -> None:
+        out = _format_alert(
+            severity="critical", icon="🚨", title="t", details="d", tag="prod · bot.example.com"
+        )
+        assert out.startswith("[prod · bot.example.com]")
+        assert "#critical" in out
+
+    def test_format_alert_no_tag_when_empty(self) -> None:
+        out = _format_alert(severity="info", icon="ℹ️", title="t", details="d", tag="")
+        assert out.startswith("ℹ️ #info")
+        assert "[" not in out

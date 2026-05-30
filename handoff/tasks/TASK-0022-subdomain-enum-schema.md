@@ -1,16 +1,17 @@
 ---
 id: TASK-0022
 title: Схема subdomain_enum_cache + миграция (ADR 037)
-status: open
+status: completed
 milestone: v0.11.0
 adr: 037
 area: code
 depends_on: [TASK-0021]
-branch: ""
+branch: task/0022-subdomain-enum-schema
 owner: ""
-session: ""
-pr: ""
+session: docs/sessions/2026-05-30_task_0022_subdomain_enum_schema.md
+pr: "15"
 created: 2026-05-30
+completed: 2026-05-30
 ---
 
 # TASK-0022 — Схема subdomain_enum_cache (ADR 037)

@@ -306,6 +306,9 @@ _TOGGLE_FIELDS: tuple[tuple[str, str], ...] = (
     ("notify_dns_aaaa_change", "notify_config.type.dns_aaaa_change"),
     ("notify_dns_ns_change", "notify_config.type.dns_ns_change"),
     ("notify_dns_unreachable", "notify_config.type.dns_unreachable"),
+    # Email-intel (TASK-0018, ADR 036)
+    ("track_email", "notify_config.type.track_email"),
+    ("notify_email_change", "notify_config.type.email_change"),
 )
 
 

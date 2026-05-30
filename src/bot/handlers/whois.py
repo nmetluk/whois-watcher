@@ -23,13 +23,19 @@ from src.db.models import User
 from src.db.repositories import (
     DNSCacheRepository,
     DomainRepository,
+    EmailIntelCacheRepository,
     SSLCacheRepository,
     WhoisCacheRepository,
 )
 from src.db.session import get_session
 from src.locales import t
 from src.services.domains import DomainService
-from src.services.formatters import format_dns_block, format_ssl_block, format_whois_response
+from src.services.formatters import (
+    format_dns_block,
+    format_email_block,
+    format_ssl_block,
+    format_whois_response,
+)
 from src.services.formatters_full import build_full_text_from_cache_row
 from src.services.whois_facade import WhoisFacade
 from src.utils.domains import is_public_suffix_only, is_subdomain, registrable_domain
@@ -148,6 +154,15 @@ async def _send_whois_card(
         if dns_cache is None:
             await dns_repo.upsert(dns_target)
             await arq_redis.enqueue_job("check_dns", dns_target)
+        # ADR 036: Email-intel блок аналогично — bootstrap + enqueue check_email_intel.
+        # Сама задача защищена redis-флагом email_check_in_progress.
+        email_repo = EmailIntelCacheRepository(session)
+        # TASK-0005 + ADR 036: для поддоменов берём email из поддомена, а не родителя
+        email_target = domain_input if is_sub else lookup_domain
+        email_cache = await email_repo.get(email_target)
+        if email_cache is None:
+            await email_repo.upsert(email_target)
+            await arq_redis.enqueue_job("check_email_intel", email_target)
         whois_ns = list(cached.name_servers or []) if cached is not None else None
 
     # Формируем тело карточки
@@ -171,6 +186,9 @@ async def _send_whois_card(
     dns_block = format_dns_block(dns_cache, whois_ns=whois_ns, lang=lang)
     if dns_block:
         body_parts.append(dns_block)
+    email_block = format_email_block(email_cache, lang=lang)
+    if email_block:
+        body_parts.append(email_block)
     if result.is_stale:
         body_parts.insert(
             0 if not is_sub else 2,

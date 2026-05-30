@@ -1,16 +1,17 @@
 ---
 id: TASK-0018
 title: UX email-intel — блок в /whois, toggle'ы, локали (ADR 036)
-status: open
+status: done
 milestone: v0.10.0
 adr: 036
 area: code
 depends_on: [TASK-0017]
-branch: ""
-owner: ""
-session: ""
+branch: task/0018-email-intel-ux-locales
+owner: claude
+session: docs/sessions/2026-05-30_task-0018_email_intel_ux_locales.md
 pr: ""
 created: 2026-05-29
+completed: 2026-05-30
 ---
 
 # TASK-0018 — UX email-intel (ADR 036)

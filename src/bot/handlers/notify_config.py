@@ -229,6 +229,9 @@ _ALLOWED_TOGGLE_FIELDS: frozenset[str] = frozenset(
         "track_ssl",
         "notify_ssl_expiry",
         "notify_ssl_change_issuer",
+        # Email-intel (TASK-0018, ADR 036)
+        "track_email",
+        "notify_email_change",
     }
 )
 

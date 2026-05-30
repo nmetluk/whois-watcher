@@ -1,16 +1,17 @@
 ---
 id: TASK-0019
 title: Идентификатор инстанса (label + домен + IP) в каждом сообщении админ-канала
-status: open
+status: done
 milestone: v0.9.3
 adr: 019
 area: code
 depends_on: []
-branch: ""
-owner: ""
-session: ""
+branch: task/0019-admin-alert-instance-tag
+owner: claude
+session: docs/sessions/2026-05-30_task-0019_admin_alert_instance_tag.md
 pr: ""
 created: 2026-05-29
+completed: 2026-05-30
 ---
 
 # TASK-0019 — Instance-тег в сообщениях админ-канала (ADR 019)

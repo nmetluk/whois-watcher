@@ -11,6 +11,7 @@ owner: claude
 session: docs/sessions/2026-05-30_task-0017_email_intel_tasks_scheduler.md
 pr: ""
 created: 2026-05-29
+completed: 2026-05-30
 ---
 
 # TASK-0017 — ARQ-задачи / scheduler / уведомления email-intel (ADR 036)

@@ -103,7 +103,8 @@ class AlertService:
             )
             return
 
-        text = _format_alert(severity=severity, icon=icon, title=title, details=details)
+        tag = instance_tag(self._settings)
+        text = _format_alert(severity=severity, icon=icon, title=title, details=details, tag=tag)
         try:
             await self._bot.send_message(chat_id=channel_id, text=text)
         except Exception:  # — Telegram-API внешняя граница
@@ -126,6 +127,26 @@ class AlertService:
 # ---------------------------------------------------------------------------
 
 
+def instance_tag(settings: Settings) -> str:
+    """Собирает instance-тег из непустых частей: label · domain · ip.
+
+    Пустые части опускаются. Если все пусты — возвращает пустую строку.
+    """
+    parts: list[str] = []
+    # Используем getattr с дефолтом и проверяем тип на случай MagicMock в тестах
+    name = getattr(settings, "instance_name", "") or ""
+    domain = getattr(settings, "instance_domain", "") or ""
+    ip = getattr(settings, "server_ip", "") or ""
+    # Приводим к str для защиты от MagicMock
+    if name and isinstance(name, str):
+        parts.append(name)
+    if domain and isinstance(domain, str):
+        parts.append(domain)
+    if ip and isinstance(ip, str):
+        parts.append(ip)
+    return " · ".join(parts) if parts else ""
+
+
 def _dedup_key(*, severity: str, title: str, details: str) -> str:
     """Хэш — детерминированный, не светит секреты."""
     digest = hashlib.sha256()
@@ -139,9 +160,13 @@ def _dedup_key(*, severity: str, title: str, details: str) -> str:
     return f"{_DEDUP_PREFIX}{digest.hexdigest()[:32]}"
 
 
-def _format_alert(*, severity: str, icon: str, title: str, details: str) -> str:
-    """Простой plain-text формат с тегом #severity."""
-    parts = [f"{icon} #{severity}", title.strip()]
+def _format_alert(*, severity: str, icon: str, title: str, details: str, tag: str = "") -> str:
+    """Простой plain-text формат с тегом #severity и опциональным instance-тегом."""
+    parts: list[str] = []
+    if tag:
+        parts.append(f"[{tag}]")
+    parts.append(f"{icon} #{severity}")
+    parts.append(title.strip())
     body = details.strip()
     if body:
         parts.append("")

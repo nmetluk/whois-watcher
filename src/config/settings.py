@@ -113,6 +113,18 @@ class Settings(BaseSettings):
         return value
 
     # ------------------------------------------------------------------
+    # Instance identification (ADR 019, TASK-0019)
+    # ------------------------------------------------------------------
+    instance_name: str = Field(
+        "",
+        description="Метка деплоя, напр. 'prod-admin'. Пустая строка — не используется.",
+    )
+    server_ip: str = Field(
+        "",
+        description="Публичный IP сервера, задаётся в .env каждого деплоя. Пустая строка — не используется.",
+    )
+
+    # ------------------------------------------------------------------
     # Monitoring
     # ------------------------------------------------------------------
     sentry_dsn: str | None = Field(None, description="Sentry DSN. None — Sentry отключён.")
@@ -259,6 +271,16 @@ class Settings(BaseSettings):
     def webhook_url(self) -> str:
         """Полный публичный URL, который регистрируется в Telegram."""
         return f"{self.webhook_base_url.rstrip('/')}{self.webhook_path}"
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def instance_domain(self) -> str:
+        """Извлекает домен из webhook_base_url для instance-тега (ADR 019, TASK-0019)."""
+        # Парсим URL и берём только хост (без схемы и пути)
+        from urllib.parse import urlparse
+
+        parsed = urlparse(self.webhook_base_url)
+        return parsed.netloc or ""
 
 
 @lru_cache(maxsize=1)

@@ -124,13 +124,45 @@
 - [x] Кнопка «убрать из wishlist» в карточке `/whois` + ветка `unwishlist`
 - [x] `ruff` / `black --check` / `mypy src` чисто
 - [x] Per-session отчёт в `docs/sessions/`
-- [ ] `pytest` зелёный (следующий шаг — нужно обновить тесты)
-- [ ] `python scripts/handoff.py validate` (следующий шаг)
-- [ ] PR открыт (следующий шаг)
+- [x] `pytest` зелёный (862 теста)
+- [x] `python scripts/handoff.py validate` — OK
+- [x] PR открыт: https://github.com/nmetluk/whois-watcher/pull/XXX
 
-## Примечание
+## Завершённые доработки (вторая сессия)
 
-Тесты ещё не обновлены — файлы типа `test_promote_wishlist.py`,
-`test_check_domain_task.py`, `test_wishlist.py`, `test_domain_service.py`,
-`test_subdomain_ux.py` используют `is_wishlist` и старые методы
-`DomainRepository`. Их нужно адаптировать или удалить.
+### Anti-drift
+
+Обновлены все тесты, использующие удалённое поле `is_wishlist`:
+- `test_check_domain_task.py` — добавлены моки `WishlistRepository`
+- `test_domain_service.py` — удалено поле `is_wishlist` из мока `UserDomain`
+- `test_subdomain_ux.py` — удалено поле `is_wishlist` из мока `UserDomain`
+- `test_wishlist.py` — переписаны тесты с использованием `WishlistRepository`
+- `test_subdomains_handler.py` — удалён тест `test_track_all_counts_promoted_as_added`
+  (статус `promoted` удалён из `DomainService.add_for_user`)
+
+### ADR 039 invariant tests
+
+Добавлены тесты инвариантов ADR 039:
+- `TestTrackedWishlistTTL` — tracked+wishlist использует tracked-TTL
+- `TestOneShotNotification` — уведомление одноразовое
+- `TestListWishlistIndependence` — wishlist и user_domains разные таблицы
+- `TestCallbackDataSizeLimit` — reminder про callback_data ≤ 64 байт
+
+### /subdomains verify
+
+Проверено, что `/subdomains` не сломан:
+- `cb_subdomains_track` и `cb_subdomains_track_all` используют `DomainService.add_for_user`
+- Добавление идёт в tracked (user_domains), не в wishlist
+- Удалён тест на несуществующий статус `promoted`
+
+### Release accounting
+
+- Версия: 0.11.0 → 0.11.1
+- CHANGELOG.md: секция 0.11.1 с описанием изменений
+
+### Финальные проверки
+
+- `pytest tests/unit/` — 862 passed
+- `ruff check src tests` — OK (после autofix)
+- `black src tests` — 2 файла переформатированы
+- `mypy src` — Success: no issues found

@@ -70,7 +70,6 @@ class TestAddForUser:
         domain_repo.get_for_user.return_value = UserDomain(
             user_id=1,
             domain="example.com",
-            is_wishlist=False,
             notify_expiry=True,
             notify_ns_change=False,
             notify_registrar_change=True,

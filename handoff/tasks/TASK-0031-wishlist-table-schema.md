@@ -1,7 +1,7 @@
 ---
 id: TASK-0031
 title: Схема — отдельная таблица wishlist + миграция переноса (ADR 039)
-status: open
+status: in_review
 milestone: v0.11.1
 adr: 039
 area: code

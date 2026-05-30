@@ -1,7 +1,7 @@
 ---
 id: TASK-0032
 title: Развязка wishlist↔tracking по коду + кнопка «убрать из wishlist» (ADR 039)
-status: open
+status: in_review
 milestone: v0.11.1
 adr: 039
 area: code

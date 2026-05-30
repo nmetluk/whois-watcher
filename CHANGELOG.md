@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.1] — 2026-05-30
+
+Wishlist как независимый список (ADR 039, TASK-0031/0032).
+
+### Added — Wishlist independent (ADR 039)
+
+- **Независимые списки**: `/list` (tracked) и `/wishlist` (ожидание освобождения)
+  теперь разделены на уровне схемы БД — отдельная таблица `wishlist`. Один домен
+  может одновременно быть и в `/list`, и в `/wishlist`.
+- **Команда `/wishlist`** — показать/добавить/удалить wishlist-домены. Поддержка
+  пагинации, кнопок «🗑 Удалить» для каждого домена.
+- **Уведомление об освобождении** — одноразовое (запись удаляется из wishlist после
+  успешной отправки). Кнопки «📌 Начать отслеживать» / «OK» в уведомлении.
+- **Scheduler**: wishlist-домены (только wishlist, без tracked) проверяются каждые
+  24 часа независимо от `expires_at`. Если домен и в `/list`, и в `/wishlist` —
+  используется tracked-TTL (adaptive), а не wishlist-режим.
+- **Миграция**: данные из `user_domains.is_wishlist=true` перенесены в таблицу
+  `wishlist`, колонка `is_wishlist` удалена из `user_domains`. Downgrade возвращает
+  данные обратно.
+
+### Internal
+
+- `WishlistRepository` — новый репозиторий для таблицы `wishlist`. Методы:
+  `add`, `remove`, `exists`, `count_by_user`, `get_subscribers_for_domain`,
+  `list_with_whois`, `mark_notified`.
+- Хэндлер `wishlist.py` — команда `/wishlist`, inline-кнопки удаления.
+- Обновлены тесты: удалены проверки на удалённое поле `is_wishlist` в ORM,
+  добавлены тесты инвариантов ADR 039.
+- Удалён статус `promoted` из `DomainService.add_for_user` — промоут
+  wishlist→tracked больше не существует (wishlist и tracking независимы).
+
 ## [0.11.0] — 2026-05-30
 
 Subdomain enumeration через Certificate Transparency-логи (crt.sh),

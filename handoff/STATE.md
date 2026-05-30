@@ -5,7 +5,7 @@
 > архитектором — после merge крупных кусков; исполнителем — раздел
 > «Последняя сессия». Дата последнего обновления — обязательна.
 
-**Обновлено:** 2026-05-30 (релиз v0.11.0 выпущен — subdomain enumeration) · **Релиз на main:** v0.11.0 · **Последний ADR:** 037
+**Обновлено:** 2026-05-30 (релиз v0.11.0 + дизайн ADR 038 / v0.12) · **Релиз на main:** v0.11.0 · **Последний ADR:** 038
 
 ## Где мы сейчас
 
@@ -99,8 +99,23 @@ registrable-фильтр, 19 юнит-тестов. Ревью-долги вын
 `0.10.1→0.11.0`, секция `[0.11.0]` в `CHANGELOG.md`. Аннотированный тег на
 текущем main. Осталось — **деплой** (`bash scripts/deploy.sh`).
 
-**Следующий шаг**: деплой v0.11.0; затем — дизайн **ADR 038 / v0.12**
-(периодический мониторинг новых поддоменов + алерты, вынесено из 037).
+✅ **ADR 038 написан** (TASK-0026, design — done): периодический мониторинг
+новых/исчезнувших поддоменов поверх `subdomain_enum_cache` (ADR 037), по образцу
+SSL/DNS. Решения: per-domain `track_subdomains` (**default false** — явный
+opt-in, crt.sh-нагрузка), сигнал new+removed (`notify_subdomain_new/removed`,
+оба default true), частота per-user (`User.subdomain_check_interval_days`=7 +
+per-domain override), scheduler по образцу `ssl_scheduler_tick`
+(`next_check_at = now + min(интервалов подписчиков)`, floor 1д), diff
+`compute_subdomain_diff` (baseline `old=None`→пусто), fan-out
+`notify_subdomain_changes`.
+
+Заведены таски v0.12: **TASK-0027** (схема toggles+interval) → **0028**
+(diff + scheduler + интеграция в check_subdomains) → **0029** (уведомления +
+UX toggles/FSM-интервал + локали) → **0030** (комплексный аудит). Цепочка
+последовательная. После 0030 — релиз v0.12.0.
+
+**Следующий шаг**: деплой v0.11.0 (`bash scripts/deploy.sh`); передать
+исполнителю **TASK-0027** (первый в цепочке v0.12).
 
 ---
 

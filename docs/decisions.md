@@ -1368,3 +1368,87 @@ ADR 035 дал работу с поддоменами (registrable vs subdomain)
 - Исполнение — TASK-0022…0024 (схема → crt.sh-клиент/парсер → UX-команда + opt-in).
 - Открывает дорогу **ADR 038** (периодический мониторинг новых поддоменов +
   алерты, v0.12).
+
+## 038. Периодический мониторинг новых поддоменов + алерты (v0.12)
+
+**Статус:** принято. Преемник ADR 037 (on-demand enumeration), поверх
+`subdomain_enum_cache`, по образцу SSL/DNS-подсистем (ADR 030/032).
+
+### Контекст
+
+ADR 037 дал разовый `/subdomains` (on-demand, read-only, opt-in). Но главная
+ценность для безопасности — заметить **появление нового поддомена** между
+проверками: shadow IT, забытый стенд, признак компрометации/угона. Нужен
+фоновый мониторинг с уведомлением, как уже сделано для SSL/DNS.
+
+### Решение
+
+- **Opt-in per-domain.** Новый toggle `UserDomain.track_subdomains`
+  (**default `false`** — в отличие от `track_ssl/dns/email`, которые `true`):
+  enumeration бьёт crt.sh и шумит, поэтому включается явно. `is_muted` гасит и
+  эти уведомления (ADR 029).
+- **Сигнал — новые И исчезнувшие поддомены.** Два toggle'а:
+  `notify_subdomain_new` (default `true`) и `notify_subdomain_removed`
+  (default `true`). Исчезновение из CT-логов — слабее как сигнал, но полезно
+  для инвентаря; оставляем отключаемым.
+- **Частота — настраиваемо per-user.** `User.subdomain_check_interval_days`
+  (per-user default, `server_default 7`) + опциональный per-domain override
+  `UserDomain.subdomain_check_interval_override` (`NULL` → берём из User; паттерн
+  `notify_ssl_days_override`, ADR 030).
+- **Реконсиляция shared-cache vs per-user.** `subdomain_enum_cache` — общий per
+  registrable (ADR 037), а интервал — per-user. Scheduler ставит `next_check_at`
+  per registrable = `now + min(интервалов подписчиков)` (floor 1 день), с
+  adaptive-backoff при фейлах crt.sh (расширяем `calculate_next_subdomain_check`).
+  Самый «частый» подписчик задаёт темп, остальные получают тот же свежий кэш.
+- **Scheduler — по образцу `ssl_scheduler_tick`** (ADR 030): cron-тик →
+  bootstrap (registrable с ≥1 подписчиком `track_subdomains=true` без записи в
+  кэше → заглушка `next_check_at=now()`, `ON CONFLICT DO NOTHING`) → выборка due
+  по подписчикам (`track_subdomains=true AND is_muted=false`) → enqueue
+  `check_subdomains` (self-guard флагом `subdomain_check_in_progress` уже есть).
+- **Diff + baseline.** Чистая функция `compute_subdomain_diff(old, new)` →
+  `{new: [...], removed: [...]}`. **`old=None` → пустой diff** (первая
+  enumeration — baseline, НЕ алертим; инвариант как `compute_ssl_diff(old=None)`,
+  ADR 030). `check_subdomains` на каждом refresh сравнивает новый список со
+  старым из кэша ДО перезаписи; при изменениях enqueue `notify_subdomain_changes`.
+- **Уведомления — fan-out.** `notify_subdomain_changes` рассылает всем
+  подписчикам registrable с `track_subdomains=true`, honoring
+  `notify_subdomain_new`/`notify_subdomain_removed` и `is_muted`. Текст —
+  security-стиль: «🆕 новый поддомен X у domain» / «➖ исчез поддомен Y».
+- **UX.** Toggle'ы в inline-конфигураторе `⚙️ Уведомления` карточки `/whois`
+  (`track_subdomains`, `notify_subdomain_new`, `notify_subdomain_removed`) +
+  кнопка-FSM для интервала (по образцу `edit_ssl_days`, ADR 029). Все строки —
+  локали ru/en (инвариант `test_all_ru_keys_present_in_en`).
+
+### Технические инварианты (защитить тестами)
+
+- `compute_subdomain_diff(old=None, …)` → пустой diff (нет алерта на baseline).
+- Diff игнорирует порядок/дубликаты, работает на нормализованных списках
+  (lowercase/punycode из ADR 037).
+- Scheduler берёт только подписчиков `track_subdomains=true AND is_muted=false`;
+  `track_subdomains=false` исключает из мониторинга.
+- `next_check_at` per registrable = `now + min(интервалов)` (floor 1 день);
+  backoff при фейлах не сбрасывается некорректно успехом другого подписчика.
+- Fan-out не дублирует уведомление одному пользователю; honoring per-domain
+  toggle'ов и `is_muted`.
+- Миграция (toggles + interval-поля) применяется на Postgres и обратима
+  (smoke-тест TASK-0009).
+- Anti-drift: сигнатуры/поля — со `spec`/`autospec` в тестах (CLAUDE.md).
+
+### Альтернативы
+
+- **Авто-`track_subdomains=true` для всех** — нагрузка на crt.sh + шум; отвергнуто
+  в пользу явного opt-in (default `false`).
+- **Фиксированный глобальный интервал** — не учитывает разные потребности;
+  выбран per-user.
+- **Отдельная таблица под мониторинг** — избыточно: `subdomain_enum_cache`
+  (ADR 037) уже keyed per registrable с `next_check_at`/`fetched_at`; переиспользуем.
+- **Diff per-user** — набор поддоменов общий per registrable; diff естественно
+  per-registrable с fan-out подписчикам.
+
+### Следствия
+
+- Релиз **v0.12.0**, есть миграция (toggles + `subdomain_check_interval_*`).
+- Новых внешних зависимостей нет.
+- Исполнение — TASK-0027 (схема) → 0028 (diff + scheduler) → 0029 (уведомления +
+  UX) → 0030 (комплексный аудит v0.12).
+- Закрывает дорожную карту subdomain enumeration (ADR 037 + 038).

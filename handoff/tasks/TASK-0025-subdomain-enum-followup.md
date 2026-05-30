@@ -81,3 +81,39 @@ TASK-0023 (PR #16) смержен функционально готовым. Р�
 ## Ссылки
 
 - TASK-0023 (origin), ADR 037; образец upsert — `SubdomainEnumCacheRepository.upsert`.
+
+---
+
+## Ревью v1 — один фикс до мержа (2026-05-30)
+
+PR #18: `update_fail`→UPSERT ✅, `error_type` унифицирован ✅, `QUERY_TIMEOUT`
+убран ✅, тесты scheduler (11) ✅. Один дефект — **off-by-one в передаче
+`fail_count` в scheduler**, ломает backoff (то, ради чего делался upsert).
+
+**`src/tasks/check_subdomains.py`, ветка ошибки** — сейчас в scheduler уходит
+счётчик ДО инкремента, а `update_fail` сохранит `current+1`:
+
+```diff
+                 current_fail_count = old_cache.fail_count if old_cache else 0
+                 next_check_at = calculate_next_subdomain_check(
+                     has_subdomains=False,
+-                    fail_count=current_fail_count,
++                    fail_count=current_fail_count + 1,
+                 )
+```
+
+Почему важно: scheduler трактует `fail_count=0` как success-ветку (см. ваш же
+`test_zero_fail_count_is_success_path`). При первом фейле (`old_cache=None` → 0)
+получается `has_subdomains=False` → `next_check_at = now + 30 дней` вместо 1 часа;
+дальше всё смещено на 1 (3-й фейл → 1ч вместо 1 дня). `current+1` = счётчик
+ПОСЛЕ фейла, согласован с тем, что пишет `update_fail` (INSERT `fail_count=1`).
+
+В v0.11 (on-demand) баг спящий (`next_check_at` на фейле командой не читается —
+freshness по `fetched_at`), но логика неверна и выстрелит в v0.12-мониторинге.
+Поскольку 0025 — последняя задача перед тегом v0.11.0, чиним до мержа.
+
+**Тест (guard):** при первом фейле (`old_cache=None`) `check_subdomains`
+передаёт в scheduler `fail_count=1` (или `next_check_at ≈ now + 1ч`). Замокать
+`fetch_subdomains` → `SubdomainEnumError` и проверить аргумент/результат.
+
+Дорабатывать в той же ветке `task/0025-subdomain-enum-followup`.

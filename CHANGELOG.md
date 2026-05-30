@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-05-30
+
+Subdomain enumeration через Certificate Transparency-логи (crt.sh),
+[ADR 037](docs/decisions.md). On-demand, read-only с opt-in отслеживанием.
+Реализовано подэтапами TASK-0022…0025.
+
+### Added — Subdomain enumeration (crt.sh, ADR 037)
+
+- **Команда `/subdomains <домен>`** — поиск поддоменов registrable-домена через
+  CT-логи (crt.sh). Read-only список с именами поддоменов; **opt-in**: кнопки
+  «📌 Отслеживать» (по одному) и «📌 Отслеживать все» берут выбранные на
+  отслеживание через обычный `/add`-путь — авто-добавления нет, лимит портфеля
+  соблюдён.
+- **Подсистема enumeration** — параллельная WHOIS/SSL/DNS/email-intel (как
+  ADR 030/032/036): таблица `subdomain_enum_cache` (одна запись на registrable,
+  JSONB-список поддоменов), ARQ-задача `check_subdomains`, кэш с adaptive TTL.
+- **Парсер crt.sh**: нормализация (lowercase, punycode/IDN через `idna`), dedup,
+  отбрасывание wildcard (`*.`) и самого registrable, фильтр «только поддомены
+  запрошенного registrable» (PSL, ADR 035).
+- **Graceful degradation**: таймаут / недоступность / rate-limit crt.sh не валят
+  команду — понятное сообщение; повторные `/subdomains` в окне TTL не бьют crt.sh.
+
+### Internal
+
+- `subdomain_enum_cache.update_fail` — UPSERT-семантика: фейл-трекинг
+  (`fail_count`/`last_error`/`is_reachable`) персистится с первого фейла.
+- Юнит-тесты scheduler (все ветки TTL + timezone-aware guard), парсера
+  (dedup/wildcard/IDN/registrable-фильтр) и хэндлера (opt-in, длина callback
+  ≤ 64 байт, graceful degradation).
+- Периодический мониторинг новых поддоменов + алерты вынесены в v0.12 (ADR 038).
+
 ## [0.10.1] — 2026-05-30
 
 ### Fixed

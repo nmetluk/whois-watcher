@@ -7,8 +7,8 @@ adr: 036
 area: code
 depends_on: [TASK-0016]
 branch: task/0017-email-intel-tasks-scheduler
-owner: ""
-session: ""
+owner: claude
+session: docs/sessions/2026-05-30_task-0017_email_intel_tasks_scheduler.md
 pr: ""
 created: 2026-05-29
 ---

@@ -417,7 +417,6 @@ LOCALE: dict[str, str] = {
     "list.search.empty": "По запросу <code>{query}</code> ничего не найдено.",
     "list.filter.critical": "🚨 С проблемами",
     "list.filter.expired": "💀 Истёкшие",
-    "list.filter.wishlist": "🎯 Wishlist",
     # ------------------------------------------------------------------
     # /stats
     # ------------------------------------------------------------------

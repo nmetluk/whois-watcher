@@ -420,7 +420,6 @@ def list_filters(lang: str) -> InlineKeyboardMarkup:
         ("expired", "list.filter.expired"),
         ("no_data", "button.filter_no_data"),
         ("muted", "button.filter_muted"),
-        ("wishlist", "list.filter.wishlist"),
     ):
         builder.button(text=t(key, lang), callback_data=ListFilter(name=name).pack())
     builder.button(

@@ -402,7 +402,6 @@ LOCALE: dict[str, str] = {
     "list.search.empty": "Nothing found for <code>{query}</code>.",
     "list.filter.critical": "🚨 With problems",
     "list.filter.expired": "💀 Expired",
-    "list.filter.wishlist": "🎯 Wishlist",
     # ------------------------------------------------------------------
     # /stats
     # ------------------------------------------------------------------

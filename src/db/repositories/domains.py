@@ -302,7 +302,7 @@ class DomainRepository(BaseRepository):
                 WhoisCache.expires_at.is_not(None),
                 WhoisCache.expires_at < moment,
             )
-        # else: filter_type=="all" / "wishlist" — никаких доп. WHERE кроме wishlist.
+        # else: filter_type=="all" — никаких доп. WHERE.
 
         if search_query:
             base = base.where(_search_clause(search_query))

@@ -135,25 +135,30 @@ def downgrade() -> None:
     )
 
     # 2. Переносим данные из wishlist обратно в user_domains
-    # При этом гасим notify_* флаги (как делал старый add_to_wishlist)
+    # Используем только существующие колонки (без устаревших subdomain полей)
     op.execute(
         """
         INSERT INTO user_domains (
             user_id, domain, registrable_domain, is_subdomain,
             added_at, is_wishlist,
             notify_days, notify_expiry, notify_ns_change,
-            notify_registrar_change, notify_subdomain_new, notify_subdomain_removed,
-            track_subdomains, subdomain_check_interval_days,
-            track_ssl, notify_ssl_change, notify_ssl_expiry
+            notify_registrar_change, notify_status_change, notify_registrant_change,
+            notify_problem, is_muted,
+            track_ssl, notify_ssl_expiry, notify_ssl_change_issuer, notify_ssl_days_override,
+            track_dns, notify_dns_a_change, notify_dns_aaaa_change,
+            notify_dns_ns_change, notify_dns_unreachable,
+            track_email, notify_email_change
         )
         SELECT
             w.user_id, w.domain, w.registrable_domain, w.is_subdomain,
             w.added_at, true,  -- is_wishlist = true
             NULL,  -- notify_days = NULL (wishlist не уведомляет об expiry)
-            false, false, false,  -- notify_* = false
-            false, false,  -- subdomain notify = false
-            NULL,  -- subdomain_check_interval = NULL
-            false, false, false  -- SSL notify = false
+            false, false, false,  -- notify_expiry, ns_change, registrar_change
+            false, false, false,  -- status_change, registrant_change, problem
+            false,  -- is_muted
+            false, false, false, NULL,  -- SSL
+            false, false, false, false, false,  -- DNS
+            false, false  -- email
         FROM wishlist w
         ON CONFLICT (user_id, domain) DO UPDATE SET
             is_wishlist = true,
@@ -161,13 +166,21 @@ def downgrade() -> None:
             notify_expiry = false,
             notify_ns_change = false,
             notify_registrar_change = false,
-            notify_subdomain_new = false,
-            notify_subdomain_removed = false,
-            track_subdomains = false,
-            subdomain_check_interval_days = NULL,
+            notify_status_change = false,
+            notify_registrant_change = false,
+            notify_problem = false,
+            is_muted = false,
             track_ssl = false,
-            notify_ssl_change = false,
-            notify_ssl_expiry = false
+            notify_ssl_expiry = false,
+            notify_ssl_change_issuer = false,
+            notify_ssl_days_override = NULL,
+            track_dns = false,
+            notify_dns_a_change = false,
+            notify_dns_aaaa_change = false,
+            notify_dns_ns_change = false,
+            notify_dns_unreachable = false,
+            track_email = false,
+            notify_email_change = false
         """
     )
 

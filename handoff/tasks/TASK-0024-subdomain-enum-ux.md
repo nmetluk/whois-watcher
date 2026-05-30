@@ -116,3 +116,118 @@ callback_data полный FQDN поддомена + `registrable` → прев�
 
 Обязательно: правки 1–2 + тесты на них. Правка 3 и тест track_all — желательно
 в том же PR. Дорабатывать в той же ветке `task/0024-subdomain-enum-ux`.
+
+---
+
+## Ревью v2 — фиксы НЕ сделаны, повтор с дословным diff (2026-05-30)
+
+Коммит `a85c9eb` («фиксы 1 и 2») по факту изменил **только текст кнопок и
+текст сообщения** (имена поддоменов). Это полезно — **оставить**. Но оба
+блокера остались НЕТРОНУТЫМИ:
+
+- `SubdomainAction.subdomain` на месте → callback_data всё ещё пакует полный
+  FQDN → лимит 64 байта превышается → `/subdomains` крашится на длинных FQDN.
+- `cb_subdomains_track` всё ещё `if status == "added" … else` → `added_pending`
+  (типичный случай) показывает «❌ Некорректный домен» при успехе.
+
+⚠️ Текст кнопки ≠ callback_data. Менять надо **`callback_data`** и **логику
+статусов**, не подписи. Ниже — дословно.
+
+### Правка 1а — `src/bot/keyboards.py`, класс `SubdomainAction`
+
+```diff
+ class SubdomainAction(CallbackData, prefix="sub"):
+     action: str  # "track" | "track_all" | "refresh"
+     registrable: str  # registrable-домен
+-    subdomain: str = ""  # конкретный поддомен (для action="track")
++    idx: int = -1  # индекс поддомена в cached.subdomains (для action="track")
+```
+
+### Правка 1б — `src/bot/keyboards.py`, `subdomains_keyboard`
+
+```diff
+-    for subdomain in subdomains[:_MAX_SUBDOMAIN_BUTTONS]:
+-        display = from_punycode(subdomain)
++    for idx, subdomain in enumerate(subdomains[:_MAX_SUBDOMAIN_BUTTONS]):
++        display = from_punycode(subdomain)
+         builder.button(
+             text=f"📌 {display}",
+             callback_data=SubdomainAction(
+                 action="track",
+                 registrable=registrable,
+-                subdomain=subdomain,
++                idx=idx,
+             ).pack(),
+         )
+```
+И в конце функции убрать `resize_keyboard=True` (это параметр ReplyKeyboard,
+для Inline бессмысленен): `return builder.as_markup()`.
+
+### Правка 2 — `src/bot/handlers/subdomains.py`, `cb_subdomains_track`
+
+```diff
+-    subdomain = callback_data.subdomain
+-    if not subdomain:
+-        await callback.answer(t("errors.invalid_domain", lang), show_alert=True)
+-        return
++    registrable = callback_data.registrable
++    idx = callback_data.idx
++    async with get_session() as session:
++        cache_repo = SubdomainEnumCacheRepository(session)
++        cached = await cache_repo.get(registrable)
++    if not cached or not cached.subdomains or idx < 0 or idx >= len(cached.subdomains):
++        await callback.answer(t("commands.subdomains.no_cache", lang), show_alert=True)
++        return
++    subdomain = cached.subdomains[idx]
+```
+И в блоке статусов:
+```diff
+-    if result.status == "added":
++    if result.status in ("added", "added_pending", "promoted"):
+         await callback.answer(
+             t("commands.add.success_no_data", lang, domain=display), show_alert=True
+         )
+```
+(ветки `already_tracked` / `limit_reached` / `else` — без изменений.)
+
+### Правка 3 — `cb_subdomains_track_all` (тот же файл)
+
+```diff
+-            if result.status in ("added", "added_pending"):
++            if result.status in ("added", "added_pending", "promoted"):
+                 added += 1
+```
+
+### Правка 4 — `cmd_subdomains` (тот же файл)
+
+Убрать из сигнатуры неиспользуемый `redis: Redis[str]` и импорт
+`from redis.asyncio import Redis`.
+
+### Тесты (обязательно — иначе фиксы не доказаны)
+
+В `tests/unit/test_subdomains_handler.py` (моки со `spec`/`autospec`):
+
+1. **callback ≤ 64 байта** на длинном FQDN — прямой guard от регрессии:
+   ```python
+   kb = subdomains_keyboard(
+       "example.co.uk",
+       ["autodiscover.internal.staging.example.co.uk"],
+       lang="ru",
+   )
+   for row in kb.inline_keyboard:
+       for btn in row:
+           if btn.callback_data and btn.callback_data.startswith("sub:track"):
+               assert len(btn.callback_data.encode()) <= 64
+   ```
+2. **success-track при `added_pending`** — `cache.get` → запись с
+   `subdomains=["www.example.com"]`; `add_for_user` (autospec) →
+   `AddDomainResult(status="added_pending", normalized_domain="www.example.com")`;
+   `callback_data=SubdomainAction(action="track", registrable="example.com", idx=0)`;
+   assert `callback.answer` вызван с `success_no_data`, **не** с `invalid_domain`.
+3. то же для `status="promoted"`.
+
+Косметические тесты из v1 (`test_button_contains_subdomain_name`,
+`test_message_contains_subdomain_list`) — оставить.
+
+Готово к мержу = правки 1–2 + тесты 1–3 фактически в коде (проверю diff,
+а не текст кнопок).

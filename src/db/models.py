@@ -67,6 +67,11 @@ class User(Base):
         nullable=False,
         server_default="{14,7,3,1}",
     )
+    # Этап 17 (ADR 038): интервал проверки поддоменов (дни). Задаёт
+    # частоту periodic monitor'инга новых/исчезнувших поддоменов.
+    subdomain_check_interval_days: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="7"
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -181,6 +186,20 @@ class UserDomain(Base):
     notify_email_change: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("true")
     )
+
+    # Этап 17 (ADR 038): мониторинг поддоменов. Opt-in (default false), т.к.
+    # enumeration бьёт crt.sh — только явный запрос. NULL → берём интервал
+    # из User.subdomain_check_interval_days.
+    track_subdomains: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    notify_subdomain_new: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    notify_subdomain_removed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    subdomain_check_interval_override: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     last_problem_notified_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

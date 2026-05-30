@@ -1,16 +1,17 @@
 ---
 id: TASK-0027
 title: Схема — toggles track_subdomains/notify_subdomain_* + per-user интервал + миграция (ADR 038)
-status: open
+status: done
 milestone: v0.12.0
 adr: 038
 area: code
 depends_on: [TASK-0026]
-branch: ""
-owner: ""
-session: ""
+branch: task/0027-subdomain-monitor-schema
+owner: claude-code
+session: docs/sessions/2026-05-30_task_0027_subdomain_monitor_schema.md
 pr: ""
 created: 2026-05-30
+completed: 2026-05-30
 ---
 
 # TASK-0027 — Схема мониторинга поддоменов (ADR 038)

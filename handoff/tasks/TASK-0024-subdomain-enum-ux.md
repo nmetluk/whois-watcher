@@ -8,7 +8,7 @@ area: code
 depends_on: [TASK-0023]
 branch: "task/0024-subdomain-enum-ux"
 owner: "claude"
-session: "docs/sessions/2025-05-30-task-0024.md"
+session: "docs/sessions/2025-05-30-task-0024.md; fixes: docs/sessions/2026-05-30_task-0024_fixes.md"
 pr: "https://github.com/nmetluk/whois-watcher/pull/17"
 created: 2026-05-30
 completed: 2026-05-30

@@ -9,7 +9,7 @@ depends_on: [TASK-0027]
 branch: task/0028-subdomain-monitor-diff-scheduler
 owner: claude-code
 session: docs/sessions/2026-05-30_task_0028_subdomain_monitor_diff_scheduler.md
-pr: ""
+pr: "#20"
 created: 2026-05-30
 completed: 2026-05-30
 ---

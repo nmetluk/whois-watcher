@@ -9,7 +9,7 @@ depends_on: [TASK-0031]
 branch: ""
 owner: ""
 session: ""
-pr: ""
+pr: 22
 created: 2026-05-30
 ---
 

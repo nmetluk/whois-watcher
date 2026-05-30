@@ -9,7 +9,7 @@ depends_on: [TASK-0023]
 branch: task/0025-subdomain-enum-followup
 owner: claude
 session: docs/sessions/2026-05-30_task_0025_subdomain_enum_followup.md
-pr: ""
+pr: "18"
 created: 2026-05-30
 ---
 

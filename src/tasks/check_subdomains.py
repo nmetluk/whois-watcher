@@ -101,7 +101,7 @@ async def check_subdomains(ctx: dict[str, Any], registrable_domain: str) -> dict
             )
 
             await repo.upsert(
-                registrable_domain=registrable_domain,
+                registrable_domain,
                 subdomains=result.subdomains,
                 fetched_at=now,
                 next_check_at=next_check_at,

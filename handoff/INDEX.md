@@ -2,10 +2,13 @@
 
 > АВТО-генерируется `python scripts/handoff.py board`. Не править руками.
 
-Всего задач: 20
+Всего задач: 24
 
 | ID | Статус | Майлстоун | ADR | Область | Тема | Ветка |
 |----|--------|-----------|-----|---------|------|-------|
+| TASK-0022 | open | v0.11.0 | 037 | code | Схема subdomain_enum_cache + миграция (ADR 037) | — |
+| TASK-0023 | open | v0.11.0 | 037 | code | crt.sh-клиент + парсер/нормализация + ARQ-задача (ADR 037) | — |
+| TASK-0024 | open | v0.11.0 | 037 | code | UX — команда /subdomains + opt-in отслеживание + локали (ADR 037) | — |
 | TASK-0001 | done | v0.8.1 | 034 | code | Багфикс wishlist ↔ tracked (авто-промоут) | task/0001-wishlist-tracked-fix |
 | TASK-0002 | done | v0.9.0 | 035 | code | PSL — зависимость tldextract + src/utils/domains.py | task/0002-psl-utils-domains |
 | TASK-0003 | done | v0.9.0 | 035 | code | Схема user_domains (registrable_domain, is_subdomain) + WHOIS-джойны | task/0003-subdomain-schema-whois-joins |
@@ -26,3 +29,4 @@
 | TASK-0018 | done | v0.10.0 | 036 | code | UX email-intel — блок в /whois, toggle'ы, локали (ADR 036) | task/0018-email-intel-ux-locales |
 | TASK-0019 | done | v0.9.3 | 019 | code | Идентификатор инстанса (label + домен + IP) в каждом сообщении админ-канала | task/0019-admin-alert-instance-tag |
 | TASK-0020 | done | v0.10.1 | — | code | Срочный фикс — кнопка «Мои домены» в /start не работает | task/0020-fix-start-my-domains-button |
+| TASK-0021 | done | v0.11.0 | 037 | docs | Дизайн ADR 037 — subdomain enumeration через CT-логи (v0.11) | — |

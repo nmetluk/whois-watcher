@@ -71,3 +71,48 @@ ADR 037. crt.sh-запрос медленный → команда отвеча�
 ## Ссылки
 
 - ADR 037; ADR 035 (registrable/guard), ADR 034 (promote), ADR 011 (лимит 50k).
+
+---
+
+## Ревью v1 — требуемые правки (2026-05-30)
+
+PR #17 вернулся на доработку. **Корень:** `SubdomainAction` пакует в
+callback_data полный FQDN поддомена + `registrable` → превышает лимит Telegram
+**64 байта** (проверено на aiogram 3.28.2: `.pack()` бросает
+`ValueError: Resulted callback data is too long!`). crt.sh регулярно отдаёт
+длинные FQDN → `subdomains_keyboard()` упадёт и `/subdomains` крашится. Плюс
+кнопки все подписаны одинаково «📌 Отслеживать» (имени поддомена не видно), а
+сам `header` список не рендерит.
+
+Обязательно до мержа:
+
+1. **`src/bot/keyboards.py`** — в `SubdomainAction` заменить `subdomain: str`
+   на `idx: int = -1` (индекс в `cached.subdomains`). В `subdomains_keyboard`
+   паковать `idx`, кнопки подписывать именем: `text=f"📌 {from_punycode(sub)}"`
+   (добавить импорт `from_punycode`), убрать `resize_keyboard=True` (это
+   параметр ReplyKeyboard, не Inline), поправить комментарий «~100 байт» → 64.
+   Раскладка `builder.adjust(*([1]*len(shown) + [2]))`.
+
+2. **`src/bot/handlers/subdomains.py::cb_subdomains_track`** — доставать
+   поддомен из кэша по `callback_data.idx` (guard out-of-range → `no_cache`).
+   Считать успехом статусы **`added / added_pending / promoted`** (сейчас
+   только `added`; для свежего поддомена типичный ответ — `added_pending` →
+   падает в `else` → показывает «❌ Некорректный домен» при фактическом успехе).
+   Реальные статусы `AddDomainResult`:
+   `invalid_domain / limit_reached / promoted / already_tracked / added / added_pending`.
+
+3. **`cb_subdomains_track_all`** — добавить `promoted` в success-ветку
+   (`added += 1`); сейчас `promoted` уходит в `error_count`.
+
+4. **`cmd_subdomains`** — убрать неиспользуемый параметр `redis: Redis[str]`
+   и импорт `from redis.asyncio import Redis`.
+
+5. **Тесты** (`tests/unit/test_subdomains_handler.py`, моки со `spec`/`autospec`):
+   - успешный track при `add_for_user → added_pending` (НЕ показывает invalid_domain);
+   - то же для `promoted`;
+   - `subdomains_keyboard` на длинном FQDN не бросает и каждый track-callback
+     `len(.encode()) <= 64` (прямой guard от регрессии длины);
+   - track_all считает `promoted` как `added`.
+
+Обязательно: правки 1–2 + тесты на них. Правка 3 и тест track_all — желательно
+в том же PR. Дорабатывать в той же ветке `task/0024-subdomain-enum-ux`.

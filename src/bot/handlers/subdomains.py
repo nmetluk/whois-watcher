@@ -170,8 +170,8 @@ async def cb_subdomains_track(
 
     # Получаем поддомен из кэша по idx
     async with get_session() as session:
-        cache_repo = SubdomainEnumCacheRepository(session)
-        cached = await cache_repo.get(registrable)
+        subdomain_cache_repo = SubdomainEnumCacheRepository(session)
+        cached = await subdomain_cache_repo.get(registrable)
     if not cached or not cached.subdomains or idx < 0 or idx >= len(cached.subdomains):
         await callback.answer(t("commands.subdomains.no_cache", lang), show_alert=True)
         return

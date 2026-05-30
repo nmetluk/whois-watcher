@@ -1,14 +1,14 @@
 ---
 id: TASK-0016
 title: Сбор и парсеры MX/SPF/DKIM/DMARC + базовая диагностика (ADR 036)
-status: open
+status: done
 milestone: v0.10.0
 adr: 036
 area: code
 depends_on: [TASK-0015]
-branch: ""
-owner: ""
-session: ""
+branch: task/0016-email-intel-parsers
+owner: claude
+session: docs/sessions/2026-05-30_task-0016_email_intel_parsers.md
 pr: ""
 created: 2026-05-29
 ---

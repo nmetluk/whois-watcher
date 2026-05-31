@@ -64,7 +64,7 @@
 
 ## Коммиты
 
-(После push в сессии)
+- `da134df` — hardening(TASK-0037): html.escape in subdomain notifications + max interval cap via Limits (ADR 038)
 
 ## Проверки
 
@@ -85,4 +85,4 @@
 
 ## PR
 
-- (откроется после push)
+- #26 — open (готово к ревью)

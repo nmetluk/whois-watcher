@@ -143,10 +143,22 @@ Alembic-head единственный (`20260530_subdomain_monitor`). По хо�
 поймано и исправлено: multi-head (down_revision миграции не был перецелен на
 `20260530_wishlist`) и пустое уведомление (гард по `len(lines)`, а не по toggle'ам).
 
-**Следующий шаг**: **TASK-0030** — комплексный аудит v0.12 (отдельная сессия:
-безопасность/перф/тесты/миграции/нагрузка на crt.sh; разделы ADR 037+038) →
-`handoff/audits/`. После аудита — релиз **v0.12.0** (bump `pyproject` 0.11.1→0.12.0,
-секция CHANGELOG, тег, деплой). Деплой v0.11.1 в прод, если ещё не катился.
+✅ **TASK-0030 — аудит v0.12 проведён** (2026-05-31, отчёт
+`handoff/audits/AUDIT-2026-05-31-v0-12-subdomain-monitor.md`). Рантайм-код
+здоров (миграция single-head/обратима, нагрузка на crt.sh ограничена, diff
+baseline-safe, нет sensitive-логирования, hot path async). Вердикт —
+**fix-then-go**: главный риск в тестах, а не в коде. Заведены: 🟠 **TASK-0033**
+(тесты fan-out `notify_subdomain_changes` — дедуп/mute/toggle'ы/blocked/журнал),
+🟠 **TASK-0034** (тесты success+diff→enqueue и baseline-no-enqueue в
+`check_subdomains`), 🟡 **TASK-0035** (N+1 в fan-out + ordering-зависимый дедуп
+toggle'ов — follow-up, не блокер).
+
+**Следующий шаг (релизная цепочка v0.12.0):** закрыть 🟠 **TASK-0033** и
+**TASK-0034** (блокеры) → **TASK-0036** «Релиз v0.12.0» (gated на 0033/0034:
+bump `pyproject` 0.11.1→0.12.0, секция CHANGELOG `[0.12.0]`, тег, деплой).
+После тега — follow-up: 🟡 **TASK-0035** (N+1 + дедуп toggle'ов) и 🟢
+**TASK-0037** (html.escape в нотификациях + верхний кап интервала в FSM),
+оба milestone v0.12.1. Деплой v0.11.1 в прод, если ещё не катился.
 
 ---
 

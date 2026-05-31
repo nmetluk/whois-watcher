@@ -1,17 +1,23 @@
 ---
 id: TASK-0030
 title: Комплексный аудит v0.12 (мониторинг поддоменов, ADR 037+038)
-status: open
+status: done
 milestone: v0.12.0
 adr: 038
 area: audit
 depends_on: [TASK-0029]
 branch: ""
-owner: ""
-session: ""
+owner: architect
+session: handoff/audits/AUDIT-2026-05-31-v0-12-subdomain-monitor.md
 pr: ""
 created: 2026-05-30
+completed: 2026-05-31
 ---
+
+> **Итог (2026-05-31):** аудит проведён, отчёт —
+> `handoff/audits/AUDIT-2026-05-31-v0-12-subdomain-monitor.md`. Вердикт —
+> **fix-then-go**: тег v0.12.0 после закрытия 🟠 TASK-0033/0034 (тест-гэпы
+> fan-out и success→enqueue). 🟡 TASK-0035 (N+1 + дедуп toggle'ов) — follow-up.
 
 # TASK-0030 — Комплексный аудит v0.12 (ADR 038)
 

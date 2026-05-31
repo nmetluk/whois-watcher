@@ -141,8 +141,9 @@ def test_dmarc_with_subpolicy_and_pct() -> None:
     )
     result = format_email_block(cache, lang="ru")  # type: ignore[arg-type]
     assert result is not None
+    # TASK-0040: компактный формат — subpolicy и pct больше не в инлайне
+    # (уезжают в «Глубокий e-mail»)
     assert "карантин" in result
-    assert "sp=отклонять" in result
     assert "50%" in result
 
 
@@ -154,12 +155,13 @@ def test_no_dmarc_shows_not_configured() -> None:
     assert "не настроен" in result
 
 
-def test_dkim_selectors_displayed() -> None:
+def test_dkim_moved_to_deep_button() -> None:
+    """DKIM убран из инлайна (TASK-0040) — будет в кнопке «Глубокий e-mail»."""
     cache = FakeEmailIntelCache(dkim_selectors=["google", "k1"])
     result = format_email_block(cache, lang="ru")  # type: ignore[arg-type]
     assert result is not None
-    assert "google" in result
-    assert "k1" in result
+    assert "DKIM" not in result
+    assert "google" not in result
 
 
 def test_no_dkim_closes_tree_without_dkim_label() -> None:
@@ -192,7 +194,8 @@ def test_english_locale_for_translatable_strings() -> None:
     assert "reject" in en
 
 
-def test_full_block_tree_format() -> None:
+def test_compact_inline_format() -> None:
+    """TASK-0040: компактный инлайн (MX + одна строка SPF+DMARC)."""
     cache = FakeEmailIntelCache(
         mx_records=[{"priority": 10, "host": "mail.example.com"}],
         spf_record="v=spf1 -all",
@@ -203,13 +206,8 @@ def test_full_block_tree_format() -> None:
     result = format_email_block(cache, lang="ru")  # type: ignore[arg-type]
     assert result is not None
     lines = result.splitlines()
-    # Заголовок + 4 строки с данными
-    assert len(lines) >= 5
-    # Первая строка — заголовок
+    assert len(lines) == 3  # заголовок + MX + статус
     assert lines[0].startswith("📧")
-    # Tree-формат: ├ для всех, кроме последней
     assert lines[1].startswith("├ ")
-    assert lines[2].startswith("├ ")
-    assert lines[3].startswith("├ ")
-    # Последняя (DKIM) с └
-    assert lines[-1].startswith("└ ")
+    assert lines[2].startswith("└ ")
+    assert "DKIM" not in result

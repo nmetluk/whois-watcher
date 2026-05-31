@@ -34,6 +34,7 @@ from src.services.domains import DomainService
 from src.services.formatters import (
     format_dns_block,
     format_email_block,
+    format_pending_block,
     format_ssl_block,
     format_whois_response,
 )
@@ -184,15 +185,23 @@ async def _send_whois_card(
         body_parts.append("")
 
     body_parts.append(format_whois_response(result.data, lang=lang, fetched_at=fetched_at))
+
+    # TASK-0040 (ADR 040): показываем pending placeholder вместо пропуска,
+    # когда кэш ещё не наполнен (мы только что заэнкьюили проверку).
     ssl_block = format_ssl_block(ssl_cache, lang=lang)
-    if ssl_block:
-        body_parts.append(ssl_block)
+    if ssl_block is None:
+        ssl_block = format_pending_block(t("commands.whois.ssl_section", lang), lang=lang)
+    body_parts.append(ssl_block)
+
     dns_block = format_dns_block(dns_cache, whois_ns=whois_ns, lang=lang)
-    if dns_block:
-        body_parts.append(dns_block)
+    if dns_block is None:
+        dns_block = format_pending_block(t("commands.whois.dns_section", lang), lang=lang)
+    body_parts.append(dns_block)
+
     email_block = format_email_block(email_cache, lang=lang)
-    if email_block:
-        body_parts.append(email_block)
+    if email_block is None:
+        email_block = format_pending_block(t("commands.whois.email_section", lang), lang=lang)
+    body_parts.append(email_block)
     if result.is_stale:
         body_parts.insert(
             0 if not is_sub else 2,

@@ -1,16 +1,17 @@
 ---
 id: TASK-0036
 title: Релиз v0.12.0 — мониторинг поддоменов (ADR 037+038)
-status: in_review
+status: done
 milestone: v0.12.0
 adr: 038
 area: docs
 depends_on: [TASK-0033, TASK-0034, TASK-0035, TASK-0037]
 branch: task/0036-release-v0-12-0
-owner: ""
+owner: architect
 session: docs/sessions/2026-05-31_task-0036-release-v0-12-0.md
 pr: #27
 created: 2026-05-31
+completed: 2026-05-31
 ---
 
 # TASK-0036 — Релиз v0.12.0

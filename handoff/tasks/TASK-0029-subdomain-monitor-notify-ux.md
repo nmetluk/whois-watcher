@@ -1,7 +1,7 @@
 ---
 id: TASK-0029
 title: Уведомления о новых/исчезнувших поддоменах + UX toggles/интервал + локали (ADR 038)
-status: in_review
+status: done
 milestone: v0.12.0
 adr: 038
 area: code

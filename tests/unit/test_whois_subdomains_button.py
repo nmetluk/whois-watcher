@@ -14,19 +14,23 @@ import pytest
 from aiogram.types import CallbackQuery, Message
 
 from src.bot.handlers.whois import _is_subdomain_cache_fresh, _show_subdomains_from_whois_card
-from src.db.models import User
+from src.db.models import SubdomainEnumCache, User
 
 
 def _make_cache(*, subdomains: list[str] | None = None, fetched_at: datetime | None = None):
-    """Фабрика мок-объекта кэша поддоменов."""
-    cache = MagicMock()
+    """Фабрика мок-объекта кэша поддоменов (с spec для anti-drift)."""
+    cache = MagicMock(spec=SubdomainEnumCache)
     cache.subdomains = subdomains
     cache.fetched_at = fetched_at
     return cache
 
 
 class TestIsSubdomainCacheFresh:
-    """Тесты _is_subdomain_cache_fresh (7 дней)."""
+    """Тесты _is_subdomain_cache_fresh (7 дней).
+
+    Важно: моками пользуемся через spec=SubdomainEnumCache (anti-drift, TASK-0045).
+    getattr на ORM-моделях запрещён (см. CLAUDE.md).
+    """
 
     def test_none_cache_is_not_fresh(self) -> None:
         assert _is_subdomain_cache_fresh(None) is False
@@ -50,12 +54,6 @@ class TestIsSubdomainCacheFresh:
             fetched_at=now - timedelta(days=8),
         )
         assert _is_subdomain_cache_fresh(cache) is False
-
-    def test_uses_getattr_defensively(self) -> None:
-        """Должен работать, даже если у объекта нет атрибута fetched_at."""
-        weird_cache = MagicMock(spec=[])  # без атрибутов
-        weird_cache.subdomains = ["a"]
-        assert _is_subdomain_cache_fresh(weird_cache) is False
 
 
 class TestShowSubdomainsFromWhoisCard:

@@ -1,14 +1,14 @@
 ---
 id: TASK-0040
 title: Карточка /whois — MX + краткий e-mail-статус инлайн + фикс свежести
-status: open
+status: in_review
 milestone: v0.13.0
 adr: 040
 area: code
 depends_on: [TASK-0018]
-branch: ""
+branch: task/0040-whois-card-inline-mx-freshness
 owner: ""
-session: ""
+session: docs/sessions/2026-05-31_task-0040-whois-card-inline-mx-freshness.md
 pr: ""
 created: 2026-05-31
 ---

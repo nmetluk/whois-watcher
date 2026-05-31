@@ -398,6 +398,9 @@ LOCALE: dict[str, str] = {
     "commands.whois.email_dmarc_policy.quarantine": "quarantine",
     "commands.whois.email_dmarc_policy.reject": "reject",
     "commands.whois.email_line_dkim": "DKIM: {selectors}",
+    # TASK-0040 (ADR 040): compact inline + pending placeholder
+    "commands.whois.email_compact_status": "SPF: {spf} · DMARC: {dmarc}",
+    "commands.whois.pending_collect": "⏳ Collecting {section}… Tap 🔄 Refresh in a few seconds",
     "commands.whois.source_just_now": "ℹ️ Fetched: just now",
     "commands.whois.source_cached": "ℹ️ From cache, updated {ago}",
     "commands.whois.free": "🌐 {domain} — not registered\n\nThe domain is available for registration.",

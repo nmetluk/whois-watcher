@@ -302,17 +302,16 @@ def format_email_block(
     *,
     lang: str,
 ) -> str | None:
-    """Email-intel блок для карточки ``/whois`` (TASK-0018, ADR 036).
+    """Email-intel блок для карточки ``/whois`` (TASK-0040, ADR 040).
 
-    Возвращает ``None``, если данных нет (``last_checked_at is None``) или
-    состояние ``is_reachable=False``. Иначе — компактный блок:
+    Компактная версия для инлайна:
+    - MX (top-3 + счётчик остальных)
+    - Одна строка статуса: SPF режим + DMARC policy
 
-    - MX: список хостов с приоритетами (усечение до 3)
-    - SPF: режим (fail/softfail/neutral/pass/none) + пометка множественности
-    - DMARC: policy (none/quarantine/reject) + subpolicy/pct если есть
-    - DKIM: список найденных селекторов
+    Полный DKIM и детали — в кнопке «Глубокий e-mail» (TASK-0041).
 
-    «Не настроено» (нет MX) — валидное состояние, показываем «MX не настроен».
+    Возвращает ``None`` только для «ничего полезного» (unreachable и т.п.).
+    Пустой/ещё не собранный кэш обрабатывается в хэндлере (pending placeholder).
     """
     if cache is None or cache.last_successful_check_at is None:
         return None
@@ -322,10 +321,9 @@ def format_email_block(
 
     lines = [t("commands.whois.email_section", lang)]
 
-    # MX-записи
+    # MX (компактно, top-3)
     mx = cache.mx_records or []
     if mx:
-        # Сортируем по приоритету и берём top-3
         sorted_mx = sorted(mx, key=lambda r: r.get("priority", 0))
         shown = sorted_mx[:3]
         mx_hosts = ", ".join(html.escape(r.get("host", "")) for r in shown)
@@ -335,49 +333,33 @@ def format_email_block(
     else:
         lines.append("├ " + t("commands.whois.email_no_mx", lang))
 
-    # SPF
-    if cache.spf_record:
-        mode_key = f"commands.whois.email_spf_mode.{cache.spf_mode or 'none'}"
-        mode_text = t(mode_key, lang, default=cache.spf_mode or "none")
-        spf_line = t("commands.whois.email_line_spf", lang, mode=mode_text)
-        # RFC-нарушение: >1 SPF-запись
-        # Note: spf_mode не содержит info о множественности, проверяем по размеру
-        # сырой записи (грубый детектор) или через отдельный флаг, если будет
-        # добавлен в схему. В ADR 036 упоминается is_multiple в SPFRecord types,
-        # но в БД это не хранится — показываем без пометки множественности.
-        lines.append("├ " + spf_line)
-    else:
-        lines.append("├ " + t("commands.whois.email_no_spf", lang))
+    # Компактный статус: SPF + DMARC в одну строку (TASK-0040)
+    spf_mode = cache.spf_mode or "none"
+    mode_key = f"commands.whois.email_spf_mode.{spf_mode}"
+    spf_text = t(mode_key, lang, default=spf_mode)
 
-    # DMARC
     if cache.dmarc_policy:
-        policy_key = f"commands.whois.email_dmarc_policy.{cache.dmarc_policy}"
-        policy_text = t(policy_key, lang, default=cache.dmarc_policy)
-        parts = [policy_text]
-        if cache.dmarc_subpolicy and cache.dmarc_subpolicy != cache.dmarc_policy:
-            sub_key = f"commands.whois.email_dmarc_policy.{cache.dmarc_subpolicy}"
-            parts.append(f"sp={t(sub_key, lang, default=cache.dmarc_subpolicy)}")
+        dmarc_key = f"commands.whois.email_dmarc_policy.{cache.dmarc_policy}"
+        dmarc_text = t(dmarc_key, lang, default=cache.dmarc_policy)
         if cache.dmarc_pct is not None and cache.dmarc_pct < 100:
-            parts.append(f"{cache.dmarc_pct}%")
-        dmarc_text = ", ".join(parts)
-        lines.append("├ " + t("commands.whois.email_line_dmarc", lang, policy=dmarc_text))
+            dmarc_text += f" {cache.dmarc_pct}%"
     else:
-        lines.append("├ " + t("commands.whois.email_no_dmarc", lang))
+        dmarc_text = t("commands.whois.email_no_dmarc", lang).split(":")[-1].strip()
 
-    # DKIM
-    dkim = cache.dkim_selectors or []
-    if dkim:
-        dkim_text = ", ".join(html.escape(s) for s in dkim)
-        lines.append("└ " + t("commands.whois.email_line_dkim", lang, selectors=dkim_text))
-    else:
-        # Последняя строка с └
-        lines[-1] = "└ " + lines[-1][2:]
-
-    if len(lines) == 1:
-        # Заголовок без данных — лучше ничего не показывать.
-        return None
+    status_line = t("commands.whois.email_compact_status", lang, spf=spf_text, dmarc=dmarc_text)
+    lines.append("└ " + status_line)
 
     return "\n".join(lines)
+
+
+def format_pending_block(section: str, *, lang: str) -> str:
+    """Общий плейсхолдер «⏳ Собираю …» для ещё не заполненного кэша.
+
+    Используется для SSL/DNS/Email при первом /whois (или после refresh),
+    когда мы только что заэнкьюили фоновую задачу. Пользователь видит
+    явный хинт нажать «🔄 Обновить».
+    """
+    return t("commands.whois.pending_collect", lang, section=section)
 
 
 def format_add_success(

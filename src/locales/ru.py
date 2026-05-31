@@ -414,6 +414,9 @@ LOCALE: dict[str, str] = {
     "commands.whois.email_dmarc_policy.quarantine": "карантин",
     "commands.whois.email_dmarc_policy.reject": "отклонять",
     "commands.whois.email_line_dkim": "DKIM: {selectors}",
+    # TASK-0040 (ADR 040): компактный инлайн + pending placeholder
+    "commands.whois.email_compact_status": "SPF: {spf} · DMARC: {dmarc}",
+    "commands.whois.pending_collect": "⏳ Собираю {section}… Нажмите 🔄 Обновить через несколько секунд",
     "commands.whois.source_just_now": "ℹ️ Данные получены: только что",
     "commands.whois.source_cached": "ℹ️ Данные из кэша, обновлены {ago}",
     "commands.whois.free": "🌐 {domain} — не зарегистрирован\n\nДомен свободен для регистрации.",

@@ -5,7 +5,7 @@
 > архитектором — после merge крупных кусков; исполнителем — раздел
 > «Последняя сессия». Дата последнего обновления — обязательна.
 
-**Обновлено:** 2026-05-30 (релиз v0.11.1 — багфикс wishlist, ADR 039) · **Релиз на main:** v0.11.1 · **Последний ADR:** 039
+**Обновлено:** 2026-05-31 (v0.12 код влит: мониторинг поддоменов 0027→0028→0029, ADR 038) · **Релиз на main:** v0.11.1 · **Последний ADR:** 039
 
 ## Где мы сейчас
 
@@ -24,7 +24,7 @@ RIR/ASN-фундамент. Введён новый рабочий процес�
 | Email/policy-записи (MX/SPF/DKIM/DMARC) | v0.10 | 036 ✅ | **релиз v0.10.0 выпущен** (тег → b081c9a, TASK-0015…0018) |
 | Instance-тег в админ-алертах | v0.9.3 | 019 | **релиз v0.9.3 выпущен** (hotfix от v0.9.2, TASK-0019); также в v0.10.0 |
 | Subdomain enumeration (CT-логи/crt.sh, on-demand) | v0.11 | 037 ✅ | дизайн готов; исполнение TASK-0022…0024 |
-| Мониторинг новых поддоменов + алерты | v0.12 | 038 | план (вынесено из 037) |
+| Мониторинг новых поддоменов + алерты | v0.12 | 038 ✅ | TASK-0027/0028/0029 done (PR #19/#20/#21); осталось TASK-0030 (аудит) → релиз v0.12.0 |
 | Багфикс wishlist — независимые списки + кнопка удаления | v0.11.1 | 039 ✅ | TASK-0031/0032 done, **релиз v0.11.1 выпущен** |
 
 ADR 034 и 035 дописаны в `docs/decisions.md`. Цепочка зависимостей
@@ -132,35 +132,21 @@ UX toggles/FSM-интервал + локали) → **0030** (комплексн
 **Следующий шаг**: **деплой v0.11.1** (`bash scripts/deploy.sh`) — выкатить
 багфикс в прод. Затем разблокировать стек v0.12 (см. ниже).
 
-⚠️ **v0.12 стек застрял и устарел — нужен ребейз (часть TASK-0027).** Ветки
-`task/0027-subdomain-monitor-schema` ⊂ `0028-...-diff-scheduler` ⊂
-`0029-...-notify-ux` срезаны со старой базы `552fbbd` (до v0.11.1) и отстают
-от main на 12 коммитов; таски ещё `open`, схема (`track_subdomains` и пр.) на
-main НЕ влита. Между базой и сейчас прошёл релиз v0.11.1 (wishlist → отдельная
-таблица, колонка `user_domains.is_wishlist` **удалена**). Это НЕ новая задача —
-это доведение существующего TASK-0027 (и стека) до мержа.
+✅ **v0.12 код влит на main** (2026-05-31): мониторинг новых/исчезнувших
+поддоменов (ADR 038). Стек 0027→0028→0029 ребейзнут на пост-v0.11.1 main и
+смержен по очереди: **TASK-0027** (PR #19 → `f59720d`, схема toggles +
+`User.subdomain_check_interval_days`, миграция `20260530_subdomain_monitor`),
+**TASK-0028** (PR #20 → `dd06625`, `compute_subdomain_diff` baseline-safe +
+scheduler floor 1д + интеграция в `check_subdomains`), **TASK-0029** (PR #21 →
+`f87632b`, fan-out `notify_subdomain_changes` + toggle'ы/FSM в `/whois` + локали).
+Alembic-head единственный (`20260530_subdomain_monitor`). По ходу ревью
+поймано и исправлено: multi-head (down_revision миграции не был перецелен на
+`20260530_wishlist`) и пустое уведомление (гард по `len(lines)`, а не по toggle'ам).
 
-Исполнителю: ребейзнуть стек на свежий `origin/main` (по порядку
-0027→0028→0029, напр. `git rebase --update-refs --onto origin/main 552fbbd
-task/0029-...`), разрешив конфликты. **Критичные точки:**
-- `src/db/models.py` (UserDomain): стек ещё содержит `is_wishlist` (на main
-  удалён) — при резолве **выбросить**, НЕ возвращать; сохранить с main
-  отсутствие `is_wishlist` + модель `Wishlist`; добавить из стека
-  `track_subdomains`/`notify_subdomain_new`/`notify_subdomain_removed`/
-  `subdomain_check_interval_override` + `User.subdomain_check_interval_days`.
-- миграция стека `20260530_subdomain_monitor`: перецелить `down_revision`
-  `20260530_subdomain_enum` → **`20260530_wishlist`** (текущий head); `alembic
-  heads` = один; round-trip на Postgres зелёный.
-- `keyboards.py` (убранный wishlist-фильтр + `is_wishlisted`-кнопка с main И
-  toggle'ы поддоменов из стека), `repositories/domains.py` (wishlist-методы на
-  main удалены — держать удалёнными), `locales/ru.py`+`en.py` (смержить ключи,
-  `test_all_ru_keys_present_in_en` зелёный). `INDEX.md` — `handoff.py board`,
-  `uv.lock` — перегенерить.
-- Anti-drift: `grep -rn is_wishlist src tests` → пусто; моки `spec`/`autospec`.
-
-Прогон `pytest`/`ruff`/`black --check`/`mypy src`, push `--force-with-lease`,
-**TASK-0027 → `in_review`**. Дальше архитектор ревьюит и мержит 0027→0028→0029,
-затем TASK-0030 (аудит v0.12) и релиз **v0.12.0**.
+**Следующий шаг**: **TASK-0030** — комплексный аудит v0.12 (отдельная сессия:
+безопасность/перф/тесты/миграции/нагрузка на crt.sh; разделы ADR 037+038) →
+`handoff/audits/`. После аудита — релиз **v0.12.0** (bump `pyproject` 0.11.1→0.12.0,
+секция CHANGELOG, тег, деплой). Деплой v0.11.1 в прод, если ещё не катился.
 
 ---
 

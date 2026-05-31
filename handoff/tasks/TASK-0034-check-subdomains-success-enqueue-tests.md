@@ -9,7 +9,7 @@ depends_on: [TASK-0028]
 branch: task/0034-check-subdomains-success-enqueue-tests
 owner: ""
 session: docs/sessions/2026-05-31_task-0034-check-subdomains-success-enqueue-tests.md
-pr: ""
+pr: #24
 created: 2026-05-31
 ---
 

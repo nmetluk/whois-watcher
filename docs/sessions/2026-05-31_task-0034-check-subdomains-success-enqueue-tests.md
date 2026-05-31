@@ -36,7 +36,7 @@
 
 ## Коммиты
 
-(Будут после коммитов в сессии)
+- `cb4d3a4` — test(TASK-0034): success+diff→enqueue tests for check_subdomains (ADR 038)
 
 ## Проверки
 
@@ -59,4 +59,4 @@
 
 ## PR
 
-- (откроется после push)
+- #24 — open (готово к ревью)

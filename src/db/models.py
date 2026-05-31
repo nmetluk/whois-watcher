@@ -598,6 +598,58 @@ class EmailIntelCache(Base):
 
 
 # ---------------------------------------------------------------------------
+# email_deep_cache (TASK-0039, ADR 040)
+# ---------------------------------------------------------------------------
+class EmailDeepCache(Base):
+    """Кэш результатов deep email (SPF recursion + MTA-STS + TLS-RPT + DANE + BIMI).
+
+    On-demand только (короткий TTL, нет периодического scheduler'а в v0.13).
+    Одна запись на domain (PK ``domain``). Хранит сериализованные
+    dataclass-результаты из ``src.email_intel.deep_types`` как JSONB.
+    """
+
+    __tablename__ = "email_deep_cache"
+    __table_args__ = (Index("ix_email_deep_cache_next_check_at", "next_check_at"),)
+
+    domain: Mapped[str] = mapped_column(Text, primary_key=True)
+
+    # Deep results (сериализованные dataclass'ы из TASK-0038)
+    spf: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB, nullable=True, comment="SpfResolution as dict (sources, lookup_count, exceeds_limit)"
+    )
+    mta_sts: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment="MtaStsResult (txt_present, policy_mode, mx[], max_age, reachable)",
+    )
+    tls_rpt: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB, nullable=True, comment="TlsRptResult (present, rua)"
+    )
+    dane: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB, nullable=True, comment="DaneResult (host_tlsa: {host: bool})"
+    )
+    bimi: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB, nullable=True, comment="BimiResult (present, logo_url, vmc_url)"
+    )
+
+    # Scheduling (short TTL для on-demand)
+    fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    next_check_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    # Reachability / failure (graceful degradation)
+    is_reachable: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    fail_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<EmailDeepCache domain={self.domain!r} reachable={self.is_reachable}>"
+
+
+# ---------------------------------------------------------------------------
 # wishlist (ADR 039)
 # ---------------------------------------------------------------------------
 class Wishlist(Base):

@@ -6,7 +6,6 @@
 
 | ID | Статус | Майлстоун | ADR | Область | Тема | Ветка |
 |----|--------|-----------|-----|---------|------|-------|
-| TASK-0039 | open | v0.13.0 | 040 | code | Deep email — on-demand ARQ-задача + кэш с коротким TTL | — |
 | TASK-0040 | open | v0.13.0 | 040 | code | Карточка /whois — MX + краткий e-mail-статус инлайн + фикс свежести | — |
 | TASK-0041 | open | v0.13.0 | 040 | code | Карточка /whois — кнопка «Глубокий e-mail» (on-demand) | — |
 | TASK-0042 | open | v0.13.0 | 040 | code | Карточка /whois — кнопка «Поддомены» (переиспользовать enumeration /subdomains) | — |
@@ -50,3 +49,4 @@
 | TASK-0036 | done | v0.12.0 | 038 | docs | Релиз v0.12.0 — мониторинг поддоменов (ADR 037+038) | task/0036-release-v0-12-0 |
 | TASK-0037 | done | v0.12.0 | 038 | code | Hardening поддоменов — html.escape в нотификациях + кап интервала FSM (ADR 038) | task/0037-subdomain-notify-hardening |
 | TASK-0038 | done | v0.13.0 | 040 | code | Deep email — парсеры и коллекторы (SPF include / MTA-STS / TLS-RPT / DANE / BIMI) | task/0038-deep-email-parsers-collectors |
+| TASK-0039 | done | v0.13.0 | 040 | code | Deep email — on-demand ARQ-задача + кэш с коротким TTL | task/0039-deep-email-arq-cache |

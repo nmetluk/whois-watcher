@@ -1,17 +1,30 @@
 ---
 id: TASK-0039
 title: Deep email — on-demand ARQ-задача + кэш с коротким TTL
-status: open
+status: done
 milestone: v0.13.0
 adr: 040
 area: code
 depends_on: [TASK-0038]
-branch: ""
-owner: ""
-session: ""
+branch: task/0039-deep-email-arq-cache
+owner: claude-code
+session: docs/sessions/2026-05-31_task-0039-deep-email-arq-cache.md
 pr: ""
 created: 2026-05-31
+completed: 2026-05-31
 ---
+
+> ## ✅ Ревью архитектора (2026-05-31) — merged
+>
+> Миграция `email_deep_cache` корректна: `down_revision=20260530_subdomain_monitor`
+> (единственный head), обратима (drop_table), дефолты SQL-литералами. Задача
+> `check_email_deep`: redis-guard NX, вызов `fetch_deep_email`, upsert с TTL,
+> `update_fail`, graceful. Тесты со `spec`/AsyncMock.
+> **Два пункта на доработку в TASK-0041 (не блокеры):** (1) `fetch_deep_email`
+> вызывается **без `mx_hosts`** → DANE сейчас всегда пустой; в 0041 передать
+> MX из базового `email_intel_cache`. (2) Freshness-гейт (не бить сеть в окне
+> TTL) — сама задача всегда фетчит; проверку свежести `next_check_at` сделать
+> в хэндлере 0041 перед enqueue.
 
 # TASK-0039 — Deep email: ARQ-задача + кэш (ADR 040)
 

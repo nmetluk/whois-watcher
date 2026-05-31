@@ -25,6 +25,15 @@ created: 2026-05-31
 `check_email_deep` (TASK-0039), затем сообщение с углублённым разбором
 (SPF include/lookups, MTA-STS, TLS-RPT, DANE/TLSA, BIMI). Паттерн `/subdomains`.
 
+> **Долги из ревью TASK-0039 (обязательно закрыть здесь):**
+> 1. **DANE сейчас пустой** — `check_email_deep` зовёт `fetch_deep_email(domain)`
+>    без `mx_hosts`. Прокинуть MX из базового `email_intel_cache` в deep-сбор
+>    (расширить сигнатуру `check_email_deep`/`fetch_deep_email` `mx_hosts`-
+>    параметром или читать MX из `email_intel_cache` внутри задачи).
+> 2. **Freshness-гейт** — перед enqueue `check_email_deep` хэндлер проверяет
+>    `email_deep_cache.next_check_at`: если кэш свежий — показать сразу из кэша,
+>    не бить сеть; пусто/протух — «⏳ ищу…» + enqueue.
+
 ## Контекст / корень проблемы
 
 ADR 040: deep email — on-demand за кнопкой. UX-поток уже отлажен в `/subdomains`

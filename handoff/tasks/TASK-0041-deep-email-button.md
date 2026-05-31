@@ -1,12 +1,12 @@
 ---
 id: TASK-0041
 title: Карточка /whois — кнопка «Глубокий e-mail» (on-demand)
-status: open
+status: claimed
 milestone: v0.13.0
 adr: 040
 area: code
 depends_on: [TASK-0039, TASK-0040]
-branch: ""
+branch: task/0041-deep-email-button
 owner: ""
 session: ""
 pr: ""

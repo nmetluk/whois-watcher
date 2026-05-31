@@ -9,7 +9,7 @@ depends_on: [TASK-0029]
 branch: task/0035-subdomain-fanout-nplus1-toggle-dedup
 owner: ""
 session: docs/sessions/2026-05-31_task-0035-subdomain-fanout-nplus1-toggle-dedup.md
-pr: ""
+pr: #25
 created: 2026-05-31
 ---
 

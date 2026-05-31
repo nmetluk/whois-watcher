@@ -56,7 +56,7 @@
 
 ## Коммиты
 
-(После коммита в сессии)
+- `15f537d` — fix(TASK-0035): eliminate N+1 and ordering-dependent toggle dedup in notify_subdomain_changes (ADR 038)
 
 ## Проверки
 
@@ -77,4 +77,4 @@
 
 ## PR
 
-- (откроется после push ветки)
+- #25 — open (готово к ревью)

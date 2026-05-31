@@ -1,17 +1,42 @@
 ---
 id: TASK-0047
 title: MTA-STS hardening — anti-SSRF (отсечение приватных IP) + корректный TXT-матч
-status: open
+status: in_review
 milestone: v0.13.0
 adr: 040
 area: code
 depends_on: [TASK-0041]
-branch: ""
-owner: ""
-session: ""
+branch: task/0047-mta-sts-ssrf-hardening
+owner: claude-code
+session: docs/sessions/2026-06-03_task-0047-mta-sts-ssrf-hardening.md
 pr: ""
 created: 2026-06-02
 ---
+
+> ## ⛔ Ревью архитектора (2026-06-03) — changes requested (фикс частичный)
+>
+> ✅ Строгий TXT-матч (`startswith("v=stsv1")`) и наивный SSRF (статический
+> A/AAAA→private → reachable=False, GET не зван) закрыты.
+> 🟠 **DNS-rebinding / TOCTOU НЕ закрыт.** Код резолвит IP для проверки, затем
+> `session.get("https://mta-sts.<domain>/…")` — **aiohttp резолвит хост заново,
+> независимо**. Проверенный IP не пинится → атакующий с контролем DNS отдаёт
+> чекеру публичный IP, aiohttp'у — приватный (rebinding). Тесты мокают резолвер,
+> но реальное соединение его не использует → гарантии в проде нет. Это ровно тот
+> кейс, про который таск предупреждал.
+> **Нужно: пинить проверенный IP в соединение.** Варианты:
+> - кастомный `aiohttp.TCPConnector` с резолвером (`AbstractResolver`/
+>   `AsyncResolver`), возвращающим **только валидные публичные** адреса, и
+>   отклоняющим приватные на этапе `resolve()`; **или**
+> - резолвить один раз, коннектиться по IP с `server_hostname`/SNI = хост и
+>   заголовком `Host: mta-sts.<domain>`.
+> 🟡 Также: A и AAAA резолвятся в одном `try` — если A падает (нет A-записи),
+> проверка AAAA пропускается. Сделать независимыми (отдельные try/except каждый).
+>
+> **Тест-инвариант:** замокать так, чтобы **реальный путь соединения** видел
+> приватный IP (через кастомный connector/resolver) и GET не уходил — текущий
+> тест проверяет лишь логику чекера, не соединение.
+>
+> После полного фикса (pin IP + A/AAAA independent) — снова в ревью.
 
 # TASK-0047 — MTA-STS anti-SSRF + TXT-матч (ADR 040)
 

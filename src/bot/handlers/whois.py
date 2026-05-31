@@ -24,6 +24,7 @@ from src.db.models import SubdomainEnumCache, User
 from src.db.repositories import (
     DNSCacheRepository,
     DomainRepository,
+    EmailDeepCacheRepository,
     EmailIntelCacheRepository,
     SSLCacheRepository,
     SubdomainEnumCacheRepository,
@@ -586,19 +587,53 @@ async def _show_deep_email_from_whois_card(
     domain: str,
     arq_redis: ArqRedis,
 ) -> None:
-    """Кнопка «✉️ Глубокий e-mail» на карточке (TASK-0041).
+    """Кнопка «✉️ Глубокий e-mail» на карточке — on-demand deep (TASK-0041).
 
-    TODO (в разработке):
+    Закрывает долги 0039:
     - Freshness gate по email_deep_cache.next_check_at
-    - Передача mx_hosts при enqueue (уже починили в задаче)
-    - Красивый форматтер результата
+    - (mx_hosts уже прокинуты в check_email_deep)
     """
     if not isinstance(query.message, Message):
         await query.answer()
         return
 
-    await query.answer("⏳ Глубокий e-mail в разработке (TASK-0041)", show_alert=True)
-    # Временная заглушка — не падаем при тесте кнопки
+    try:
+        normalized = normalize_domain(domain)
+        registrable = registrable_domain(normalized) or normalized
+    except Exception:
+        await query.answer(t("commands.subdomains.invalid_domain", lang), show_alert=True)
+        return
+
+    # Freshness gate (долг из 0039)
+    async with get_session() as session:
+        deep_repo = EmailDeepCacheRepository(session)
+        cached = await deep_repo.get(registrable)
+
+    now = datetime.now(tz=UTC)
+    is_fresh = cached and getattr(cached, "next_check_at", None) and cached.next_check_at > now
+
+    if is_fresh:
+        # TODO: красивый форматтер (format_email_deep) — пока заглушка
+        display = from_punycode(registrable)
+        await query.message.reply(
+            f"✉️ Глубокий e-mail для {display}\n\n"
+            "Результат уже в кэше (TASK-0041 в разработке). "
+            "Скоро здесь будет полный разбор (SPF, DANE, BIMI и т.д.)."
+        )
+        await query.answer()
+        return
+
+    # Кэш пустой или протух — запускаем тяжёлый сбор
+    await arq_redis.enqueue_job("check_email_deep", registrable)
+    display = from_punycode(registrable)
+    await query.message.reply(
+        t("commands.subdomains.searching", lang, domain=display).replace(
+            "Поддомены", "Глубокий e-mail"
+        )
+    )
+    await query.answer()
+
+    logger.info("Deep email triggered from whois card for %s (user %s)", registrable, user.id)
 
 
 __all__ = ["router"]

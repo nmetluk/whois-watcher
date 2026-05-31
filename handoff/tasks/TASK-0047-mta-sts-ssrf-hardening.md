@@ -13,7 +13,29 @@ pr: ""
 created: 2026-06-02
 ---
 
-> ## ⛔ Ревью архитектора (2026-06-03) — changes requested (фикс частичный)
+> ## ⛔ Ревью архитектора (2026-06-03, круг 2) — changes requested (🔴 краш инстанциации)
+>
+> Подход верный (кастомный `TCPConnector(resolver=_SafeMtaStsResolver)` пинит
+> валидные IP, A/AAAA независимо, строгий TXT — DNS-rebinding закрыт по дизайну),
+> **но есть 🔴 краш:**
+> - 🔴 **`_SafeMtaStsResolver` не реализует `close()`.** В aiohttp 3.13.5
+>   `AbstractResolver` объявляет абстрактными ОБА метода — `resolve` **и**
+>   `close`. Класс реализует только `resolve()` → `_SafeMtaStsResolver(safe_ips)`
+>   падает `TypeError: ... abstract method 'close'`. Строка идёт ДО `try`, на
+>   каждом нормальном MTA-STS (валидный TXT + публичный IP) → MTA-STS-fetch
+>   ломается всегда. **Фикс:** добавить
+>   `async def close(self) -> None: return None`.
+> - 🔴 **CI не зелёный (DoD не выполнен).** `test_fetch_mta_sts_happy_path_public_ip`
+>   мокает `aiohttp.ClientSession`, но не `_SafeMtaStsResolver`/`TCPConnector` →
+>   реальная инстанциация резолвера происходит и тест должен **падать** TypeError.
+>   Перед сдачей — **полный `pytest`** локально/CI, убедиться, что happy-path
+>   реально зелёный (а не «по идее»).
+>
+> После добавления `close()` + зелёного полного прогона — снова в ревью.
+>
+> ---
+>
+> ## ⛔ Ревью архитектора (2026-06-03, круг 1) — changes requested (фикс частичный)
 >
 > ✅ Строгий TXT-матч (`startswith("v=stsv1")`) и наивный SSRF (статический
 > A/AAAA→private → reachable=False, GET не зван) закрыты.

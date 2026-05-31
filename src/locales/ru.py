@@ -226,7 +226,7 @@ LOCALE: dict[str, str] = {
     "notify_config.subdomain_interval_saved_override": "✅ Интервал поддоменов: каждые {days} дн.",
     "notify_config.subdomain_interval_saved_default": "✅ Поддомены: возвращены глобальные настройки",
     "notify_config.subdomain_interval_invalid": (
-        "❌ Неверный формат. Введите целое число ≥ 1 (например: <code>7</code>)."
+        "❌ Неверный формат. Введите целое число от 1 до 365 (например: <code>7</code>)."
     ),
     "notify_config.type.email_spf": "Смена SPF",
     "notify_config.type.email_dmarc": "Смена DMARC",

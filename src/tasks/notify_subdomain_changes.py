@@ -12,6 +12,7 @@ Fan-out: рассылает **всем** подписчикам registrable-до
 
 from __future__ import annotations
 
+import html
 import logging
 from collections import defaultdict
 from typing import Any
@@ -105,12 +106,14 @@ async def notify_subdomain_changes(
                 continue
 
             # Формируем текст уведомления (используем агрегированные флаги)
-            lines: list[str] = [f"<b>{registrable_domain}</b> —"]
+            # html.escape — defense-in-depth (TASK-0037), даже если данные нормализованы
+            safe_registrable = html.escape(registrable_domain)
+            lines: list[str] = [f"<b>{safe_registrable}</b> —"]
 
             if new_subdomains and effective_notify_new:
                 lines.append(t("notifications.subdomain.new_header", user.language))
                 for subdomain in new_subdomains[:5]:  # максимум 5 в сообщении
-                    lines.append(f"  🆕 {subdomain}")
+                    lines.append(f"  🆕 {html.escape(subdomain)}")
                 if len(new_subdomains) > 5:
                     lines.append(
                         t(
@@ -125,7 +128,7 @@ async def notify_subdomain_changes(
                     lines.append("")  # пустая строка-разделитель
                 lines.append(t("notifications.subdomain.removed_header", user.language))
                 for subdomain in removed_subdomains[:5]:
-                    lines.append(f"  ➖ {subdomain}")
+                    lines.append(f"  ➖ {html.escape(subdomain)}")
                 if len(removed_subdomains) > 5:
                     lines.append(
                         t(

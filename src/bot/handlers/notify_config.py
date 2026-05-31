@@ -36,6 +36,7 @@ from src.bot.states import (
     NotifySslDaysStates,
     NotifySubdomainIntervalStates,
 )
+from src.config.limits import get_limits
 from src.db.models import User, UserDomain
 from src.db.repositories import DomainRepository, UserRepository
 from src.db.session import get_session
@@ -410,9 +411,12 @@ async def on_subdomain_interval_input(
     if not raw:
         await message.answer(t("notify_config.subdomain_interval_prompt", lang))
         return
+    limits = get_limits()
+    max_interval = limits.max_subdomain_check_interval_days
+
     try:
         interval = int(raw)
-        if interval < 1:
+        if interval < 1 or interval > max_interval:
             raise ValueError
     except ValueError:
         await message.answer(t("notify_config.subdomain_interval_invalid", lang))

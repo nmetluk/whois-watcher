@@ -446,3 +446,32 @@ class TestNotifySubdomainChangesAggregationAndNPlusOne:
         # Вызвали с полным списком (порядок не важен для теста)
         called_ids = set(patches["user_repo"].get_by_ids.await_args[0][0])
         assert called_ids == {1, 2}
+
+
+class TestNotifySubdomainChangesHtmlEscaping:
+    """Defense-in-depth escaping (TASK-0037).
+
+    Даже если данные приходят нормализованными, мы экранируем всё, что попадает в HTML.
+    """
+
+    @pytest.mark.asyncio
+    async def test_subdomain_with_html_meta_is_escaped(self, patches: dict[str, MagicMock]) -> None:
+        """Поддомен с HTML-метасимволами приходит экранированным в тексте."""
+        malicious = "<b>x</b>.example.com<script>alert(1)</script>"
+        patches["domain_repo"].get_subscribers_by_registrable = AsyncMock(return_value=[_ud()])
+        patches["user_repo"].get_by_ids = AsyncMock(return_value=[_user()])
+        patches["notif_repo"].record_sent = AsyncMock(return_value=True)
+        bot = _ctx()["bot"]
+
+        await nsc_mod.notify_subdomain_changes(
+            {"bot": bot},
+            registrable_domain="example.com",
+            diff={"new": [malicious], "removed": []},
+        )
+
+        text = bot.send_message.await_args.kwargs["text"]
+        # Должно быть экранировано, а не сырой HTML
+        assert "&lt;b&gt;x&lt;/b&gt;.example.com&lt;script&gt;alert(1)&lt;/script&gt;" in text
+        # Сырой тег не должен присутствовать
+        assert "<b>x</b>" not in text
+        assert "<script>" not in text

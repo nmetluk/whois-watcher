@@ -6,8 +6,9 @@
 
 | ID | Статус | Майлстоун | ADR | Область | Тема | Ветка |
 |----|--------|-----------|-----|---------|------|-------|
-| TASK-0029 | open | v0.12.0 | 038 | code | Уведомления о новых/исчезнувших поддоменах + UX toggles/интервал + локали (ADR 038) | — |
 | TASK-0030 | open | v0.12.0 | 038 | audit | Комплексный аудит v0.12 (мониторинг поддоменов, ADR 037+038) | — |
+| TASK-0027 | in_review | v0.12.0 | 038 | code | Схема — toggles track_subdomains/notify_subdomain_* + per-user интервал + миграция (ADR 038) | task/0027-subdomain-monitor-schema |
+| TASK-0029 | in_review | v0.12.0 | 038 | code | Уведомления о новых/исчезнувших поддоменах + UX toggles/интервал + локали (ADR 038) | task/0029-subdomain-monitor-notify-ux |
 | TASK-0001 | done | v0.8.1 | 034 | code | Багфикс wishlist ↔ tracked (авто-промоут) | task/0001-wishlist-tracked-fix |
 | TASK-0002 | done | v0.9.0 | 035 | code | PSL — зависимость tldextract + src/utils/domains.py | task/0002-psl-utils-domains |
 | TASK-0003 | done | v0.9.0 | 035 | code | Схема user_domains (registrable_domain, is_subdomain) + WHOIS-джойны | task/0003-subdomain-schema-whois-joins |
@@ -34,7 +35,6 @@
 | TASK-0024 | done | v0.11.0 | 037 | code | UX — команда /subdomains + opt-in отслеживание + локали (ADR 037) | task/0024-subdomain-enum-ux |
 | TASK-0025 | done | v0.11.0 | 037 | code | Fast-follow по TASK-0023 — тесты scheduler, update_fail upsert, мелочи (ADR 037) | task/0025-subdomain-enum-followup |
 | TASK-0026 | done | v0.12.0 | 038 | docs | Дизайн ADR 038 — мониторинг новых поддоменов + алерты (v0.12) | — |
-| TASK-0027 | done | v0.12.0 | 038 | code | Схема — toggles track_subdomains/notify_subdomain_* + per-user интервал + миграция (ADR 038) | task/0027-subdomain-monitor-schema |
 | TASK-0028 | done | v0.12.0 | 038 | code | Diff + scheduler мониторинга поддоменов + интеграция в check_subdomains (ADR 038) | task/0028-subdomain-monitor-diff-scheduler |
 | TASK-0031 | done | v0.11.1 | 039 | code | Схема — отдельная таблица wishlist + миграция переноса (ADR 039) | — |
 | TASK-0032 | done | v0.11.1 | 039 | code | Развязка wishlist↔tracking по коду + кнопка «убрать из wishlist» (ADR 039) | — |

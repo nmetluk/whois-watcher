@@ -212,6 +212,22 @@ LOCALE: dict[str, str] = {
     "notify_config.type.track_email": "Мониторинг email",
     "notify_config.type.email_change": "Смена email-записей (MX/SPF/DMARC/DKIM)",
     "notify_config.type.email_mx": "Смена MX-записей",
+    # Subdomain monitoring (TASK-0029, ADR 038)
+    "notify_config.type.track_subdomains": "Мониторинг поддоменов",
+    "notify_config.type.subdomain_new": "Новые поддомены",
+    "notify_config.type.subdomain_removed": "Исчезнувшие поддомены",
+    "notify_config.edit_subdomain_interval": "🌐 Изменить интервал проверки поддоменов",
+    "notify_config.subdomain_interval_prompt": (
+        "Введите интервал проверки поддоменов (дни). "
+        "Минимум — 1 день.\n\n"
+        "/default — использовать глобальные настройки (7 дней)\n"
+        "/cancel — оставить как есть"
+    ),
+    "notify_config.subdomain_interval_saved_override": "✅ Интервал поддоменов: каждые {days} дн.",
+    "notify_config.subdomain_interval_saved_default": "✅ Поддомены: возвращены глобальные настройки",
+    "notify_config.subdomain_interval_invalid": (
+        "❌ Неверный формат. Введите целое число ≥ 1 (например: <code>7</code>)."
+    ),
     "notify_config.type.email_spf": "Смена SPF",
     "notify_config.type.email_dmarc": "Смена DMARC",
     "notify_config.type.email_dkim": "Смена DKIM",
@@ -676,6 +692,10 @@ LOCALE: dict[str, str] = {
         "Не удаётся резолвить MX/SPF/DMARC. Домен может быть истёкшим или удалённым."
     ),
     "notifications.email_change.reachable": ("✅ <b>{domain}</b> — email-записи снова доступны"),
+    # Subdomain monitoring (TASK-0029, ADR 038)
+    "notifications.subdomain.new_header": "🆕 Обнаружены новые поддомены:",
+    "notifications.subdomain.removed_header": "➖ Исчезли поддомены:",
+    "notifications.subdomain.and_more": "… и ещё {count} шт.",
     "notifications.ack.muted": "🔕 Уведомления для этого домена выключены",
     "notifications.ack.refresh_started": "🔄 Запустил повторную проверку",
     "notifications.ack.no_access": "❌ Этот домен не в вашем списке",

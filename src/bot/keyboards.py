@@ -285,6 +285,13 @@ def notify_config_keyboard(
             callback_data=NotifyConfig(action="edit_ssl_days", domain=domain).pack(),
         )
     )
+    # TASK-0029, ADR 038: отдельная кнопка для интервала поддоменов.
+    builder.row(
+        InlineKeyboardButton(
+            text=t("notify_config.edit_subdomain_interval", lang),
+            callback_data=NotifyConfig(action="edit_subdomain_interval", domain=domain).pack(),
+        )
+    )
     for field, label_key in _TOGGLE_FIELDS:
         flag = bool(getattr(user_domain, field, False))
         prefix = on if flag else off
@@ -335,6 +342,10 @@ _TOGGLE_FIELDS: tuple[tuple[str, str], ...] = (
     # Email-intel (TASK-0018, ADR 036)
     ("track_email", "notify_config.type.track_email"),
     ("notify_email_change", "notify_config.type.email_change"),
+    # Subdomain monitoring (TASK-0029, ADR 038)
+    ("track_subdomains", "notify_config.type.track_subdomains"),
+    ("notify_subdomain_new", "notify_config.type.subdomain_new"),
+    ("notify_subdomain_removed", "notify_config.type.subdomain_removed"),
 )
 
 

@@ -338,6 +338,24 @@ class DomainRepository(BaseRepository):
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
+    async def get_subscribers_by_registrable(
+        self, registrable_domain: str, *, track_subdomains: bool | None = None
+    ) -> Sequence[UserDomain]:
+        """Подписчики registrable-домена (для subdomain уведомлений, ADR 038).
+
+        Args:
+            registrable_domain: Registrable-домен (eTLD+1)
+            track_subdomains: Фильтр по ``track_subdomains`` (None — без фильтра)
+
+        Returns:
+            Список ``UserDomain`` записей подписчиков
+        """
+        stmt = select(UserDomain).where(UserDomain.registrable_domain == registrable_domain)
+        if track_subdomains is not None:
+            stmt = stmt.where(UserDomain.track_subdomains.is_(track_subdomains))
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
     async def toggle_notifications(
         self,
         user_id: int,

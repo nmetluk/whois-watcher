@@ -201,6 +201,22 @@ LOCALE: dict[str, str] = {
     "notify_config.type.email_spf": "SPF change",
     "notify_config.type.email_dmarc": "DMARC change",
     "notify_config.type.email_dkim": "DKIM change",
+    # Subdomain monitoring (TASK-0029, ADR 038)
+    "notify_config.type.track_subdomains": "Subdomain monitoring",
+    "notify_config.type.subdomain_new": "New subdomains",
+    "notify_config.type.subdomain_removed": "Removed subdomains",
+    "notify_config.edit_subdomain_interval": "🌐 Change subdomain check interval",
+    "notify_config.subdomain_interval_prompt": (
+        "Enter subdomain check interval (days). "
+        "Minimum is 1 day.\n\n"
+        "/default — use global settings (7 days)\n"
+        "/cancel — keep current"
+    ),
+    "notify_config.subdomain_interval_saved_override": "✅ Subdomain interval: every {days} day(s)",
+    "notify_config.subdomain_interval_saved_default": "✅ Subdomains: reverted to global settings",
+    "notify_config.subdomain_interval_invalid": (
+        "❌ Invalid format. Type an integer ≥ 1 (e.g. <code>7</code>)."
+    ),
     "button.privacy": "📜 Privacy policy",
     "button.github": "💻 GitHub",
     "button.list_prev": "◀️ Prev",
@@ -655,6 +671,10 @@ LOCALE: dict[str, str] = {
         "Cannot resolve MX/SPF/DMARC. Domain may be expired or deleted."
     ),
     "notifications.email_change.reachable": ("✅ <b>{domain}</b> — email records back online"),
+    # Subdomain monitoring (TASK-0029, ADR 038)
+    "notifications.subdomain.new_header": "🆕 New subdomains detected:",
+    "notifications.subdomain.removed_header": "➖ Removed subdomains:",
+    "notifications.subdomain.and_more": "… and {count} more",
     "notifications.ack.muted": "🔕 Notifications for this domain are off",
     "notifications.ack.refresh_started": "🔄 Refresh started",
     "notifications.ack.no_access": "❌ This domain isn't in your list",

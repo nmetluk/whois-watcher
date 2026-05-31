@@ -1,7 +1,7 @@
 ---
 id: TASK-0041
 title: Карточка /whois — кнопка «Глубокий e-mail» (on-demand)
-status: claimed
+status: claimed (ветка запушена с 0042; 0041 deep email + долги 0039 — ещё не начата)
 milestone: v0.13.0
 adr: 040
 area: code

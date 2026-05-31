@@ -6,10 +6,10 @@ milestone: v0.13.0
 adr: 040
 area: code
 depends_on: [TASK-0040]
-branch: task/0042-subdomains-button
+branch: task/0041-deep-email-button (временно; работа по 0042)
 owner: ""
-session: ""
-pr: ""
+session: "docs/sessions/2026-05-31_task-0041-deep-email-button.md"
+pr: "#31"
 created: 2026-05-31
 ---
 

@@ -7,6 +7,7 @@
 - Ошибка → ``SubdomainEnumCacheRepository.update_fail`` + пересчёт next_check_at.
 - Для команды ``/subdomains`` — результат возвращается (но в v0.11 команда сама
   читает из кэша; ARQ-задача только обновляет).
+- **TASK-0028 (ADR 038)**: diff с предыдущим состоянием, enqueue notify при изменениях.
 """
 
 from __future__ import annotations
@@ -15,12 +16,14 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
+from arq import ArqRedis
 from redis.asyncio import Redis as AsyncRedis
 
 from src.db.repositories import SubdomainEnumCacheRepository
 from src.db.session import get_session
 from src.observability import bind_log_context, clear_log_context
 from src.subdomains.client import fetch_subdomains
+from src.subdomains.diff import compute_subdomain_diff
 from src.subdomains.scheduler import calculate_next_subdomain_check
 from src.subdomains.types import SubdomainEnumError
 
@@ -96,12 +99,19 @@ async def check_subdomains(ctx: dict[str, Any], registrable_domain: str) -> dict
                     "message": result.message,
                 }
 
-            # Успех — upsert в кэш
+            # Успех — берём старый subdomains ДО upsert (для diff)
+            old_subdomains = old_cache.subdomains if old_cache else None
+
+            # Считаем минимальный интервал от подписчиков (для next_check_at)
+            success_interval_days = await repo.get_min_check_interval(registrable_domain)
+
             now = datetime.now(tz=UTC)
             next_check_at = calculate_next_subdomain_check(
                 has_subdomains=bool(result.subdomains),
+                success_interval_days=success_interval_days,
             )
 
+            # Upsert в кэш
             await repo.upsert(
                 registrable_domain,
                 subdomains=result.subdomains,
@@ -111,6 +121,23 @@ async def check_subdomains(ctx: dict[str, Any], registrable_domain: str) -> dict
                 fail_count=0,  # сброс при успехе
                 last_error=None,
             )
+
+            # Diff с предыдущим состоянием (ADR 038)
+            diff = compute_subdomain_diff(old_subdomains, result.subdomains)
+            if diff.has_any_changes:
+                # Enqueue уведомление об изменениях (реализация в TASK-0029)
+                arq_redis: ArqRedis = ctx["redis"]
+                await arq_redis.enqueue_job(
+                    "notify_subdomain_changes",
+                    registrable_domain=registrable_domain,
+                    diff={"new": diff.new, "removed": diff.removed},
+                )
+                logger.info(
+                    "Subdomain changes detected for %s: %d new, %d removed",
+                    registrable_domain,
+                    len(diff.new),
+                    len(diff.removed),
+                )
 
             logger.info(
                 "Subdomain enumeration completed for %s: %d subdomains found",

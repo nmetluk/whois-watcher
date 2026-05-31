@@ -24,6 +24,7 @@ def calculate_next_subdomain_check(
     *,
     has_subdomains: bool,
     fail_count: int = 0,
+    success_interval_days: int = 7,
     now: datetime | None = None,
 ) -> datetime:
     """Возвращает момент следующей плановой subdomain enumeration.
@@ -31,6 +32,7 @@ def calculate_next_subdomain_check(
     Args:
         has_subdomains: Были ли найдены поддомены
         fail_count: Количество последовательных неудач
+        success_interval_days: Интервал на успех (дни, default 7)
         now: Текущий момент (для тестов)
 
     Returns:
@@ -52,8 +54,9 @@ def calculate_next_subdomain_check(
     if not has_subdomains:
         return moment + timedelta(days=30)
 
-    # Есть поддомены — еженедельная проверка
-    return moment + timedelta(days=7)
+    # Есть поддомены — интервал от подписчиков (floor 1д)
+    interval = max(1, success_interval_days)
+    return moment + timedelta(days=interval)
 
 
 __all__ = ["calculate_next_subdomain_check"]

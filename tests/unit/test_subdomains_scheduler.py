@@ -69,3 +69,40 @@ class TestCalculateNextSubdomainCheck:
         naive = datetime(2026, 5, 30, 12, 0)
         with pytest.raises(ValueError, match="timezone-aware"):
             calculate_next_subdomain_check(has_subdomains=True, now=naive)
+
+
+class TestCalculateNextSubdomainCheckSuccessInterval:
+    """Тесты параметра success_interval_days (TASK-0028, ADR 038)."""
+
+    def test_custom_success_interval_used(self) -> None:
+        """При success_interval_days=14 используется 14 дней вместо 7."""
+        result = calculate_next_subdomain_check(
+            has_subdomains=True, success_interval_days=14, now=NOW
+        )
+        assert result == NOW + timedelta(days=14)
+
+    def test_success_interval_floor_at_1(self) -> None:
+        """success_interval_days с floor 1 день."""
+        result = calculate_next_subdomain_check(
+            has_subdomains=True, success_interval_days=0, now=NOW
+        )
+        assert result == NOW + timedelta(days=1)  # floor 1
+
+    def test_default_success_interval_is_7(self) -> None:
+        """По умолчанию success_interval_days=7."""
+        result = calculate_next_subdomain_check(has_subdomains=True, now=NOW)
+        assert result == NOW + timedelta(days=7)
+
+    def test_fail_count_overrides_success_interval(self) -> None:
+        """При фейлах success_interval_days игнорируется."""
+        result = calculate_next_subdomain_check(
+            has_subdomains=True, fail_count=1, success_interval_days=14, now=NOW
+        )
+        assert result == NOW + timedelta(hours=1)  # фейл — 1 час
+
+    def test_no_subdomains_overrides_success_interval(self) -> None:
+        """При отсутствии поддоменов success_interval_days игнорируется."""
+        result = calculate_next_subdomain_check(
+            has_subdomains=False, success_interval_days=14, now=NOW
+        )
+        assert result == NOW + timedelta(days=30)  # нет поддоменов — 30 дней

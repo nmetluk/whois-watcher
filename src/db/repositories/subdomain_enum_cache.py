@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, cast
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import CursorResult
 
-from src.db.models import SubdomainEnumCache, UserDomain
+from src.db.models import SubdomainEnumCache, User, UserDomain
 from src.db.repositories.base import BaseRepository
 
 
@@ -90,6 +91,67 @@ class SubdomainEnumCacheRepository(BaseRepository):
         refreshed = await self.session.get(SubdomainEnumCache, registrable_domain)
         assert refreshed is not None  # invariant
         return refreshed
+
+    async def get_due_for_check(self, *, limit: int) -> Sequence[SubdomainEnumCache]:
+        """Registrable-записи у которых ``next_check_at <= now()`` И есть
+        хотя бы один подписчик с ``track_subdomains=true`` (включая не-muted).
+
+        Ограничен ``limit`` — за один tick планировщика не берём больше.
+        Сортировка по ``next_check_at ASC`` — старшие первыми.
+        """
+        # EXISTS против JOIN — короче, эквивалентно.
+        # Фильтр по registrable_domain (не domain!), т.к. SubdomainEnumCache PK — registrable
+        subq = (
+            select(UserDomain.id)
+            .where(
+                UserDomain.registrable_domain == SubdomainEnumCache.registrable_domain,
+                UserDomain.track_subdomains.is_(True),
+                UserDomain.is_muted.is_(False),
+            )
+            .limit(1)
+        )
+        stmt = (
+            select(SubdomainEnumCache)
+            .where(
+                SubdomainEnumCache.next_check_at <= text("now()"),
+                subq.exists(),
+            )
+            .order_by(SubdomainEnumCache.next_check_at.asc())
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
+    async def get_min_check_interval(self, registrable_domain: str) -> int:
+        """Минимальный интервал проверки (дни) среди подписчиков
+        ``track_subdomains=true`` на registrable-домен.
+
+        Берёт ``COALESCE(ud.subdomain_check_interval_override,
+        u.subdomain_check_interval_days)`` и возвращает минимум, но не менее 1.
+        Если нет подписчиков — возвращает 7 (дефолт).
+        """
+        # Джойн User для user.default интервала
+        subq = (
+            select(
+                func.coalesce(
+                    UserDomain.subdomain_check_interval_override,
+                    User.subdomain_check_interval_days,
+                ).label("interval")
+            )
+            .join(User, User.id == UserDomain.user_id)
+            .where(
+                UserDomain.registrable_domain == registrable_domain,
+                UserDomain.track_subdomains.is_(True),
+                UserDomain.is_muted.is_(False),
+            )
+        )
+        result = await self.session.execute(subq)
+        intervals = result.scalars().all()
+
+        if not intervals:
+            return 7  # дефолт
+
+        return max(1, min(intervals))
 
     async def delete_orphans(self) -> int:
         """Удаляет subdomain_enum_cache записи, на которые никто не подписан.

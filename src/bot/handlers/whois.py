@@ -517,10 +517,12 @@ async def _show_subdomains_from_whois_card(
         cache_repo = SubdomainEnumCacheRepository(session)
         cached = await cache_repo.get(registrable)
 
-    if cached and cached.subdomains and _is_subdomain_cache_fresh(cached):
+    subdomains = getattr(cached, "subdomains", None) if cached else None
+    if subdomains and _is_subdomain_cache_fresh(cached):
         display = from_punycode(registrable)
-        count = len(cached.subdomains)
-        fetched_at = format_date(cached.fetched_at, lang=lang) if cached.fetched_at else "—"
+        count = len(subdomains)
+        fetched_dt = getattr(cached, "fetched_at", None)
+        fetched_at = format_date(fetched_dt, lang=lang) if fetched_dt else "—"
 
         subdomain_list = "\n".join(
             t("commands.subdomains.list_item", lang, subdomain=from_punycode(sub))
@@ -540,7 +542,7 @@ async def _show_subdomains_from_whois_card(
 
         await query.message.reply(
             text,
-            reply_markup=subdomains_keyboard(registrable, cached.subdomains, lang=lang),
+            reply_markup=subdomains_keyboard(registrable, subdomains, lang=lang),
         )
         await query.answer()
         return
@@ -555,9 +557,13 @@ async def _show_subdomains_from_whois_card(
 
 
 def _is_subdomain_cache_fresh(cached: Any) -> bool:
-    if not cached or getattr(cached, "fetched_at", None) is None:
+    """Проверка свежести кэша поддоменов (7 дней)."""
+    if not cached:
         return False
-    age = datetime.now(tz=UTC) - cached.fetched_at
+    fetched_at = getattr(cached, "fetched_at", None)
+    if fetched_at is None:
+        return False
+    age = datetime.now(tz=UTC) - fetched_at
     return age.total_seconds() < (7 * 24 * 60 * 60)
 
 

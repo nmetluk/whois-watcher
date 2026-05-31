@@ -98,6 +98,7 @@ def _build_functions() -> list[Any]:
     """Импорты задач отложены — это разбивает цикл tasks → arq_config → tasks."""
     from src.tasks.check_dns import check_dns
     from src.tasks.check_domain import check_domain
+    from src.tasks.check_email_deep import check_email_deep
     from src.tasks.check_email_intel import check_email_intel
     from src.tasks.check_ssl import check_ssl
     from src.tasks.check_subdomains import check_subdomains
@@ -123,6 +124,7 @@ def _build_functions() -> list[Any]:
 
     return [
         check_domain,
+        check_email_deep,
         scheduler_tick,
         send_change_notice,
         send_problem_notice,

@@ -197,6 +197,10 @@ class _SafeMtaStsResolver(AbstractResolver):
                 continue
         return results
 
+    async def close(self) -> None:
+        """Required by aiohttp.AbstractResolver in versions >=3.9."""
+        return None
+
 
 async def _fetch_mta_sts(domain: str, resolver: dns.asyncresolver.Resolver) -> MtaStsResult:
     """TXT _mta-sts.<d> + HTTPS policy fetch (no redirects, size limit).

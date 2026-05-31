@@ -282,6 +282,14 @@ async def on_whois_action(
             domain=domain,
             arq_redis=arq_redis,
         )
+    elif action == "deep_email":
+        await _show_deep_email_from_whois_card(
+            query=query,
+            user=user,
+            lang=lang,
+            domain=domain,
+            arq_redis=arq_redis,
+        )
     elif action == "wishlist":
         await _add_to_wishlist_shortcut(
             query.message,
@@ -563,6 +571,34 @@ def _is_subdomain_cache_fresh(cached: SubdomainEnumCache | None) -> bool:
         return False
     age = datetime.now(tz=UTC) - cached.fetched_at
     return age.total_seconds() < (7 * 24 * 60 * 60)
+
+
+# ---------------------------------------------------------------------------
+# TASK-0041: "✉️ Глубокий e-mail" button (ADR 040) — заглушка, будет доработана
+# ---------------------------------------------------------------------------
+
+
+async def _show_deep_email_from_whois_card(
+    *,
+    query: CallbackQuery,
+    user: User,
+    lang: str,
+    domain: str,
+    arq_redis: ArqRedis,
+) -> None:
+    """Кнопка «✉️ Глубокий e-mail» на карточке (TASK-0041).
+
+    TODO (в разработке):
+    - Freshness gate по email_deep_cache.next_check_at
+    - Передача mx_hosts при enqueue (уже починили в задаче)
+    - Красивый форматтер результата
+    """
+    if not isinstance(query.message, Message):
+        await query.answer()
+        return
+
+    await query.answer("⏳ Глубокий e-mail в разработке (TASK-0041)", show_alert=True)
+    # Временная заглушка — не падаем при тесте кнопки
 
 
 __all__ = ["router"]

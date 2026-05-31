@@ -139,6 +139,7 @@ LOCALE: dict[str, str] = {
     "button.refresh": "🔄 Обновить",
     "button.raw": "📄 Полный ответ",
     "button.subdomains": "🛰 Поддомены",
+    "button.deep_email": "✉️ Глубокий e-mail",
     "button.notify_on": "🔔 Включить обратно",
     "button.cancel": "❌ Отмена",
     "button.back": "◀️ Назад",

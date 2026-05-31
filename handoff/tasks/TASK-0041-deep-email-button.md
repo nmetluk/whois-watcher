@@ -18,6 +18,14 @@ created: 2026-05-31
 > Тело самодостаточно. Перед стартом:
 > `git checkout main && git pull --rebase origin main`, затем `claim`.
 > Зависит от TASK-0039 (ARQ + кэш deep) и TASK-0040 (карточка). Контекст — ADR 040.
+>
+> ⚠️ **Имя ветки.** Ветка `task/0041-deep-email-button` на origin по ошибке
+> содержит работу TASK-0042 (PR #31). Для этого таска завести **отдельную**
+> ветку (напр. `task/0041-deep-email-button-v2`) **после** мержа 0042 и
+> `git pull --rebase origin main`. Переиспользовать общий on-demand-helper,
+> который добавит TASK-0042 (см. ревью 0042). Обязательно закрыть два долга
+> 0039: прокинуть `mx_hosts` из `email_intel_cache` в deep-сбор (иначе DANE
+> пустой) и freshness-гейт `email_deep_cache.next_check_at` перед enqueue.
 
 ## Цель
 

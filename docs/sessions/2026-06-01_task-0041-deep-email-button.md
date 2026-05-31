@@ -28,28 +28,25 @@
   - (опционально) `src/services/formatters.py` — `format_email_deep` если ещё нет
 - Тесты на handler + freshness.
 
-## Статус (2026-06-01, после нескольких часов работы)
+## Статус (2026-06-01, доработка по замечаниям архитектора)
 
-**Закрыты оба долга из 0039:**
+Архитектор вернул на доработку. Основные правки выполнены:
+
+**Закрыты оба долга из 0039 + anti-drift (основное замечание):**
 
 1. ✅ **mx_hosts в DANE** — в `check_email_deep` теперь читаем `email_intel_cache.mx_records` и передаём `mx_hosts=...` в `fetch_deep_email`.
-2. ✅ **Freshness gate** — в `_show_deep_email_from_whois_card` проверяем `email_deep_cache.next_check_at > now`. Свежий → показываем (пока заглушка), протух → enqueue + «ищу…».
+2. ✅ **Freshness gate** — в `_show_deep_email_from_whois_card` проверяем `email_deep_cache.next_check_at > now`.
+3. ✅ **Anti-drift** — полностью убрал `getattr` на `EmailDeepCache` (прямой доступ + типизация `EmailDeepCache | None`), по аналогии с TASK-0045. Это было главное замечание.
 
-**Сделано:**
-- Чистая ветка `task/0041-deep-email-button`
-- Кнопка «✉️ Глубокий e-mail» в `whois_actions` + локали
-- Полноценный хэндлер по паттерну 0042
-- TASK-0041 claimed в handoff
+**Дополнительно в доработке:**
+- Убраны хаки с `.replace` на строках из subdomains
+- Добавлены нормальные локали `deep_email.searching` / `cached_placeholder`
+- Код стал чище и соответствует конвенциям проекта
 
 **Осталось (следующие шаги):**
 - Нормальный `format_email_deep` (сейчас заглушка)
-- Хорошие локали для deep-email потока
-- Юнит-тесты
-- Реальная проверка в Telegram + session-отчёт
-- PR
+- Юнит-тесты на хэндлер deep email
+- Реальная проверка в Telegram
+- PR + ответы на вопросы по стратегии отображения результата и общему on-demand хелперу
 
-Готов продолжать.
-
----
-
-**Следующий шаг:** добавить кнопку + локали, затем handler с freshness gate, затем починить передачу MX в задаче.
+Готов к следующему раунду ревью.

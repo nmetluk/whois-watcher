@@ -8,7 +8,6 @@
 |----|--------|-----------|-----|---------|------|-------|
 | TASK-0043 | open | v0.13.0 | 040 | audit | Комплексный аудит v0.13 (deep email + on-demand views, ADR 040) | — |
 | TASK-0044 | open | v0.13.0 | 040 | docs | Релиз v0.13.0 — deep email + on-demand views (ADR 040) | — |
-| TASK-0045 | open | v0.13.0 | 040 | code | Anti-drift — убрать getattr на ORM в subdomains-button freshness | — |
 | TASK-0041 | in_review | v0.13.0 | 040 | code | Карточка /whois — кнопка «Глубокий e-mail» (on-demand) | task/0041-deep-email-button |
 | TASK-0001 | done | v0.8.1 | 034 | code | Багфикс wishlist ↔ tracked (авто-промоут) | task/0001-wishlist-tracked-fix |
 | TASK-0002 | done | v0.9.0 | 035 | code | PSL — зависимость tldextract + src/utils/domains.py | task/0002-psl-utils-domains |
@@ -51,3 +50,4 @@
 | TASK-0039 | done | v0.13.0 | 040 | code | Deep email — on-demand ARQ-задача + кэш с коротким TTL | task/0039-deep-email-arq-cache |
 | TASK-0040 | done | v0.13.0 | 040 | code | Карточка /whois — MX + краткий e-mail-статус инлайн + фикс свежести | task/0040-whois-card-inline-mx-freshness |
 | TASK-0042 | done | v0.13.0 | 040 | code | Карточка /whois — кнопка «Поддомены» (переиспользовать enumeration /subdomains) | task/0041-deep-email-button |
+| TASK-0045 | done | v0.13.0 | 040 | code | Anti-drift — убрать getattr на ORM в subdomains-button freshness | task/0045-subdomains-button-getattr-antidrift |

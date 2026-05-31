@@ -1,17 +1,26 @@
 ---
 id: TASK-0045
 title: Anti-drift — убрать getattr на ORM в subdomains-button freshness
-status: claimed
+status: done
 milestone: v0.13.0
 adr: 040
 area: code
 depends_on: [TASK-0042]
 branch: task/0045-subdomains-button-getattr-antidrift
-owner: ""
+owner: claude-code
 session: "docs/sessions/2026-06-01_task-0045-getattr-antidrift.md"
 pr: ""
 created: 2026-05-31
+completed: 2026-06-01
 ---
+
+> ## ✅ Ревью архитектора (2026-06-01) — merged
+>
+> `_is_subdomain_cache_fresh(cached: SubdomainEnumCache | None)` типизирован,
+> прямой доступ `.fetched_at`/`.subdomains` (None-guard по `cached is None`),
+> `getattr` на ORM убран полностью (grep чистый). Тест-фабрика → `MagicMock(
+> spec=SubdomainEnumCache)`, `test_uses_getattr_defensively` удалён. Anti-drift
+> по CLAUDE.md соблюдён.
 
 # TASK-0045 — Убрать getattr на ORM (subdomains button, ADR 040)
 

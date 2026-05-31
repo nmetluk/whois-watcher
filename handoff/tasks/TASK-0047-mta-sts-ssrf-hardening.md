@@ -13,52 +13,54 @@ pr: ""
 created: 2026-06-02
 ---
 
-> ## ⛔ Ревью архитектора (2026-06-03, круг 2) — changes requested (🔴 краш инстанциации)
->
-> Подход верный (кастомный `TCPConnector(resolver=_SafeMtaStsResolver)` пинит
-> валидные IP, A/AAAA независимо, строгий TXT — DNS-rebinding закрыт по дизайну),
-> **но есть 🔴 краш:**
-> - 🔴 **`_SafeMtaStsResolver` не реализует `close()`.** В aiohttp 3.13.5
->   `AbstractResolver` объявляет абстрактными ОБА метода — `resolve` **и**
->   `close`. Класс реализует только `resolve()` → `_SafeMtaStsResolver(safe_ips)`
->   падает `TypeError: ... abstract method 'close'`. Строка идёт ДО `try`, на
->   каждом нормальном MTA-STS (валидный TXT + публичный IP) → MTA-STS-fetch
->   ломается всегда. **Фикс:** добавить
->   `async def close(self) -> None: return None`.
-> - 🔴 **CI не зелёный (DoD не выполнен).** `test_fetch_mta_sts_happy_path_public_ip`
->   мокает `aiohttp.ClientSession`, но не `_SafeMtaStsResolver`/`TCPConnector` →
->   реальная инстанциация резолвера происходит и тест должен **падать** TypeError.
->   Перед сдачей — **полный `pytest`** локально/CI, убедиться, что happy-path
->   реально зелёный (а не «по идее»).
->
-> После добавления `close()` + зелёного полного прогона — снова в ревью.
->
-> ---
->
-> ## ⛔ Ревью архитектора (2026-06-03, круг 1) — changes requested (фикс частичный)
->
-> ✅ Строгий TXT-матч (`startswith("v=stsv1")`) и наивный SSRF (статический
-> A/AAAA→private → reachable=False, GET не зван) закрыты.
-> 🟠 **DNS-rebinding / TOCTOU НЕ закрыт.** Код резолвит IP для проверки, затем
-> `session.get("https://mta-sts.<domain>/…")` — **aiohttp резолвит хост заново,
-> независимо**. Проверенный IP не пинится → атакующий с контролем DNS отдаёт
-> чекеру публичный IP, aiohttp'у — приватный (rebinding). Тесты мокают резолвер,
-> но реальное соединение его не использует → гарантии в проде нет. Это ровно тот
-> кейс, про который таск предупреждал.
-> **Нужно: пинить проверенный IP в соединение.** Варианты:
-> - кастомный `aiohttp.TCPConnector` с резолвером (`AbstractResolver`/
->   `AsyncResolver`), возвращающим **только валидные публичные** адреса, и
->   отклоняющим приватные на этапе `resolve()`; **или**
-> - резолвить один раз, коннектиться по IP с `server_hostname`/SNI = хост и
->   заголовком `Host: mta-sts.<domain>`.
-> 🟡 Также: A и AAAA резолвятся в одном `try` — если A падает (нет A-записи),
-> проверка AAAA пропускается. Сделать независимыми (отдельные try/except каждый).
->
-> **Тест-инвариант:** замокать так, чтобы **реальный путь соединения** видел
-> приватный IP (через кастомный connector/resolver) и GET не уходил — текущий
-> тест проверяет лишь логику чекера, не соединение.
->
-> После полного фикса (pin IP + A/AAAA independent) — снова в ревью.
+# ⚠️ СТАТУС РЕВЬЮ (2026-06-03, круг 2) — НЕ мержить, осталась 1 правка
+
+> **Исполнителю: перечитай этот блок — здесь всё, что нужно.**
+> Ветка `task/0047-mta-sts-ssrf-hardening`, тип-коммит `089f7e8`.
+
+## ✅ Что уже сделано правильно (НЕ переделывать)
+
+- Строгий TXT-матч: `txt.lower().startswith("v=stsv1")` (подстрока «sts» больше
+  не ловит «hosts/costs»).
+- A и AAAA резолвятся **независимо** (отдельные try/except) — ок.
+- Собираются только безопасные публичные IP; нет безопасных → `reachable=False`,
+  GET не выполняется.
+- **DNS-rebinding закрыт по дизайну:** HTTPS идёт через
+  `aiohttp.TCPConnector(resolver=_SafeMtaStsResolver(safe_ips))` — кастомный
+  резолвер отдаёт только проверенные публичные IP, aiohttp не может пере-
+  резолвить в приватный. Это правильный подход.
+
+## 🔴 Что осталось (блокирует мерж)
+
+1. **`_SafeMtaStsResolver` не реализует `close()` → `TypeError` при создании.**
+   В aiohttp 3.13.5 (наш пин `>=3.9,<4.0`) `AbstractResolver` объявляет
+   абстрактными **оба** метода: `resolve` **и** `close`. Класс реализует только
+   `resolve()`, поэтому `_SafeMtaStsResolver(safe_ips)` падает
+   `TypeError: Can't instantiate abstract class ... abstract method 'close'`.
+   Строка выполняется на каждом нормальном MTA-STS (валидный TXT + публичный IP)
+   → fetch ломается всегда.
+   **Фикс — добавить метод в класс:**
+   ```python
+   async def close(self) -> None:
+       return None
+   ```
+
+2. **Полный `pytest` НЕ прогнан (DoD «CI зелёный» не выполнен).**
+   `test_fetch_mta_sts_happy_path_public_ip` мокает `aiohttp.ClientSession`, но
+   **не** мокает `_SafeMtaStsResolver`/`aiohttp.TCPConnector` — значит реальная
+   инстанциация резолвера всё равно происходит, и этот тест сейчас **падает**
+   TypeError'ом (см. п.1). После фикса — **прогнать весь `pytest` локально**,
+   убедиться, что happy-path реально зелёный, а не «по идее».
+
+## Definition of Done (повтор — отметить перед сдачей)
+
+- [ ] Добавлен `_SafeMtaStsResolver.close()`; `_fetch_mta_sts` не падает на
+  публичном IP
+- [ ] **Полный `pytest` зелёный локально** (особенно
+  `test_fetch_mta_sts_happy_path_public_ip`); `ruff`/`black --check`/`mypy src`
+- [ ] Per-session отчёт; `handoff.py validate`; PR + зелёный CI
+
+---
 
 # TASK-0047 — MTA-STS anti-SSRF + TXT-матч (ADR 040)
 

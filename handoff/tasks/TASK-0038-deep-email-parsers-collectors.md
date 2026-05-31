@@ -1,14 +1,14 @@
 ---
 id: TASK-0038
 title: Deep email — парсеры и коллекторы (SPF include / MTA-STS / TLS-RPT / DANE / BIMI)
-status: open
+status: in_review
 milestone: v0.13.0
 adr: 040
 area: code
 depends_on: [TASK-0018]
-branch: ""
+branch: task/0038-deep-email-parsers-collectors
 owner: ""
-session: ""
+session: docs/sessions/2026-05-31_task-0038-deep-email-parsers-collectors.md
 pr: ""
 created: 2026-05-31
 ---

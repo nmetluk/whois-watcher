@@ -1,14 +1,14 @@
 ---
 id: TASK-0034
 title: Тесты success+diff→enqueue и baseline в check_subdomains (ADR 038)
-status: open
+status: in_review
 milestone: v0.12.0
 adr: 038
 area: code
 depends_on: [TASK-0028]
-branch: ""
+branch: task/0034-check-subdomains-success-enqueue-tests
 owner: ""
-session: ""
+session: docs/sessions/2026-05-31_task-0034-check-subdomains-success-enqueue-tests.md
 pr: ""
 created: 2026-05-31
 ---

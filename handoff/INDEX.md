@@ -7,10 +7,10 @@
 | ID | Статус | Майлстоун | ADR | Область | Тема | Ветка |
 |----|--------|-----------|-----|---------|------|-------|
 | TASK-0033 | open | v0.12.0 | 038 | code | Реальные тесты fan-out notify_subdomain_changes (ADR 038) | — |
-| TASK-0034 | open | v0.12.0 | 038 | code | Тесты success+diff→enqueue и baseline в check_subdomains (ADR 038) | — |
 | TASK-0035 | open | v0.12.1 | 038 | code | Fan-out поддоменов — устранить N+1 и ordering-зависимый дедуп toggle'ов (ADR 038) | — |
 | TASK-0036 | open | v0.12.0 | 038 | docs | Релиз v0.12.0 — мониторинг поддоменов (ADR 037+038) | — |
 | TASK-0037 | open | v0.12.1 | 038 | code | Hardening поддоменов — html.escape в нотификациях + кап интервала FSM (ADR 038) | — |
+| TASK-0034 | in_review | v0.12.0 | 038 | code | Тесты success+diff→enqueue и baseline в check_subdomains (ADR 038) | task/0034-check-subdomains-success-enqueue-tests |
 | TASK-0001 | done | v0.8.1 | 034 | code | Багфикс wishlist ↔ tracked (авто-промоут) | task/0001-wishlist-tracked-fix |
 | TASK-0002 | done | v0.9.0 | 035 | code | PSL — зависимость tldextract + src/utils/domains.py | task/0002-psl-utils-domains |
 | TASK-0003 | done | v0.9.0 | 035 | code | Схема user_domains (registrable_domain, is_subdomain) + WHOIS-джойны | task/0003-subdomain-schema-whois-joins |

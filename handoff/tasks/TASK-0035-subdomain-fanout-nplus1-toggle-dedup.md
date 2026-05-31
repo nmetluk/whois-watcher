@@ -1,16 +1,17 @@
 ---
 id: TASK-0035
 title: Fan-out поддоменов — устранить N+1 и ordering-зависимый дедуп toggle'ов (ADR 038)
-status: in_review
+status: done
 milestone: v0.12.0
 adr: 038
 area: code
 depends_on: [TASK-0029]
 branch: task/0035-subdomain-fanout-nplus1-toggle-dedup
-owner: ""
+owner: grok
 session: docs/sessions/2026-05-31_task-0035-subdomain-fanout-nplus1-toggle-dedup.md
 pr: #25
 created: 2026-05-31
+completed: 2026-05-31
 ---
 
 # TASK-0035 — Fan-out поддоменов: N+1 + дедуп toggle'ов (ADR 038)

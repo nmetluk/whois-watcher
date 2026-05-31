@@ -153,12 +153,18 @@ baseline-safe, нет sensitive-логирования, hot path async). Вер�
 `check_subdomains`), 🟡 **TASK-0035** (N+1 в fan-out + ordering-зависимый дедуп
 toggle'ов — follow-up, не блокер).
 
-**Следующий шаг (релизная цепочка v0.12.0):** закрыть 🟠 **TASK-0033** и
-**TASK-0034** (блокеры) → **TASK-0036** «Релиз v0.12.0» (gated на 0033/0034:
-bump `pyproject` 0.11.1→0.12.0, секция CHANGELOG `[0.12.0]`, тег, деплой).
-После тега — follow-up: 🟡 **TASK-0035** (N+1 + дедуп toggle'ов) и 🟢
-**TASK-0037** (html.escape в нотификациях + верхний кап интервала в FSM),
-оба milestone v0.12.1. Деплой v0.11.1 в прод, если ещё не катился.
+✅ **Блокеры аудита закрыты** (2026-05-31): 🟠 **TASK-0033** (PR #23 → тесты
+fan-out `notify_subdomain_changes`: дедуп/mute/toggle'ы/blocked/Forbidden/
+обрезка/журнал) и 🟠 **TASK-0034** (PR #24 → тесты success+diff→enqueue и
+baseline-no-enqueue в `check_subdomains`) смержены в main архитектором. Оба
+покрытия — со `spec`/`autospec` (anti-drift), ассерты сверены с локалями.
+
+**Следующий шаг (релизная цепочка v0.12.0):** **TASK-0036** «Релиз v0.12.0»
+разблокирован — bump `pyproject` 0.11.1→0.12.0, секция CHANGELOG `[0.12.0]`
+(сейчас `[Unreleased]` пуста), аннотированный тег, деплой. После тега —
+follow-up: 🟡 **TASK-0035** (N+1 + дедуп toggle'ов) и 🟢 **TASK-0037**
+(html.escape в нотификациях + верхний кап интервала в FSM), оба v0.12.1.
+Деплой v0.11.1 в прод, если ещё не катился.
 
 ---
 

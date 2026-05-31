@@ -616,22 +616,14 @@ async def _show_deep_email_from_whois_card(
     if is_fresh:
         # TODO: красивый форматтер (format_email_deep) — пока заглушка
         display = from_punycode(registrable)
-        await query.message.reply(
-            f"✉️ Глубокий e-mail для {display}\n\n"
-            "Результат уже в кэше (TASK-0041 в разработке). "
-            "Скоро здесь будет полный разбор (SPF, DANE, BIMI и т.д.)."
-        )
+        await query.message.reply(t("deep_email.cached_placeholder", lang, domain=display))
         await query.answer()
         return
 
     # Кэш пустой или протух — запускаем тяжёлый сбор
     await arq_redis.enqueue_job("check_email_deep", registrable)
     display = from_punycode(registrable)
-    await query.message.reply(
-        t("commands.subdomains.searching", lang, domain=display).replace(
-            "Поддомены", "Глубокий e-mail"
-        )
-    )
+    await query.message.reply(t("deep_email.searching", lang, domain=display))
     await query.answer()
 
     logger.info("Deep email triggered from whois card for %s (user %s)", registrable, user.id)

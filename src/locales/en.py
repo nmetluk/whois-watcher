@@ -126,6 +126,8 @@ LOCALE: dict[str, str] = {
     "button.raw": "📄 Raw response",
     "button.subdomains": "🛰 Subdomains",
     "button.deep_email": "✉️ Deep email",
+    "deep_email.searching": "⏳ Searching deep email for {domain}…",
+    "deep_email.cached_placeholder": "✉️ Deep email for {domain}\n\nResult is in cache. Full breakdown (SPF, DANE, BIMI etc.) will be added in next iteration.",
     "button.notify_on": "🔔 Turn back on",
     "button.cancel": "❌ Cancel",
     "button.back": "◀️ Back",

@@ -140,6 +140,8 @@ LOCALE: dict[str, str] = {
     "button.raw": "📄 Полный ответ",
     "button.subdomains": "🛰 Поддомены",
     "button.deep_email": "✉️ Глубокий e-mail",
+    "deep_email.searching": "⏳ Ищу глубокий e-mail для {domain}…",
+    "deep_email.cached_placeholder": "✉️ Глубокий e-mail для {domain}\n\nРезультат уже в кэше. Полный разбор (SPF, DANE, BIMI и т.д.) появится в следующей итерации.",
     "button.notify_on": "🔔 Включить обратно",
     "button.cancel": "❌ Отмена",
     "button.back": "◀️ Назад",

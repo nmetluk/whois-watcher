@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import io
 import logging
-from typing import Literal
+from datetime import UTC, datetime
+from typing import Any, Literal
 
 from aiogram import Router
 from aiogram.filters import Command, CommandObject
@@ -17,7 +18,7 @@ from aiogram.types import BufferedInputFile, CallbackQuery, Message
 from arq import ArqRedis
 from redis.asyncio import Redis
 
-from src.bot.keyboards import WhoisAction, whois_actions
+from src.bot.keyboards import WhoisAction, subdomains_keyboard, whois_actions
 from src.config.limits import Limits
 from src.db.models import User
 from src.db.repositories import (
@@ -25,6 +26,7 @@ from src.db.repositories import (
     DomainRepository,
     EmailIntelCacheRepository,
     SSLCacheRepository,
+    SubdomainEnumCacheRepository,
     WhoisCacheRepository,
     WishlistRepository,
 )
@@ -41,7 +43,8 @@ from src.services.formatters import (
 from src.services.formatters_full import build_full_text_from_cache_row
 from src.services.whois_facade import WhoisFacade
 from src.utils.domains import is_public_suffix_only, is_subdomain, registrable_domain
-from src.utils.idn import from_punycode
+from src.utils.formatting import format_date
+from src.utils.idn import from_punycode, normalize_domain
 
 logger = logging.getLogger(__name__)
 
@@ -271,6 +274,14 @@ async def on_whois_action(
         )
     elif action == "raw":
         await _send_raw(query.message, lang=lang, domain=domain)
+    elif action == "subdomains":
+        await _show_subdomains_from_whois_card(
+            query=query,
+            user=user,
+            lang=lang,
+            domain=domain,
+            arq_redis=arq_redis,
+        )
     elif action == "wishlist":
         await _add_to_wishlist_shortcut(
             query.message,
@@ -475,6 +486,85 @@ async def _register_pending_followup(
     key = f"pending_add_followup:{domain}"
     await redis.sadd(key, str(user_id))
     await redis.expire(key, 600)
+
+
+# ---------------------------------------------------------------------------
+# TASK-0042: "🛰 Поддомены" button — reuse existing enumeration (ADR 037)
+# ---------------------------------------------------------------------------
+
+
+async def _show_subdomains_from_whois_card(
+    *,
+    query: CallbackQuery,
+    user: User,
+    lang: str,
+    domain: str,
+    arq_redis: ArqRedis,
+) -> None:
+    """Кнопка «🛰 Поддомены» на карточке — переиспользует /subdomains поток."""
+    if not isinstance(query.message, Message):
+        await query.answer()
+        return
+
+    try:
+        normalized = normalize_domain(domain)
+        registrable = registrable_domain(normalized) or normalized
+    except Exception:
+        await query.answer(t("commands.subdomains.invalid_domain", lang), show_alert=True)
+        return
+
+    async with get_session() as session:
+        cache_repo = SubdomainEnumCacheRepository(session)
+        cached = await cache_repo.get(registrable)
+
+    subdomains = getattr(cached, "subdomains", None) if cached else None
+    if subdomains and _is_subdomain_cache_fresh(cached):
+        display = from_punycode(registrable)
+        count = len(subdomains)
+        fetched_dt = getattr(cached, "fetched_at", None)
+        fetched_at = format_date(fetched_dt, lang=lang) if fetched_dt else "—"
+
+        subdomain_list = "\n".join(
+            t("commands.subdomains.list_item", lang, subdomain=from_punycode(sub))
+            for sub in cached.subdomains[:50]
+        )
+
+        text = (
+            t(
+                "commands.subdomains.header",
+                lang,
+                domain=display,
+                count=count,
+                fetched_at=fetched_at,
+            )
+            + f"\n\n{subdomain_list}"
+        )
+
+        await query.message.reply(
+            text,
+            reply_markup=subdomains_keyboard(registrable, subdomains, lang=lang),
+        )
+        await query.answer()
+        return
+
+    # Нет свежего кэша — запускаем тот же job, что и /subdomains
+    await arq_redis.enqueue_job("check_subdomains", registrable)
+    display = from_punycode(registrable)
+    await query.message.reply(t("commands.subdomains.searching", lang, domain=display))
+    await query.answer()
+
+    logger.info("Subdomains triggered from whois card for %s (user %s)", registrable, user.id)
+
+
+def _is_subdomain_cache_fresh(cached: Any) -> bool:
+    """Проверка свежести кэша поддоменов (7 дней)."""
+    if not cached:
+        return False
+    fetched_at = getattr(cached, "fetched_at", None)
+    if fetched_at is None:
+        return False
+    age = datetime.now(tz=UTC) - fetched_at
+    return age.total_seconds() < (7 * 24 * 60 * 60)
 
 
 __all__ = ["router"]

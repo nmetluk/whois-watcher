@@ -13,51 +13,50 @@ pr: ""
 created: 2026-06-02
 ---
 
-# ⚠️ СТАТУС РЕВЬЮ (2026-06-03, круг 2) — НЕ мержить, осталась 1 правка
+# ⚠️ СТАТУС РЕВЬЮ (2026-06-03, круг 3) — НЕ мержить, осталась 1 правка (тест)
 
 > **Исполнителю: перечитай этот блок — здесь всё, что нужно.**
-> Ветка `task/0047-mta-sts-ssrf-hardening`, тип-коммит `089f7e8`.
+> Ветка `task/0047-mta-sts-ssrf-hardening`, тип-коммит `f90a530`.
 
 ## ✅ Что уже сделано правильно (НЕ переделывать)
 
-- Строгий TXT-матч: `txt.lower().startswith("v=stsv1")` (подстрока «sts» больше
-  не ловит «hosts/costs»).
-- A и AAAA резолвятся **независимо** (отдельные try/except) — ок.
-- Собираются только безопасные публичные IP; нет безопасных → `reachable=False`,
-  GET не выполняется.
-- **DNS-rebinding закрыт по дизайну:** HTTPS идёт через
-  `aiohttp.TCPConnector(resolver=_SafeMtaStsResolver(safe_ips))` — кастомный
-  резолвер отдаёт только проверенные публичные IP, aiohttp не может пере-
-  резолвить в приватный. Это правильный подход.
+- Строгий TXT-матч `txt.lower().startswith("v=stsv1")`.
+- A/AAAA резолвятся **независимо**; собираются только безопасные публичные IP;
+  нет безопасных → `reachable=False`, GET не выполняется.
+- **DNS-rebinding закрыт:** HTTPS через
+  `aiohttp.TCPConnector(resolver=_SafeMtaStsResolver(safe_ips))` — резолвер
+  отдаёт только проверенные публичные IP. Правильный подход.
+- **`_SafeMtaStsResolver.close()` добавлен** — `TypeError` инстанциации
+  устранён. Security-код корректен. ✅
 
-## 🔴 Что осталось (блокирует мерж)
+## 🔴 Что осталось (блокирует мерж) — ТОЛЬКО тест
 
-1. **`_SafeMtaStsResolver` не реализует `close()` → `TypeError` при создании.**
-   В aiohttp 3.13.5 (наш пин `>=3.9,<4.0`) `AbstractResolver` объявляет
-   абстрактными **оба** метода: `resolve` **и** `close`. Класс реализует только
-   `resolve()`, поэтому `_SafeMtaStsResolver(safe_ips)` падает
-   `TypeError: Can't instantiate abstract class ... abstract method 'close'`.
-   Строка выполняется на каждом нормальном MTA-STS (валидный TXT + публичный IP)
-   → fetch ломается всегда.
-   **Фикс — добавить метод в класс:**
-   ```python
-   async def close(self) -> None:
-       return None
-   ```
+**`test_fetch_mta_sts_happy_path_public_ip` — тавтология, переписать.**
+Сейчас тест настраивает реальные dns+`ClientSession`-моки на публичный IP, а
+потом **патчит саму функцию под тестом**:
+`with patch("src.email_intel.deep_client._fetch_mta_sts") as mock_fetch:` и
+ассертит хардкод `MtaStsResult(...)`. То есть **реальный `_fetch_mta_sts`
+(с `_SafeMtaStsResolver` + `TCPConnector`) НЕ выполняется** — тест проверяет,
+что мок вернул то, что в него положили. Если убрать `close()` снова — этот тест
+останется зелёным. Ноль защиты от регресса именно того, что чиним.
 
-2. **Полный `pytest` НЕ прогнан (DoD «CI зелёный» не выполнен).**
-   `test_fetch_mta_sts_happy_path_public_ip` мокает `aiohttp.ClientSession`, но
-   **не** мокает `_SafeMtaStsResolver`/`aiohttp.TCPConnector` — значит реальная
-   инстанциация резолвера всё равно происходит, и этот тест сейчас **падает**
-   TypeError'ом (см. п.1). После фикса — **прогнать весь `pytest` локально**,
-   убедиться, что happy-path реально зелёный, а не «по идее».
+**Как починить:**
+- Убрать `with patch("...deep_client._fetch_mta_sts")` — пусть выполняется
+  **реальный** `_fetch_mta_sts` с уже настроенными dns+`ClientSession`-моками
+  (публичный IP `1.2.3.4`, ответ 200 + policy-тело — они уже написаны в тесте).
+- Ассертить, что **`mock_session.get` был вызван** (т.е. реальный путь дошёл до
+  GET через `_SafeMtaStsResolver`+`TCPConnector` на публичном IP) и результат
+  `reachable=True`, `policy_mode="enforce"`, mx содержит `mail.example.com`.
+- Убрать дублирующиеся ассерты и неиспользуемые моки.
+- Этот же тест служит регресс-гардом на `close()` (без него — TypeError).
 
 ## Definition of Done (повтор — отметить перед сдачей)
 
-- [ ] Добавлен `_SafeMtaStsResolver.close()`; `_fetch_mta_sts` не падает на
-  публичном IP
-- [ ] **Полный `pytest` зелёный локально** (особенно
-  `test_fetch_mta_sts_happy_path_public_ip`); `ruff`/`black --check`/`mypy src`
+- [ ] `test_fetch_mta_sts_happy_path_public_ip` гоняет **реальный**
+  `_fetch_mta_sts` (без `patch(_fetch_mta_sts)`), ассертит `mock_session.get`
+  вызван
+- [ ] **Полный `pytest` зелёный локально** (не за счёт мока функции под тестом);
+  `ruff`/`black --check`/`mypy src`
 - [ ] Per-session отчёт; `handoff.py validate`; PR + зелёный CI
 
 ---

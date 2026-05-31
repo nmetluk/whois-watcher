@@ -28,14 +28,27 @@
   - (опционально) `src/services/formatters.py` — `format_email_deep` если ещё нет
 - Тесты на handler + freshness.
 
-## Статус на старте
+## Статус (2026-06-01, после нескольких часов работы)
 
-- `fetch_deep_email(domain, mx_hosts=...)` уже принимает `mx_hosts` (сделано в 0038/0039).
-- `check_email_deep` пока зовёт без MX (явный TODO в коде).
-- `email_deep_cache` с `next_check_at` существует.
-- Кнопки on-demand на карточке уже есть (`subdomains`).
+**Закрыты оба долга из 0039:**
 
-Готов начать код.
+1. ✅ **mx_hosts в DANE** — в `check_email_deep` теперь читаем `email_intel_cache.mx_records` и передаём `mx_hosts=...` в `fetch_deep_email`.
+2. ✅ **Freshness gate** — в `_show_deep_email_from_whois_card` проверяем `email_deep_cache.next_check_at > now`. Свежий → показываем (пока заглушка), протух → enqueue + «ищу…».
+
+**Сделано:**
+- Чистая ветка `task/0041-deep-email-button`
+- Кнопка «✉️ Глубокий e-mail» в `whois_actions` + локали
+- Полноценный хэндлер по паттерну 0042
+- TASK-0041 claimed в handoff
+
+**Осталось (следующие шаги):**
+- Нормальный `format_email_deep` (сейчас заглушка)
+- Хорошие локали для deep-email потока
+- Юнит-тесты
+- Реальная проверка в Telegram + session-отчёт
+- PR
+
+Готов продолжать.
 
 ---
 

@@ -108,8 +108,8 @@ async def notify_subdomain_changes(
                         )
                     )
 
-            # Если все отключены — пропускаем
-            if not user_domain.notify_subdomain_new and not user_domain.notify_subdomain_removed:
+            # Если в lines только заголовок — пропускаем (пустое уведомление)
+            if len(lines) <= 1:
                 continue
 
             text_body = "\n".join(lines)

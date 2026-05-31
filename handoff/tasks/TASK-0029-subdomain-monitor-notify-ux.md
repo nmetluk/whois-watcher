@@ -1,7 +1,7 @@
 ---
 id: TASK-0029
 title: Уведомления о новых/исчезнувших поддоменах + UX toggles/интервал + локали (ADR 038)
-status: done
+status: in_review
 milestone: v0.12.0
 adr: 038
 area: code
@@ -9,7 +9,7 @@ depends_on: [TASK-0028]
 branch: task/0029-subdomain-monitor-notify-ux
 owner: claude-code
 session: docs/sessions/2026-05-30_task_0029_subdomain_monitor_notify_ux.md
-pr: "#21"
+pr: #21
 created: 2026-05-30
 completed: 2026-05-30
 ---

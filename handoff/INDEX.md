@@ -32,7 +32,7 @@
 | TASK-0023 | done | v0.11.0 | 037 | code | crt.sh-клиент + парсер/нормализация + ARQ-задача (ADR 037) | task/0023-subdomain-enum-client |
 | TASK-0024 | done | v0.11.0 | 037 | code | UX — команда /subdomains + opt-in отслеживание + локали (ADR 037) | task/0024-subdomain-enum-ux |
 | TASK-0025 | done | v0.11.0 | 037 | code | Fast-follow по TASK-0023 — тесты scheduler, update_fail upsert, мелочи (ADR 037) | task/0025-subdomain-enum-followup |
-| TASK-0026 | done | v0.12.0 | 038 | docs | Дизайн АDR 038 — мониторинг новых поддоменов + алерты (v0.12) | — |
+| TASK-0026 | done | v0.12.0 | 038 | docs | Дизайн ADR 038 — мониторинг новых поддоменов + алерты (v0.12) | — |
 | TASK-0027 | done | v0.12.0 | 038 | code | Схема — toggles track_subdomains/notify_subdomain_* + per-user интервал + миграция (ADR 038) | task/0027-subdomain-monitor-schema |
 | TASK-0028 | done | v0.12.0 | 038 | code | Diff + scheduler мониторинга поддоменов + интеграция в check_subdomains (ADR 038) | task/0028-subdomain-monitor-diff-scheduler |
 | TASK-0029 | done | v0.12.0 | 038 | code | Уведомления о новых/исчезнувших поддоменах + UX toggles/интервал + локали (ADR 038) | task/0029-subdomain-monitor-notify-ux |

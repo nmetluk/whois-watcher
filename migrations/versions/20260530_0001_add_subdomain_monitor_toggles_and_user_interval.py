@@ -1,7 +1,7 @@
 """add subdomain monitor toggles and user interval (ADR 038)
 
 Revision ID: 20260530_subdomain_monitor
-Revises: 20260530_subdomain_enum
+Revises: 20260530_wishlist
 Create Date: 2026-05-30 00:01:00.000000
 
 TASK-0027 (ADR 038) — схема для мониторинга поддоменов.
@@ -25,7 +25,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "20260530_subdomain_monitor"
-down_revision: str | None = "20260530_subdomain_enum"
+down_revision: str | None = "20260530_wishlist"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

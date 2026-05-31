@@ -13,6 +13,7 @@ Fan-out: рассылает **всем** подписчикам registrable-до
 from __future__ import annotations
 
 import logging
+from collections import defaultdict
 from typing import Any
 
 from aiogram import Bot
@@ -50,6 +51,7 @@ async def notify_subdomain_changes(
     async with get_session() as session:
         domain_repo = DomainRepository(session)
         user_repo = UserRepository(session)
+        notif_repo = NotificationRepository(session)  # вынесен из цикла (анти-N+1)
 
         # Находим всех подписчиков registrable-домена с track_subdomains=true
         subscribers = await domain_repo.get_subscribers_by_registrable(
@@ -57,30 +59,55 @@ async def notify_subdomain_changes(
             track_subdomains=True,
         )
 
+        # Группируем строки по пользователю (один registrable может иметь несколько
+        # UserDomain у одного юзера: apex + поддомен). Это позволяет сделать
+        # дедуп и агрегацию toggle'ов ordering-independent.
+        by_user: dict[int, list[Any]] = defaultdict(list)
+        for ud in subscribers:
+            by_user[ud.user_id].append(ud)
+
+        # Предварительно отфильтруем пользователей, у которых хотя бы одна строка muted.
+        # Делаем это ДО батчевого get_by_ids — экономим запрос и сохраняем поведение
+        # существующих тестов (многие кейсы с is_muted не настраивали get_by_ids).
+        candidate_user_ids = [
+            uid for uid, rows in by_user.items() if not any(r.is_muted for r in rows)
+        ]
+
+        # Один батчевый запрос вместо N запросов (анти-N+1, TASK-0035).
+        # Пустой список — не делаем запрос вообще (экономия + совместимость с тестами).
+        if candidate_user_ids:
+            users_list = await user_repo.get_by_ids(candidate_user_ids)
+            user_map: dict[int, Any] = {u.id: u for u in users_list}
+        else:
+            user_map = {}
+
         notified_users: set[int] = set()
 
-        for user_domain in subscribers:
-            user_id = user_domain.user_id
+        for user_id in candidate_user_ids:
+            rows = by_user[user_id]
 
-            # Дедуп: одному пользователю — одно уведомление
+            # Дедуп: одному пользователю — одно уведомление (теперь после агрегации)
             if user_id in notified_users:
                 continue
 
-            # is_muted kill-switch
-            if user_domain.is_muted:
-                continue
+            # Агрегация per-domain настроек (TASK-0035 / ADR 038):
+            # - is_muted: если ЛЮБАЯ строка пользователя по этому registrable muted — гасим.
+            # - notify_* : OR по строкам (пользователь хочет секцию, если хочет хотя бы по одной из своих строк).
+            # Это делает поведение детерминированным и независимым от порядка строк в БД.
+            # (any_muted уже отфильтрован при построении candidate_user_ids)
+            effective_notify_new = any(r.notify_subdomain_new for r in rows)
+            effective_notify_removed = any(r.notify_subdomain_removed for r in rows)
 
-            users = await user_repo.get_by_ids([user_id])
-            if not users:
+            user = user_map.get(user_id)
+            if not user:
                 continue
-            user = users[0]
             if user.is_blocked:
                 continue
 
-            # Формируем текст уведомления
+            # Формируем текст уведомления (используем агрегированные флаги)
             lines: list[str] = [f"<b>{registrable_domain}</b> —"]
 
-            if new_subdomains and user_domain.notify_subdomain_new:
+            if new_subdomains and effective_notify_new:
                 lines.append(t("notifications.subdomain.new_header", user.language))
                 for subdomain in new_subdomains[:5]:  # максимум 5 в сообщении
                     lines.append(f"  🆕 {subdomain}")
@@ -93,7 +120,7 @@ async def notify_subdomain_changes(
                         )
                     )
 
-            if removed_subdomains and user_domain.notify_subdomain_removed:
+            if removed_subdomains and effective_notify_removed:
                 if lines[-1] != f"<b>{registrable_domain}</b> —":
                     lines.append("")  # пустая строка-разделитель
                 lines.append(t("notifications.subdomain.removed_header", user.language))
@@ -144,15 +171,14 @@ async def notify_subdomain_changes(
                 )
                 continue
 
-            # Записываем в журнал (раздельно для new и removed)
-            notif_repo = NotificationRepository(session)
-            if new_subdomains and user_domain.notify_subdomain_new:
+            # Записываем в журнал (используем агрегированные флаги)
+            if new_subdomains and effective_notify_new:
                 await notif_repo.record_sent(
                     user_id=user_id,
                     domain=registrable_domain,
                     notification_type="subdomain_new",
                 )
-            if removed_subdomains and user_domain.notify_subdomain_removed:
+            if removed_subdomains and effective_notify_removed:
                 await notif_repo.record_sent(
                     user_id=user_id,
                     domain=registrable_domain,

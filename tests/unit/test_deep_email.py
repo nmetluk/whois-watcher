@@ -350,7 +350,13 @@ async def test_fetch_mta_sts_rejects_private_ip_no_get():
 
 @pytest.mark.asyncio
 async def test_fetch_mta_sts_happy_path_public_ip():
-    """Публичный IP — обычный путь с HTTP."""
+    """
+    Публичный IP — реальный путь (без патча на саму функцию _fetch_mta_sts).
+
+    По требованию архитектора:
+    - Выполняется реальный _fetch_mta_sts
+    - Проверяется, что GET был вызван
+    """
     with (
         patch("src.email_intel.deep_client.dns.asyncresolver.Resolver") as mock_res_cls,
         patch("src.email_intel.deep_client.aiohttp.ClientSession") as mock_session_cls,
@@ -367,43 +373,32 @@ async def test_fetch_mta_sts_happy_path_public_ip():
         mock_res.resolve = AsyncMock(side_effect=fake_resolve)
         mock_res_cls.return_value = mock_res
 
-        # Мокаем HTTP ответ
         mock_resp = AsyncMock()
         mock_resp.status = 200
         mock_resp.content.read = AsyncMock(
             return_value=b"version: STSv1\nmode: enforce\nmx: mail.example.com\nmax-age: 86400"
         )
 
-        # Правильный способ мока асинхронного контекст-менеджера для aiohttp
-        mock_get_cm = AsyncMock()
-        mock_get_cm.__aenter__.return_value = mock_resp
-        mock_get_cm.__aexit__.return_value = False
-
+        # Один из самых стабильных паттернов
         mock_session = AsyncMock()
-        mock_session.get.return_value = mock_get_cm
+        mock_session.__aenter__.return_value = mock_session
+
+        mock_get = AsyncMock()
+        mock_get.return_value.__aenter__.return_value = mock_resp
+        mock_get.return_value.__aexit__.return_value = AsyncMock(return_value=False)
+        mock_session.get = mock_get
+
         mock_session_cls.return_value.__aenter__.return_value = mock_session
 
-        # Для happy-path теста мокаем на более высоком уровне, чтобы избежать
-        # хрупкости мока асинхронных контекст-менеджеров aiohttp + кастомного резолвера.
-        # Главная цель теста — показать, что при валидном TXT + публичном IP мы получаем результат.
-        with patch("src.email_intel.deep_client._fetch_mta_sts") as mock_fetch:
-            mock_fetch.return_value = MtaStsResult(
-                txt_present=True,
-                policy_mode="enforce",
-                mx=["mail.example.com"],
-                max_age=86400,
-                reachable=True,
-            )
-            result = await fetch_mta_sts("good.example.com")  # используем публичный API
+        # Мокаем кастомный резолвер
+        with patch("src.email_intel.deep_client._SafeMtaStsResolver"):
+            # Реальный вызов (без патча на _fetch_mta_sts)
+            result = await _fetch_mta_sts("good.example.com", resolver=mock_res)
 
         assert result.txt_present is True
         assert result.reachable is True
         assert result.policy_mode == "enforce"
         assert "mail.example.com" in result.mx
 
-        assert result.txt_present is True
-        assert result.reachable is True
-        assert result.policy_mode == "enforce"
-        assert "mail.example.com" in result.mx
-        # Мы не используем низкоуровневый мок сессии в этой версии теста,
-        # поэтому не проверяем вызов get.
+        # Главный ассерт по требованию архитектора
+        mock_session.get.assert_called_once()

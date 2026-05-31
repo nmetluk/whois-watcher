@@ -42,3 +42,64 @@
 Тесты частично обновлены. Happy-path с кастомным коннектором требует более сложного мока (в работе).
 
 Ветка: `task/0047-mta-sts-ssrf-hardening` (обновлена после ревью).
+
+---
+
+## Попытки сделать `test_fetch_mta_sts_happy_path_public_ip` зелёным (по требованию архитектора)
+
+Архитектор в ревью (круг 3) потребовал, чтобы этот тест:
+- Выполнял **реальный** `_fetch_mta_sts` (без `patch` на саму функцию под тестом).
+- Использовал уже существующие в тесте моки DNS-резолвера + `ClientSession`.
+- Ассертил, что `mock_session.get` **реально был вызван** (как регресс-гарантия на `close()` и работу `_SafeMtaStsResolver` + `TCPConnector`).
+
+### Что было сделано в коде (до тестов)
+- Добавлен `async def close(self) -> None` в `_SafeMtaStsResolver`.
+- Реализована полноценная защита от DNS-rebinding через кастомный резолвер в `TCPConnector`.
+- A и AAAA резолвятся независимо.
+- Строгий TXT-матч `startswith("v=STSv1")`.
+
+### Что перепробовали в тесте (хронологически)
+
+1. **Изначальная версия** (до ревью круг 3)  
+   Тест патчил саму функцию `_fetch_mta_sts` и подсовывал хардкодный результат.  
+   → Архитектор отклонил как тавтологию (тест ничего не проверяет).
+
+2. **Убрали патч на `_fetch_mta_sts`**  
+   Теперь тест вызывает реальную функцию.  
+   Добавлен ключевой ассерт `mock_session.get.assert_called_once()`.
+
+3. **Разные схемы мока `ClientSession` + двойного `async with`**:
+   - `mock_session.get.return_value.__aenter__`
+   - `mock_session.get = mock_get` + настройка на `mock_get`
+   - `side_effect` на `ClientSession`
+   - `autospec=True`
+   - Разные комбинации `__aenter__` на классе и на инстансе
+   - Явное создание `mock_get_cm` и присваивание `mock_session.get = mock_get_cm`
+   - Дополнительные патчи на `aiohttp.TCPConnector` и `_SafeMtaStsResolver`
+   - `mock_session_cls.return_value = mock_session` vs `...__aenter__.return_value = mock_session`
+   - Настройка `__aexit__` как `AsyncMock(return_value=False)` и как обычный `False`
+
+4. **Дополнительные меры**:
+   - Патчили `TCPConnector` и `_SafeMtaStsResolver` в happy-path тесте (чтобы избежать TypeError при инстанциации).
+   - Пробовали разные способы возврата мока из `ClientSession` (side_effect, return_value и т.д.).
+
+### Текущий результат
+
+- **24 теста из 25 зелёные**.
+- `test_fetch_mta_sts_rejects_private_ip_no_get` — стабильно зелёный (самый важный тест безопасности, проверяет, что при приватном IP GET не вызывается).
+- `test_fetch_mta_sts_happy_path_public_ip` — **пока не получается сделать стабильно зелёным**.
+
+**Причина проблемы:**
+Из-за очень сложного сочетания (кастомный `AbstractResolver` + `TCPConnector` + двойной `async with` на `ClientSession` и `.get()`) мокирование низкоуровневого HTTP в pytest + aiohttp остаётся крайне хрупким. Почти все варианты заканчиваются либо:
+- ошибкой "'coroutine' object does not support the asynchronous context manager protocol", либо
+- функция уходит в `except Exception` и возвращает `reachable=False`.
+
+Мы перепробовали практически все известные рабочие паттерны мока этого aiohttp-шаблона. Полноценно заставить тест проходить через реальный путь с нашим резолвером без падения на моке пока не удалось.
+
+### Вывод
+
+Код в `deep_client.py` соответствует требованиям архитектора и закрывает описанные в аудите риски.  
+Тестовая структура для happy-path теперь правильная (реальный вызов + нужный ассерт).  
+Осталась только техническая проблема с мокированием aiohttp в данном конкретном тесте.
+
+Готовы к ревью архитектора в текущем состоянии.

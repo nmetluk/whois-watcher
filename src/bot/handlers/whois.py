@@ -10,7 +10,7 @@ from __future__ import annotations
 import io
 import logging
 from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Literal
 
 from aiogram import Router
 from aiogram.filters import Command, CommandObject
@@ -20,7 +20,7 @@ from redis.asyncio import Redis
 
 from src.bot.keyboards import WhoisAction, subdomains_keyboard, whois_actions
 from src.config.limits import Limits
-from src.db.models import User
+from src.db.models import SubdomainEnumCache, User
 from src.db.repositories import (
     DNSCacheRepository,
     DomainRepository,
@@ -517,12 +517,10 @@ async def _show_subdomains_from_whois_card(
         cache_repo = SubdomainEnumCacheRepository(session)
         cached = await cache_repo.get(registrable)
 
-    subdomains = getattr(cached, "subdomains", None) if cached else None
-    if subdomains and _is_subdomain_cache_fresh(cached):
+    if cached is not None and cached.subdomains and _is_subdomain_cache_fresh(cached):
         display = from_punycode(registrable)
-        count = len(subdomains)
-        fetched_dt = getattr(cached, "fetched_at", None)
-        fetched_at = format_date(fetched_dt, lang=lang) if fetched_dt else "—"
+        count = len(cached.subdomains)
+        fetched_at = format_date(cached.fetched_at, lang=lang) if cached.fetched_at else "—"
 
         subdomain_list = "\n".join(
             t("commands.subdomains.list_item", lang, subdomain=from_punycode(sub))
@@ -542,7 +540,7 @@ async def _show_subdomains_from_whois_card(
 
         await query.message.reply(
             text,
-            reply_markup=subdomains_keyboard(registrable, subdomains, lang=lang),
+            reply_markup=subdomains_keyboard(registrable, cached.subdomains, lang=lang),
         )
         await query.answer()
         return
@@ -556,14 +554,14 @@ async def _show_subdomains_from_whois_card(
     logger.info("Subdomains triggered from whois card for %s (user %s)", registrable, user.id)
 
 
-def _is_subdomain_cache_fresh(cached: Any) -> bool:
-    """Проверка свежести кэша поддоменов (7 дней)."""
-    if not cached:
+def _is_subdomain_cache_fresh(cached: SubdomainEnumCache | None) -> bool:
+    """Проверка свежести кэша поддоменов (7 дней).
+
+    Прямой доступ к полям (без getattr) — по правилу anti-drift из CLAUDE.md.
+    """
+    if cached is None or cached.fetched_at is None:
         return False
-    fetched_at = getattr(cached, "fetched_at", None)
-    if fetched_at is None:
-        return False
-    age = datetime.now(tz=UTC) - fetched_at
+    age = datetime.now(tz=UTC) - cached.fetched_at
     return age.total_seconds() < (7 * 24 * 60 * 60)
 
 

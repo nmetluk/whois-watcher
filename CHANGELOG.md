@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-05-31
+
+Periodic subdomain monitoring (ADR 038) поверх enumeration (ADR 037). Все блокеры аудита v0.12 закрыты (TASK-0033–0037).
+
+### Added — Мониторинг поддоменов (ADR 038)
+
+- **Opt-in мониторинг** `track_subdomains` (per-domain toggle в ⚙️ Уведомления, default=false) + глобальный `User.subdomain_check_interval_days` (default 7) с per-domain override (`subdomain_check_interval_override`).
+- **Scheduler** `subdomain_scheduler_tick` (cron каждые 5 мин, floor 1 день, выбирает минимальный интервал среди активных подписчиков `track_subdomains=true AND is_muted=false`).
+- **Diff + уведомления**: `compute_subdomain_diff` (baseline-safe на `old=None`), fan-out `notify_subdomain_changes` (сигналы 🆕 new / ➖ removed, honoring `notify_subdomain_*` toggle'ы, `is_muted`, `is_blocked`, дедуп по user, обрезка 5 + "и ещё N", запись в журнал).
+- **UX**: в конфигураторе `/whois` → ⚙️ Уведомления появилась секция поддоменов + отдельная FSM для редактирования интервала (1–365 дней).
+- **Hardening по итогам аудита (TASK-0030)**:
+  - Устранён N+1 в fan-out + ordering-independent агрегация toggle'ов по пользователю (TASK-0035, PR #25).
+  - `html.escape` на `registrable_domain` и имена поддоменов в нотификациях (defense-in-depth, TASK-0037).
+  - Верхний кап интервала в FSM через новое поле `Limits.max_subdomain_check_interval_days` (default 365, env-overridable) + dedicated unit-тест (TASK-0037, PR #26).
+  - Полное покрытие fan-out инвариантов и success+enqueue пути (TASK-0033/0034, PR #23/#24) — моки со `spec`.
+
+### Internal
+
+- Новые ARQ-задачи: `subdomain_scheduler_tick`, `check_subdomains`, `notify_subdomain_changes`.
+- Репозиторий `SubdomainEnumCacheRepository` + методы `get_due_for_check`, `get_min_check_interval`.
+- Тесты: 923+ (рост за счёт 0033–0037), все с `MagicMock(spec=...)`.
+- Alembic-head: `20260530_subdomain_monitor` (single-head, обратимая).
+
 ## [0.11.1] — 2026-05-30
 
 Wishlist как независимый список (ADR 039, TASK-0031/0032).

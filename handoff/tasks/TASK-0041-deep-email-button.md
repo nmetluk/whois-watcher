@@ -1,7 +1,7 @@
 ---
 id: TASK-0041
 title: Карточка /whois — кнопка «Глубокий e-mail» (on-demand)
-status: in_review
+status: done
 milestone: v0.13.0
 adr: 040
 area: code
@@ -11,7 +11,18 @@ owner: claude-code
 session: docs/sessions/2026-06-01_task-0041-deep-email-button.md
 pr: ""
 created: 2026-05-31
+completed: 2026-06-01
 ---
+
+> ## ✅ Ревью архитектора (2026-06-01, круг 3) — merged
+>
+> Закрыто: ребейз на main (0045 не откатывается), `format_email_deep`
+> реализован (formatters.py — JSONB→разбор SPF/MTA-STS/TLS-RPT/DANE/BIMI,
+> `html.escape`), заглушка убрана, локали ru/en, долги 0039 (mx_hosts→DANE +
+> freshness gate), `getattr` нет. Стале-комментарий «заглушка» снят архитектором
+> при мерже.
+> **Тесты deep-email отсутствуют** → по решению владельца merge + follow-up
+> [[TASK-0046]] (unit на `format_email_deep` + deep-хэндлер).
 
 > ## ⛔ Ревью архитектора (2026-06-01, круг 2) — changes requested (всё ещё НЕ готово)
 >

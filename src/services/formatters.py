@@ -10,7 +10,14 @@ from __future__ import annotations
 import html
 from datetime import UTC, datetime
 
-from src.db.models import DNSCache, EmailIntelCache, SSLCache, UserDomain, WhoisCache
+from src.db.models import (
+    DNSCache,
+    EmailDeepCache,
+    EmailIntelCache,
+    SSLCache,
+    UserDomain,
+    WhoisCache,
+)
 from src.dns_monitor import detect_ns_mismatch
 from src.locales import t
 from src.utils.formatting import format_date, format_days_until, get_expiry_emoji
@@ -478,3 +485,138 @@ def _fix_tree_endings(lines: list[str]) -> list[str]:
             lines[i] = "└ " + lines[i][2:]
             return lines
     return lines
+
+
+# ---------------------------------------------------------------------------
+# TASK-0041: Полный deep email разбор (on-demand)
+# ---------------------------------------------------------------------------
+
+
+def format_email_deep(
+    cache: EmailDeepCache | None,
+    *,
+    lang: str,
+) -> str:
+    """Полный разбор deep email для кнопки «✉️ Глубокий e-mail» (TASK-0041, ADR 040).
+
+    Десериализует данные из email_deep_cache (JSONB, сохранённые asdict'ами из
+    DeepEmailResult) и рендерит читаемый отчёт с html.escape на всех значениях.
+    """
+    if cache is None:
+        return t("deep_email.no_data", lang)
+
+    display = _display_domain(cache.domain)
+    lines: list[str] = [f"✉️ <b>{t('deep_email.header', lang, domain=display)}</b>", ""]
+
+    # SPF
+    if cache.spf:
+        spf = cache.spf or {}
+        sources: list[str] = spf.get("sources") or []
+        lookup_count = spf.get("lookup_count", 0)
+        exceeds = spf.get("exceeds_limit", False)
+
+        spf_lines = [t("deep_email.section_spf", lang)]
+        if sources:
+            escaped = [html.escape(s) for s in sources[:8]]
+            spf_lines.append("├ " + ", ".join(escaped))
+            if len(sources) > 8:
+                spf_lines.append(f"├ … (+{len(sources) - 8})")
+        else:
+            spf_lines.append("├ " + t("deep_email.spf_none", lang))
+
+        exceeds_text = " ⚠️ " + t("deep_email.exceeds_limit", lang) if exceeds else ""
+        spf_lines.append("└ " + t("deep_email.spf_stats", lang, count=lookup_count) + exceeds_text)
+        spf_lines = _fix_tree_endings(spf_lines)
+        lines.extend(spf_lines)
+        lines.append("")
+
+    # MTA-STS
+    if cache.mta_sts:
+        mta = cache.mta_sts or {}
+        mta_lines = [t("deep_email.section_mta_sts", lang)]
+
+        mode = mta.get("policy_mode") or "none"
+        mta_lines.append("├ " + t("deep_email.mta_mode", lang, mode=html.escape(str(mode))))
+
+        mx_list: list[str] = mta.get("mx") or []
+        if mx_list:
+            escaped = [html.escape(m) for m in mx_list[:5]]
+            mta_lines.append("├ mx: " + ", ".join(escaped))
+            if len(mx_list) > 5:
+                mta_lines.append(f"├ … (+{len(mx_list) - 5})")
+
+        max_age = mta.get("max_age")
+        if max_age is not None:
+            mta_lines.append("├ " + t("deep_email.mta_max_age", lang, seconds=max_age))
+
+        reachable = bool(mta.get("reachable"))
+        status = "✅" if reachable else "❌"
+        mta_lines.append("└ " + f"{status} " + t("deep_email.mta_reachable", lang))
+
+        mta_lines = _fix_tree_endings(mta_lines)
+        lines.extend(mta_lines)
+        lines.append("")
+
+    # TLS-RPT
+    if cache.tls_rpt:
+        rpt = cache.tls_rpt or {}
+        rpt_lines = [t("deep_email.section_tls_rpt", lang)]
+        if rpt.get("present"):
+            rua = rpt.get("rua")
+            if rua:
+                rpt_lines.append(
+                    "└ " + t("deep_email.tls_rpt_rua", lang, rua=html.escape(str(rua)))
+                )
+            else:
+                rpt_lines.append("└ " + t("deep_email.tls_rpt_present", lang))
+        else:
+            rpt_lines.append("└ " + t("deep_email.tls_rpt_none", lang))
+        lines.extend(rpt_lines)
+        lines.append("")
+
+    # DANE per-MX
+    if cache.dane:
+        dane = cache.dane or {}
+        host_tlsa: dict[str, bool] = dane.get("host_tlsa") or {}
+        dane_lines = [t("deep_email.section_dane", lang)]
+
+        if host_tlsa:
+            items = list(host_tlsa.items())
+            for idx, (host, has) in enumerate(items[:6]):
+                prefix = "├ " if idx < len(items) - 1 else "└ "
+                status = "✅ TLSA" if has else "∅ no TLSA"
+                dane_lines.append(prefix + f"{html.escape(host)} — {status}")
+            if len(items) > 6:
+                dane_lines.append(f"└ … (+{len(items)-6})")
+        else:
+            dane_lines.append("└ " + t("deep_email.dane_none", lang))
+
+        dane_lines = _fix_tree_endings(dane_lines)
+        lines.extend(dane_lines)
+        lines.append("")
+
+    # BIMI
+    if cache.bimi:
+        bimi = cache.bimi or {}
+        bimi_lines = [t("deep_email.section_bimi", lang)]
+        if bimi.get("present"):
+            logo = bimi.get("logo_url")
+            vmc = bimi.get("vmc_url")
+            if logo:
+                bimi_lines.append("├ logo: " + html.escape(str(logo)))
+            if vmc:
+                bimi_lines.append("├ vmc: " + html.escape(str(vmc)))
+            bimi_lines.append("└ " + t("deep_email.bimi_present", lang))
+        else:
+            bimi_lines.append("└ " + t("deep_email.bimi_none", lang))
+        bimi_lines = _fix_tree_endings(bimi_lines)
+        lines.extend(bimi_lines)
+
+    # Footer
+    if getattr(cache, "fetched_at", None):
+        lines.append("")
+        lines.append(
+            t("deep_email.fetched_at", lang, date=format_date(cache.fetched_at, lang=lang))
+        )
+
+    return "\n".join(lines)

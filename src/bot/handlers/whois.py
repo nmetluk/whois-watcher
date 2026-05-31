@@ -20,7 +20,6 @@ from redis.asyncio import Redis
 
 from src.bot.keyboards import WhoisAction, subdomains_keyboard, whois_actions
 from src.config.limits import Limits
-<<<<<<< HEAD
 from src.db.models import EmailDeepCache, SubdomainEnumCache, User
 from src.db.repositories import (
     DNSCacheRepository,
@@ -38,6 +37,7 @@ from src.services.domains import DomainService
 from src.services.formatters import (
     format_dns_block,
     format_email_block,
+    format_email_deep,
     format_pending_block,
     format_ssl_block,
     format_whois_response,
@@ -592,7 +592,7 @@ async def _show_deep_email_from_whois_card(
 
     Закрывает долги 0039:
     - Freshness gate по email_deep_cache.next_check_at
-    - (mx_hosts уже прокинуты в check_email_deep)
+    - mx_hosts прокинуты в check_email_deep → DANE работает
     """
     if not isinstance(query.message, Message):
         await query.answer()
@@ -614,9 +614,9 @@ async def _show_deep_email_from_whois_card(
     is_fresh = cached is not None and cached.next_check_at > now
 
     if is_fresh:
-        # TODO: красивый форматтер (format_email_deep) — пока заглушка
-        display = from_punycode(registrable)
-        await query.message.reply(t("deep_email.cached_placeholder", lang, domain=display))
+        # Реальный разбор из кэша (TASK-0041)
+        text = format_email_deep(cached, lang=lang)
+        await query.message.reply(text)
         await query.answer()
         return
 

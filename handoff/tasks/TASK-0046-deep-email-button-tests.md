@@ -1,17 +1,42 @@
 ---
 id: TASK-0046
 title: Тесты deep-email — format_email_deep + кнопка «Глубокий e-mail»
-status: open
+status: in_review
 milestone: v0.13.0
 adr: 040
 area: code
 depends_on: [TASK-0041]
-branch: ""
-owner: ""
-session: ""
+branch: task/0046-deep-email-button-tests
+owner: claude-code
+session: docs/sessions/2026-06-02_task-0046-deep-email-button-tests.md
 pr: ""
 created: 2026-06-01
 ---
+
+> ## ⛔ Ревью архитектора (2026-06-02) — changes requested (🔴 найден реальный краш)
+>
+> Тесты по структуре ок (spec-моки, none/full/exceeds/truncation/empty/DANE/
+> escape; хэндлер fresh-vs-enqueue; callback≤64), **но вскрыт и НЕ закрыт
+> рантайм-баг:**
+>
+> 🔴 **`format_email_deep` падает с `KeyError: 'exceeds'`.** Шаблон
+> `deep_email.spf_stats = "lookups: {count}{exceeds}"`, а `format_email_deep`
+> зовёт `t("deep_email.spf_stats", lang, count=lookup_count)` **без `exceeds`**.
+> `t()` делает `template.format(**kwargs)` и намеренно роняет KeyError на
+> пропущенном placeholder. → Кнопка deep-email крашится на любом домене с SPF.
+> Баг уже в main (с TASK-0041).
+> **Фикс:** убрать `{exceeds}` из шаблона `deep_email.spf_stats` (ru+en) — код
+> уже дописывает `exceeds_text` отдельно через `+ exceeds_text`. И **удалить
+> мёртвый ключ `"exceeds": ""`** из ru/en (он ничего не чинит: `.format(**kwargs)`
+> не читает соседние ключи LOCALE).
+>
+> 🔴 **Тесты форматтера мокают `t()`** (`side_effect=lambda …: f"[{key}]"`) —
+> реальный `.format()` не выполняется, поэтому этот класс багов (рассинхрон
+> шаблон/аргументы) тесты пропускают. **Добавить хотя бы один тест с РЕАЛЬНЫМ
+> `t()`** (без мока), прогоняющий SPF-секцию с `exceeds_limit=True` и `False` —
+> он должен поймать KeyError до фикса и проходить после.
+>
+> После фикса бага + real-`t()` теста — снова в ревью.
 
 # TASK-0046 — Тесты deep-email (ADR 040)
 

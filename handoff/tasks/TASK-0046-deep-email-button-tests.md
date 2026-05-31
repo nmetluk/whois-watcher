@@ -1,14 +1,14 @@
 ---
 id: TASK-0046
 title: Тесты deep-email — format_email_deep + кнопка «Глубокий e-mail»
-status: open
+status: claimed
 milestone: v0.13.0
 adr: 040
 area: code
 depends_on: [TASK-0041]
-branch: ""
+branch: task/0046-deep-email-button-tests
 owner: ""
-session: ""
+session: "docs/sessions/2026-06-02_task-0046-deep-email-button-tests.md"
 pr: ""
 created: 2026-06-01
 ---

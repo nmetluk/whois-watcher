@@ -1,17 +1,31 @@
 ---
 id: TASK-0037
 title: Hardening поддоменов — html.escape в нотификациях + кап интервала FSM (ADR 038)
-status: open
+status: in_review
 milestone: v0.12.0
 adr: 038
 area: code
 depends_on: [TASK-0029, TASK-0035]
-branch: ""
+branch: task/0037-subdomain-notify-hardening
 owner: ""
-session: ""
-pr: ""
+session: docs/sessions/2026-05-31_task-0037-subdomain-notify-hardening.md
+pr: #26
 created: 2026-05-31
 ---
+
+> ## ⛔ Ревью архитектора (2026-05-31) — changes requested (PR #26)
+>
+> Код корректен: `html.escape` на заголовке и в обеих секциях имён, лимит как
+> поле `Limits.max_subdomain_check_interval_days` (`Field(365, ge=1)`), хэндлер
+> читает через `get_limits()`, локали ru/en обновлены с паритетом. Escape
+> покрыт тестом (`TestNotifySubdomainChangesHtmlEscaping`).
+>
+> **Блокирует мерж — один недостающий тест.** Инвариант таска «FSM:
+> `interval > 365` → invalid, граничные `1`/`365` принимаются, `366`
+> отклоняется» не покрыт. Добавить unit-тест на `on_subdomain_interval_input`
+> в `tests/unit/test_notify_config_handler.py` (моки со `spec`/`autospec`):
+> `1` и `365` → override записан; `366` и `0` → ветка invalid, `_persist` не
+> вызван. После этого — снова в ревью, смержу.
 
 # TASK-0037 — Hardening нотификаций/FSM поддоменов (ADR 038)
 

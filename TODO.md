@@ -13,57 +13,32 @@
 | v0.4.0 | Own WHOIS proxy gateway | 2026-05-17 |
 | v0.5.0 | Per-domain notification settings | 2026-05-17 |
 | v0.6.0 | SSL Certificate Monitoring | 2026-05-17 |
-| v0.6.1 | SSL patches (bootstrap + no_https classification) | 2026-05-17 |
+| v0.7.0 | RIR/ASN lookup integration (rir2localdb, ADR 031) | 2026-05-19 |
+| v0.8.0 | DNS A/AAAA/NS monitoring (ADR 032) | 2026-05-22 |
+| v0.8.1 | Wishlist ↔ tracking auto-promote (ADR 034) | 2026-05-28 |
+| v0.9.0 | Поддомены / PSL / DNS-SSL у поддомена (ADR 035) | 2026-05-29 |
+| v0.9.3 | Instance-тег в админ-алертах (ADR 019) | 2026-05-30 |
+| v0.10.0 | Email intelligence: MX/SPF/DKIM/DMARC (ADR 036) | 2026-05-30 |
+| v0.11.0 | Subdomain enumeration через crt.sh, on-demand (ADR 037) | 2026-05-30 |
+| v0.11.1 | Wishlist — независимые списки (ADR 039) | 2026-05-30 |
+| v0.12.0 | Periodic subdomain monitoring + алерты (ADR 038) | 2026-05-31 |
 
-Полный лог фич каждого релиза — в CHANGELOG.md.
+Patch-релизы (`.1`/`.2`) с фиксами — в CHANGELOG.md. Полный лог фич
+каждого релиза — там же.
 
-## v0.7 — RIR/ASN lookup integration (planned)
+## Где мы сейчас
 
-Универсальный HTTP-клиент к сервису `rir2localdb`
-(https://github.com/nmetluk/rir2localdb), который зеркалит данные
-пяти RIR (AFRINIC, APNIC, ARIN, LACNIC, RIPE NCC) и отдаёт
-whois-подобную информацию по IP и ASN через REST API.
-
-Это **инфраструктурный** этап — закладывает фундамент для ASN-aware
-фич в v0.8. Сам по себе нигде в UI/мониторинге пока не используется.
-
-- [ ] Новый модуль `src/rir_client/` — HTTP/JSON клиент
-  - `lookup_ip(addr)` → IPAllocation | IPError
-  - `lookup_asn(num)` → ASNAllocation | ASNError
-  - `healthcheck()` → bool
-- [ ] Настройки: `RIR2LOCALDB_URL`, `RIR2LOCALDB_TIMEOUT`,
-  `RIR2LOCALDB_ENABLED`
-- [ ] Docker network `extra_hosts` для подключения к host-side
-  `rir2localdb` (по аналогии с whois proxy в ADR 028)
-- [ ] ARQ cron `rir_health_check` — алерты в admin-канал при падении
-- [ ] ADR 031 — universal RIR client design
-- [ ] Тесты (unit + smoke против реального сервиса на хосте)
-
-**Out of scope для v0.7:** использование RIR-данных где-либо в UI
-или change-уведомлениях. Применение в v0.8.
-
-## v0.8 — DNS A/AAAA monitoring (planned)
-
-Опирается на RIR client из v0.7 — DNS-мониторинг с ASN-фильтрацией
-для устранения шума от CDN round-robin.
-
-- [ ] Новая таблица `dns_cache` (A/AAAA/NS, ASN per IP, TTL, adaptive
-  scheduling)
-- [ ] 5 новых полей на `user_domains`: `track_dns`,
-  `notify_dns_a_change`, `notify_dns_aaaa_change`,
-  `notify_dns_ns_change`, `notify_dns_unreachable`
-- [ ] Модуль `src/dns_monitor/` — async DNS resolver + ASN enrichment
-  через rir_client
-- [ ] Cron `dns_scheduler_tick`, `dns_reminders_scheduler`
-- [ ] Уведомления: смена ASN A/AAAA (фильтр от CDN-шума), смена NS,
-  became unresolvable, расхождение DNS-NS vs WHOIS-NS
-- [ ] `/whois` карточка — DNS-блок с подсветкой DNS-NS vs WHOIS-NS
-  расхождения (critical security signal)
-- [ ] ADR 032 — DNS monitoring rationale
+Дорожная карта **subdomain + domain-intelligence** (ADR 035–039) полностью
+закрыта релизом **v0.12.0**. Работают пять осей наблюдения: WHOIS, SSL,
+DNS (A/AAAA/NS) с ASN-фильтрацией, email-инфраструктура (MX/SPF/DKIM/DMARC)
+и поддомены (enumeration + мониторинг новых/исчезнувших). Доска задач
+(`handoff/INDEX.md`) пуста — это точка выбора следующего крупного этапа.
 
 ## v1.0 — Public stable
 
 Стабилизация публичного API и интерфейса для долговременной поддержки.
+Перед стартом каждого пункта — отдельный ADR (design-first, как принято
+в проекте), затем разбивка на исполнительские таски в `handoff/tasks/`.
 
 - [ ] Веб-дашборд (read-only): список доменов, графики, фильтры
 - [ ] Публичная HTTP API для интеграций (read-only)
@@ -76,27 +51,29 @@ whois-подобную информацию по IP и ASN через REST API.
 
 Накопленные пометки «сделать лучше», без жёстких дат.
 
+- [ ] **html.escape в остальных нотификациях.** В v0.12.0 (TASK-0037)
+  экранирование добавлено только для subdomain-уведомлений. Та же
+  defense-in-depth напрашивается в whois/ssl/dns/email change-нотификациях
+  (значения интерполируются в `ParseMode.HTML`). Отдельным маленьким таском.
+- [ ] **Миграция FSM с MemoryStorage на RedisStorage.** Все FSM-states
+  (`AwaitingDomainArg`, `ListSearchStates`, `NotifyDaysStates`,
+  `NotifySslDaysStates`, `NotifySubdomainIntervalStates`, `DownloadStates`,
+  `SettingsStates`) хранятся в памяти процесса. State теряется при рестарте
+  бота; реального time-based TTL нет, он эмулируется middleware
+  `clear_state_on_command`. Переход на `RedisStorage(state_ttl=300)` даст
+  устойчивость к рестартам и настоящий TTL. См. ADR 033 → Followup.
 - [ ] DENIC: отдельный «expiry hidden by registry»-значок в `/list`
   и подсказка. Сейчас `.de` показывается как «нет данных», что
-  вводит в заблуждение
+  вводит в заблуждение.
 - [ ] Больше интеграционных тестов для ARQ-тасок (сейчас покрыты
   юнит-тестами с моками; нужны проходы через настоящие
-  Postgres+Redis через `pytest-docker`)
+  Postgres+Redis через `pytest-docker`).
 - [ ] Бенчмарк `scheduler_tick` на 100K доменов — проверить, что
-  выборка `next_check_at <= now()` остаётся быстрой
-- [ ] `MIGRATIONS.md` — гайд по созданию и проверке новых миграций
+  выборка `next_check_at <= now()` остаётся быстрой (актуально и для
+  нового `subdomain_scheduler_tick`).
+- [ ] `MIGRATIONS.md` — гайд по созданию и проверке новых миграций.
 - [ ] Документировать ADR 019 (дедупликация алертов): какие severity
-  и частоту считаем нормальными — сейчас только в коде
-- [ ] Release page для v0.6.1 на GitHub UI (сейчас только tag, без
-  оформления). Не критично — для patch-релиза tag достаточно
-- [ ] **v0.8.x: миграция FSM с MemoryStorage на RedisStorage**. Сейчас
-      все FSM-states (`AwaitingDomainArg`, `ListSearchStates`,
-      `NotifyDaysStates`, `NotifySslDaysStates`, `DownloadStates`,
-      `SettingsStates`) хранятся в памяти процесса. State теряется при
-      рестарте бота; реального time-based TTL нет, он эмулируется
-      middleware `clear_state_on_command`. Переход на
-      `RedisStorage(state_ttl=300)` даст устойчивость к рестартам и
-      настоящий TTL. См. ADR 033 → Followup.
+  и частоту считаем нормальными — сейчас только в коде.
 
 ## Идеи на потом (не запланировано)
 
@@ -104,5 +81,5 @@ whois-подобную информацию по IP и ASN через REST API.
 - Поддержка whois-конкретного-регистратора с авторизацией (для
   частных TLD-зон, например `.cm` через NSI)
 - Мониторинг репутации (RBL / SpamHaus)
-- Алерты при появлении домена в Certificate Transparency логах
-  (для wishlist)
+- Алерты при появлении wishlist-домена в Certificate Transparency логах
+  (early-signal, что домен начали использовать)

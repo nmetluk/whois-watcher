@@ -8,8 +8,8 @@ area: code
 depends_on: [TASK-0039, TASK-0040]
 branch: task/0041-deep-email-button
 owner: ""
-session: ""
-pr: ""
+session: "docs/sessions/2026-05-31_task-0041-deep-email-button.md"
+pr: "#31"
 created: 2026-05-31
 ---
 

@@ -225,6 +225,11 @@ def whois_actions(
         text=t("button.raw", lang),
         callback_data=WhoisAction(action="raw", domain=domain).pack(),
     )
+    # TASK-0042 (ADR 040): reuse /subdomains enumeration from the card
+    builder.button(
+        text=t("button.subdomains", lang),
+        callback_data=WhoisAction(action="subdomains", domain=domain).pack(),
+    )
     if is_tracked:
         builder.button(
             text=t("notify_config.button", lang),
@@ -243,7 +248,7 @@ def whois_actions(
             )
     # Раскладка: первая кнопка (follow/unfollow) одна, потом по 2 в ряд.
     rows: list[int] = [1]
-    extras = 2  # refresh + raw
+    extras = 3  # refresh + raw + subdomains (TASK-0042)
     if is_tracked:
         extras += 1
     if show_wishlist:

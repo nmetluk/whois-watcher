@@ -124,6 +124,7 @@ LOCALE: dict[str, str] = {
     "button.unfollow": "🗑 Stop tracking",
     "button.refresh": "🔄 Refresh",
     "button.raw": "📄 Raw response",
+    "button.subdomains": "🛰 Subdomains",
     "button.notify_on": "🔔 Turn back on",
     "button.cancel": "❌ Cancel",
     "button.back": "◀️ Back",

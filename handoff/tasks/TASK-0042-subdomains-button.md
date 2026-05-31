@@ -1,12 +1,12 @@
 ---
 id: TASK-0042
 title: Карточка /whois — кнопка «Поддомены» (переиспользовать enumeration /subdomains)
-status: open
+status: claimed
 milestone: v0.13.0
 adr: 040
 area: code
 depends_on: [TASK-0040]
-branch: ""
+branch: task/0042-subdomains-button
 owner: ""
 session: ""
 pr: ""

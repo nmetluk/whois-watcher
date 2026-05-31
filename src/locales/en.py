@@ -215,7 +215,7 @@ LOCALE: dict[str, str] = {
     "notify_config.subdomain_interval_saved_override": "✅ Subdomain interval: every {days} day(s)",
     "notify_config.subdomain_interval_saved_default": "✅ Subdomains: reverted to global settings",
     "notify_config.subdomain_interval_invalid": (
-        "❌ Invalid format. Type an integer ≥ 1 (e.g. <code>7</code>)."
+        "❌ Invalid format. Type an integer from 1 to 365 (e.g. <code>7</code>)."
     ),
     "button.privacy": "📜 Privacy policy",
     "button.github": "💻 GitHub",

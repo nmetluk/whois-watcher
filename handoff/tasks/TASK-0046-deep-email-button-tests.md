@@ -1,7 +1,7 @@
 ---
 id: TASK-0046
 title: Тесты deep-email — format_email_deep + кнопка «Глубокий e-mail»
-status: in_review
+status: done
 milestone: v0.13.0
 adr: 040
 area: code
@@ -11,32 +11,20 @@ owner: claude-code
 session: docs/sessions/2026-06-02_task-0046-deep-email-button-tests.md
 pr: ""
 created: 2026-06-01
+completed: 2026-06-02
 ---
 
-> ## ⛔ Ревью архитектора (2026-06-02) — changes requested (🔴 найден реальный краш)
+> ## ✅ Ревью архитектора (2026-06-02, круг 2) — merged
 >
-> Тесты по структуре ок (spec-моки, none/full/exceeds/truncation/empty/DANE/
-> escape; хэндлер fresh-vs-enqueue; callback≤64), **но вскрыт и НЕ закрыт
-> рантайм-баг:**
->
-> 🔴 **`format_email_deep` падает с `KeyError: 'exceeds'`.** Шаблон
-> `deep_email.spf_stats = "lookups: {count}{exceeds}"`, а `format_email_deep`
-> зовёт `t("deep_email.spf_stats", lang, count=lookup_count)` **без `exceeds`**.
-> `t()` делает `template.format(**kwargs)` и намеренно роняет KeyError на
-> пропущенном placeholder. → Кнопка deep-email крашится на любом домене с SPF.
-> Баг уже в main (с TASK-0041).
-> **Фикс:** убрать `{exceeds}` из шаблона `deep_email.spf_stats` (ru+en) — код
-> уже дописывает `exceeds_text` отдельно через `+ exceeds_text`. И **удалить
-> мёртвый ключ `"exceeds": ""`** из ru/en (он ничего не чинит: `.format(**kwargs)`
-> не читает соседние ключи LOCALE).
->
-> 🔴 **Тесты форматтера мокают `t()`** (`side_effect=lambda …: f"[{key}]"`) —
-> реальный `.format()` не выполняется, поэтому этот класс багов (рассинхрон
-> шаблон/аргументы) тесты пропускают. **Добавить хотя бы один тест с РЕАЛЬНЫМ
-> `t()`** (без мока), прогоняющий SPF-секцию с `exceeds_limit=True` и `False` —
-> он должен поймать KeyError до фикса и проходить после.
->
-> После фикса бага + real-`t()` теста — снова в ревью.
+> Круг 1 вскрыл 🔴 рантайм-краш `format_email_deep` → `KeyError: 'exceeds'`
+> (шаблон `spf_stats="lookups: {count}{exceeds}"` без передачи `exceeds`; `t()`
+> роняет KeyError на пропуске). Закрыто: шаблон → `"lookups: {count}"` (ru+en),
+> мёртвый ключ `"exceeds"` удалён, плюс **real-`t()` тест**
+> `test_format_email_deep_spf_exceeds_with_real_t` (фикстура мока t() переведена
+> с `autouse` на класс-scoped; новый тест идёт без мока, проверяет SPF
+> exceeds=True/False через настоящий `t()`) — ловит этот класс багов. Краш с
+> TASK-0041 устранён. Остальные тесты (none/full/truncation/empty/DANE/escape;
+> хэндлер fresh-vs-enqueue; callback≤64) на месте.
 
 # TASK-0046 — Тесты deep-email (ADR 040)
 

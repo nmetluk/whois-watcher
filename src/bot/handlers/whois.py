@@ -20,10 +20,11 @@ from redis.asyncio import Redis
 
 from src.bot.keyboards import WhoisAction, subdomains_keyboard, whois_actions
 from src.config.limits import Limits
-from src.db.models import SubdomainEnumCache, User
+from src.db.models import EmailDeepCache, SubdomainEnumCache, User
 from src.db.repositories import (
     DNSCacheRepository,
     DomainRepository,
+    EmailDeepCacheRepository,
     EmailIntelCacheRepository,
     SSLCacheRepository,
     SubdomainEnumCacheRepository,
@@ -36,6 +37,7 @@ from src.services.domains import DomainService
 from src.services.formatters import (
     format_dns_block,
     format_email_block,
+    format_email_deep,
     format_pending_block,
     format_ssl_block,
     format_whois_response,
@@ -276,6 +278,14 @@ async def on_whois_action(
         await _send_raw(query.message, lang=lang, domain=domain)
     elif action == "subdomains":
         await _show_subdomains_from_whois_card(
+            query=query,
+            user=user,
+            lang=lang,
+            domain=domain,
+            arq_redis=arq_redis,
+        )
+    elif action == "deep_email":
+        await _show_deep_email_from_whois_card(
             query=query,
             user=user,
             lang=lang,
@@ -563,6 +573,60 @@ def _is_subdomain_cache_fresh(cached: SubdomainEnumCache | None) -> bool:
         return False
     age = datetime.now(tz=UTC) - cached.fetched_at
     return age.total_seconds() < (7 * 24 * 60 * 60)
+
+
+# ---------------------------------------------------------------------------
+# TASK-0041: "✉️ Глубокий e-mail" button (ADR 040) — заглушка, будет доработана
+# ---------------------------------------------------------------------------
+
+
+async def _show_deep_email_from_whois_card(
+    *,
+    query: CallbackQuery,
+    user: User,
+    lang: str,
+    domain: str,
+    arq_redis: ArqRedis,
+) -> None:
+    """Кнопка «✉️ Глубокий e-mail» на карточке — on-demand deep (TASK-0041).
+
+    Закрывает долги 0039:
+    - Freshness gate по email_deep_cache.next_check_at
+    - mx_hosts прокинуты в check_email_deep → DANE работает
+    """
+    if not isinstance(query.message, Message):
+        await query.answer()
+        return
+
+    try:
+        normalized = normalize_domain(domain)
+        registrable = registrable_domain(normalized) or normalized
+    except Exception:
+        await query.answer(t("commands.subdomains.invalid_domain", lang), show_alert=True)
+        return
+
+    # Freshness gate (долг из 0039) — anti-drift: прямой доступ, без getattr
+    async with get_session() as session:
+        deep_repo = EmailDeepCacheRepository(session)
+        cached: EmailDeepCache | None = await deep_repo.get(registrable)
+
+    now = datetime.now(tz=UTC)
+    is_fresh = cached is not None and cached.next_check_at > now
+
+    if is_fresh:
+        # Реальный разбор из кэша (TASK-0041)
+        text = format_email_deep(cached, lang=lang)
+        await query.message.reply(text)
+        await query.answer()
+        return
+
+    # Кэш пустой или протух — запускаем тяжёлый сбор
+    await arq_redis.enqueue_job("check_email_deep", registrable)
+    display = from_punycode(registrable)
+    await query.message.reply(t("deep_email.searching", lang, domain=display))
+    await query.answer()
+
+    logger.info("Deep email triggered from whois card for %s (user %s)", registrable, user.id)
 
 
 __all__ = ["router"]

@@ -230,6 +230,11 @@ def whois_actions(
         text=t("button.subdomains", lang),
         callback_data=WhoisAction(action="subdomains", domain=domain).pack(),
     )
+    # TASK-0041 (ADR 040): on-demand deep email (SPF/MTA-STS/DANE/BIMI)
+    builder.button(
+        text=t("button.deep_email", lang),
+        callback_data=WhoisAction(action="deep_email", domain=domain).pack(),
+    )
     if is_tracked:
         builder.button(
             text=t("notify_config.button", lang),
@@ -248,7 +253,7 @@ def whois_actions(
             )
     # Раскладка: первая кнопка (follow/unfollow) одна, потом по 2 в ряд.
     rows: list[int] = [1]
-    extras = 3  # refresh + raw + subdomains (TASK-0042)
+    extras = 4  # refresh + raw + subdomains + deep_email (TASK-0041/0042)
     if is_tracked:
         extras += 1
     if show_wishlist:

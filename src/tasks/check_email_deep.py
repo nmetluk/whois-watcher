@@ -20,7 +20,7 @@ from typing import Any
 
 from redis.asyncio import Redis as AsyncRedis
 
-from src.db.repositories import EmailDeepCacheRepository
+from src.db.repositories import EmailDeepCacheRepository, EmailIntelCacheRepository
 from src.db.session import get_session
 from src.email_intel.deep_client import fetch_deep_email
 from src.email_intel.deep_types import DeepEmailError, DeepEmailResult
@@ -67,9 +67,16 @@ async def check_email_deep(ctx: dict[str, Any], domain: str) -> dict[str, Any]:
 
         logger.info("Starting deep email collection for %s", domain)
 
-        # Вызываем коллекторы (TASK-0038). mx_hosts пока не передаём —
-        # DANE будет пустым; в 0040/0041 можно будет передавать из базового кэша.
-        result = await fetch_deep_email(domain)
+        # Читаем MX из базового кэша (TASK-0041) — нужно для DANE
+        async with get_session() as intel_session:
+            intel_repo = EmailIntelCacheRepository(intel_session)
+            intel = await intel_repo.get(domain)
+            mx_hosts: list[str] | None = None
+            if intel and intel.mx_records:
+                mx_hosts = [m.get("host") for m in intel.mx_records if m.get("host")]
+
+        # Передаём mx_hosts → DANE будет работать (закрыт долг из 0039)
+        result = await fetch_deep_email(domain, mx_hosts=mx_hosts)
 
         async with get_session() as session:
             repo = EmailDeepCacheRepository(session)

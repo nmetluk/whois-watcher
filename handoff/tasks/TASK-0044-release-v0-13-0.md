@@ -5,7 +5,7 @@ status: open
 milestone: v0.13.0
 adr: 040
 area: docs
-depends_on: [TASK-0043]
+depends_on: [TASK-0043, TASK-0047]
 branch: ""
 owner: ""
 session: ""

@@ -1,17 +1,24 @@
 ---
 id: TASK-0043
 title: Комплексный аудит v0.13 (deep email + on-demand views, ADR 040)
-status: open
+status: done
 milestone: v0.13.0
 adr: 040
 area: audit
 depends_on: [TASK-0041, TASK-0042]
 branch: ""
-owner: ""
-session: ""
+owner: architect
+session: handoff/audits/AUDIT-2026-06-02-v0-13-deep-email.md
 pr: ""
 created: 2026-05-31
+completed: 2026-06-02
 ---
+
+> **Итог (2026-06-02):** аудит проведён архитектором, отчёт —
+> `handoff/audits/AUDIT-2026-06-02-v0-13-deep-email.md`. Вердикт —
+> **fix-then-go**: перед тегом закрыть 🟠 **TASK-0047** (SSRF MTA-STS + узкий
+> TXT-матч). 🟡/🟢 → **TASK-0048** (fast-follow, v0.13.1). Фич-код полный,
+> краш KeyError уже закрыт (0046).
 
 # TASK-0043 — Комплексный аудит v0.13 (ADR 040)
 

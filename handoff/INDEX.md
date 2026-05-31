@@ -2,12 +2,13 @@
 
 > АВТО-генерируется `python scripts/handoff.py board`. Не править руками.
 
-Всего задач: 46
+Всего задач: 48
 
 | ID | Статус | Майлстоун | ADR | Область | Тема | Ветка |
 |----|--------|-----------|-----|---------|------|-------|
-| TASK-0043 | open | v0.13.0 | 040 | audit | Комплексный аудит v0.13 (deep email + on-demand views, ADR 040) | — |
 | TASK-0044 | open | v0.13.0 | 040 | docs | Релиз v0.13.0 — deep email + on-demand views (ADR 040) | — |
+| TASK-0047 | open | v0.13.0 | 040 | code | MTA-STS hardening — anti-SSRF (отсечение приватных IP) + корректный TXT-матч | — |
+| TASK-0048 | open | v0.13.1 | 040 | code | v0.13 cleanup — callback-guard, on-demand-helper, SPF/DMARC ниты | — |
 | TASK-0001 | done | v0.8.1 | 034 | code | Багфикс wishlist ↔ tracked (авто-промоут) | task/0001-wishlist-tracked-fix |
 | TASK-0002 | done | v0.9.0 | 035 | code | PSL — зависимость tldextract + src/utils/domains.py | task/0002-psl-utils-domains |
 | TASK-0003 | done | v0.9.0 | 035 | code | Схема user_domains (registrable_domain, is_subdomain) + WHOIS-джойны | task/0003-subdomain-schema-whois-joins |
@@ -50,5 +51,6 @@
 | TASK-0040 | done | v0.13.0 | 040 | code | Карточка /whois — MX + краткий e-mail-статус инлайн + фикс свежести | task/0040-whois-card-inline-mx-freshness |
 | TASK-0041 | done | v0.13.0 | 040 | code | Карточка /whois — кнопка «Глубокий e-mail» (on-demand) | task/0041-deep-email-button |
 | TASK-0042 | done | v0.13.0 | 040 | code | Карточка /whois — кнопка «Поддомены» (переиспользовать enumeration /subdomains) | task/0041-deep-email-button |
+| TASK-0043 | done | v0.13.0 | 040 | audit | Комплексный аудит v0.13 (deep email + on-demand views, ADR 040) | — |
 | TASK-0045 | done | v0.13.0 | 040 | code | Anti-drift — убрать getattr на ORM в subdomains-button freshness | task/0045-subdomains-button-getattr-antidrift |
 | TASK-0046 | done | v0.13.0 | 040 | code | Тесты deep-email — format_email_deep + кнопка «Глубокий e-mail» | task/0046-deep-email-button-tests |

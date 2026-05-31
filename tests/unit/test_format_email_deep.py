@@ -32,7 +32,7 @@ def _make_deep_cache(**kwargs) -> EmailDeepCache:
     return cache
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def mock_locales():
     """Мокаем t() чтобы тесты не зависели от точных строк в locales."""
     with patch(
@@ -41,6 +41,7 @@ def mock_locales():
         yield mock_t
 
 
+@pytest.mark.usefixtures("mock_locales")
 class TestFormatEmailDeep:
     def test_none_cache_returns_no_data(self) -> None:
         assert format_email_deep(None, lang="ru") == "[deep_email.no_data]"
@@ -125,3 +126,41 @@ class TestFormatEmailDeep:
         text = format_email_deep(cache, lang="ru")
         # С реальным html.escape + моком t
         assert "<script>" not in text
+
+
+# --- Real t() test as required by architect review ---
+# This test must use the actual locale system (no mocking of t())
+# so that template/argument mismatches like the 'exceeds' KeyError are caught.
+
+
+def test_format_email_deep_spf_exceeds_with_real_t():
+    """Real t() test (no mock) for SPF exceeds_limit — must not raise KeyError."""
+    # Use real t() from the module (no mock active for this test)
+
+    cache = _make_deep_cache(
+        spf={
+            "sources": ["include:_spf.google.com"],
+            "lookup_count": 5,
+            "exceeds_limit": True,
+        }
+    )
+
+    # This should not raise KeyError: 'exceeds'
+    text = format_email_deep(cache, lang="ru")
+
+    assert "lookups: 5" in text
+    # The warning text comes from separate t("deep_email.exceeds_limit")
+    assert "превышен лимит" in text or "limit exceeded" in text.lower() or "⚠" in text
+    assert "<script>" not in text  # sanity
+
+    # Also test the False case
+    cache2 = _make_deep_cache(
+        spf={
+            "sources": ["ip4:1.2.3.4"],
+            "lookup_count": 2,
+            "exceeds_limit": False,
+        }
+    )
+    text2 = format_email_deep(cache2, lang="ru")
+    assert "lookups: 2" in text2
+    assert "превышен" not in text2  # no warning when False

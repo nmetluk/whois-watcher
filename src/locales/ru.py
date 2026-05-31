@@ -145,9 +145,8 @@ LOCALE: dict[str, str] = {
     "deep_email.no_data": "Нет данных deep email.",
     "deep_email.section_spf": "SPF (рекурсивный)",
     "deep_email.spf_none": "нет записей",
-    "deep_email.spf_stats": "lookups: {count}{exceeds}",
+    "deep_email.spf_stats": "lookups: {count}",
     "deep_email.exceeds_limit": "превышен лимит",
-    "exceeds": "",  # используется в spf_stats шаблоне как {exceeds}
     "deep_email.section_mta_sts": "MTA-STS",
     "deep_email.mta_mode": "mode: {mode}",
     "deep_email.mta_max_age": "max-age: {seconds}s",

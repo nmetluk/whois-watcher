@@ -1,7 +1,7 @@
 ---
 id: TASK-0037
 title: Hardening поддоменов — html.escape в нотификациях + кап интервала FSM (ADR 038)
-status: in_review
+status: done
 milestone: v0.12.0
 adr: 038
 area: code
@@ -11,21 +11,18 @@ owner: ""
 session: docs/sessions/2026-05-31_task-0037-subdomain-notify-hardening.md
 pr: #26
 created: 2026-05-31
+completed: 2026-05-31
 ---
 
-> ## ⛔ Ревью архитектора (2026-05-31) — changes requested (PR #26)
+> ## ✅ Ревью архитектора (2026-05-31) — resolved, merged (PR #26)
 >
-> Код корректен: `html.escape` на заголовке и в обеих секциях имён, лимит как
-> поле `Limits.max_subdomain_check_interval_days` (`Field(365, ge=1)`), хэндлер
-> читает через `get_limits()`, локали ru/en обновлены с паритетом. Escape
-> покрыт тестом (`TestNotifySubdomainChangesHtmlEscaping`).
->
-> **Блокирует мерж — один недостающий тест.** Инвариант таска «FSM:
-> `interval > 365` → invalid, граничные `1`/`365` принимаются, `366`
-> отклоняется» не покрыт. Добавить unit-тест на `on_subdomain_interval_input`
-> в `tests/unit/test_notify_config_handler.py` (моки со `spec`/`autospec`):
-> `1` и `365` → override записан; `366` и `0` → ветка invalid, `_persist` не
-> вызван. После этого — снова в ревью, смержу.
+> Первый круг: код принят (`html.escape` на заголовке и в обеих секциях имён,
+> лимит `Limits.max_subdomain_check_interval_days = Field(365, ge=1)`, хэндлер
+> через `get_limits()`, локали ru/en с паритетом), но не хватало FSM-cap теста.
+> Второй круг (commit `750a604`): добавлен `TestOnSubdomainIntervalInputCap` —
+> границы `1`/`365` → `_persist` с override; `0`/`366` → invalid, `_persist`
+> не вызван; моки со `spec` (Message/User/FSMContext/Limits). `asyncio_mode=auto`
+> → декоратор не нужен. Все инварианты закрыты — смержено.
 
 # TASK-0037 — Hardening нотификаций/FSM поддоменов (ADR 038)
 

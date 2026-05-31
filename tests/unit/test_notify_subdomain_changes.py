@@ -377,3 +377,72 @@ class TestNotifySubdomainChangesTruncationAndRecord:
         patches["notif_repo"].record_sent.assert_awaited_once_with(
             user_id=42, domain="example.com", notification_type="subdomain_new"
         )
+
+
+class TestNotifySubdomainChangesAggregationAndNPlusOne:
+    """Тесты агрегации toggle'ов и отсутствия N+1 (TASK-0035, ADR 038).
+
+    Пользователь может иметь несколько UserDomain-строк по одному registrable
+    (например apex + поддомен). Мы должны:
+    - Сделать ровно один get_by_ids на всю рассылку.
+    - Применять OR по notify_* и "any muted" семантику.
+    - Выдавать одно сообщение с объединёнными секциями.
+    """
+
+    @pytest.mark.asyncio
+    async def test_user_with_conflicting_rows_gets_both_sections(
+        self, patches: dict[str, MagicMock]
+    ) -> None:
+        """У юзера две строки: одна хочет new, вторая — removed → одно сообщение с обеими секциями (OR)."""
+        # Две строки одного пользователя (разные домены под одним registrable)
+        row1 = _ud(user_id=77, notify_new=True, notify_removed=False)
+        row2 = _ud(user_id=77, notify_new=False, notify_removed=True)
+        patches["domain_repo"].get_subscribers_by_registrable = AsyncMock(return_value=[row1, row2])
+        patches["user_repo"].get_by_ids = AsyncMock(return_value=[_user(user_id=77, tg_id=999)])
+        patches["notif_repo"].record_sent = AsyncMock(return_value=True)
+        bot = _ctx()["bot"]
+
+        await nsc_mod.notify_subdomain_changes(
+            {"bot": bot},
+            registrable_domain="example.com",
+            diff={"new": ["new.example.com"], "removed": ["old.example.com"]},
+        )
+
+        # Ровно одно сообщение
+        bot.send_message.assert_awaited_once()
+        text = bot.send_message.await_args.kwargs["text"]
+        assert "🆕 Обнаружены новые поддомены:" in text
+        assert "➖ Исчезли поддомены:" in text
+
+        # Две записи в журнал (по агрегированным флагам)
+        assert patches["notif_repo"].record_sent.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_exactly_one_get_by_ids_call_for_multiple_subscribers(
+        self, patches: dict[str, MagicMock]
+    ) -> None:
+        """Несколько подписчиков (в т.ч. с несколькими строками) → ровно один get_by_ids."""
+        # Два разных пользователя, один из них имеет две строки
+        subs = [
+            _ud(user_id=1),
+            _ud(user_id=2),
+            _ud(user_id=2),  # вторая строка второго пользователя
+        ]
+        patches["domain_repo"].get_subscribers_by_registrable = AsyncMock(return_value=subs)
+        patches["user_repo"].get_by_ids = AsyncMock(
+            return_value=[_user(user_id=1), _user(user_id=2)]
+        )
+        patches["notif_repo"].record_sent = AsyncMock(return_value=True)
+        bot = _ctx()["bot"]
+
+        await nsc_mod.notify_subdomain_changes(
+            {"bot": bot},
+            registrable_domain="example.com",
+            diff={"new": ["x.example.com"], "removed": []},
+        )
+
+        # Ключевой анти-N+1 инвариант
+        patches["user_repo"].get_by_ids.assert_awaited_once()
+        # Вызвали с полным списком (порядок не важен для теста)
+        called_ids = set(patches["user_repo"].get_by_ids.await_args[0][0])
+        assert called_ids == {1, 2}

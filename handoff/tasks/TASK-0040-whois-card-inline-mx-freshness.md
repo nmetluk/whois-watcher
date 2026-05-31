@@ -1,17 +1,28 @@
 ---
 id: TASK-0040
 title: Карточка /whois — MX + краткий e-mail-статус инлайн + фикс свежести
-status: in_review
+status: done
 milestone: v0.13.0
 adr: 040
 area: code
 depends_on: [TASK-0018]
 branch: task/0040-whois-card-inline-mx-freshness
-owner: ""
+owner: claude-code
 session: docs/sessions/2026-05-31_task-0040-whois-card-inline-mx-freshness.md
 pr: ""
 created: 2026-05-31
+completed: 2026-05-31
 ---
+
+> ## ✅ Ревью архитектора (2026-05-31) — merged
+>
+> Компактный инлайн (header + MX top-3/`(+N)` + строка `SPF · DMARC`), DKIM
+> убран в deep-кнопку, `html.escape` на MX, `format_pending_block` → пустой кэш
+> SSL/DNS/email показывает «⏳ Собираю… 🔄» (фикс «не вижу почту»). ru/en
+> паритет, тесты обновлены. uv.lock синхронизирован 0.11.1→0.12.0.
+> **Нит → аудит TASK-0043 (не блокер):** «no DMARC» компактный текст берётся
+> через `locale.split(":")[-1]` — хрупко при смене формата строки; вынести в
+> отдельный locale-ключ.
 
 # TASK-0040 — /whois: инлайн MX+статус + фикс свежести (ADR 040)
 

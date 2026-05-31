@@ -9,7 +9,7 @@ depends_on: [TASK-0029]
 branch: task/0033-notify-subdomain-fanout-tests
 owner: ""
 session: docs/sessions/2026-05-31_task-0033-notify-subdomain-fanout-tests.md
-pr: ""
+pr: #23
 created: 2026-05-31
 ---
 

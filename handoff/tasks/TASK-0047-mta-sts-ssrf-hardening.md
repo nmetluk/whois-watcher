@@ -1,14 +1,14 @@
 ---
 id: TASK-0047
 title: MTA-STS hardening — anti-SSRF (отсечение приватных IP) + корректный TXT-матч
-status: open
+status: claimed
 milestone: v0.13.0
 adr: 040
 area: code
 depends_on: [TASK-0041]
-branch: ""
+branch: task/0047-mta-sts-ssrf-hardening
 owner: ""
-session: ""
+session: "docs/sessions/2026-06-03_task-0047-mta-sts-ssrf-hardening.md"
 pr: ""
 created: 2026-06-02
 ---

@@ -12,6 +12,7 @@ Graceful degradation: отсутствие записи = валидное со�
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -169,13 +170,13 @@ async def _fetch_mta_sts(domain: str, resolver: dns.asyncresolver.Resolver) -> M
     """TXT _mta-sts.<d> + HTTPS policy fetch (no redirects, size limit)."""
     mta_sts_domain = f"{MTA_STS_TXT_PREFIX}{domain}"
 
-    # 1. TXT проверка (наличие и версия)
+    # 1. TXT проверка (наличие и версия) — строгий матч по префиксу v=STSv1
     txt_present = False
     try:
         ans = await resolver.resolve(mta_sts_domain, "TXT", lifetime=DNS_TOTAL_TIMEOUT)
         for r in ans:
-            txt = r.to_unicode()  # dnspython dynamic rdata
-            if "v=sts1" in txt.lower() or "sts" in txt.lower():
+            txt = r.to_unicode().strip()  # dnspython dynamic rdata
+            if txt.lower().startswith("v=stsv1"):
                 txt_present = True
                 break
     except dns.exception.DNSException:
@@ -187,7 +188,39 @@ async def _fetch_mta_sts(domain: str, resolver: dns.asyncresolver.Resolver) -> M
     if not txt_present:
         return MtaStsResult(txt_present=False, reachable=False)
 
-    # 2. HTTPS policy
+    # 2. Anti-SSRF: резолвим mta-sts.<domain> и отсекаем приватные/зарезервированные IP
+    #    (до любого HTTPS-запроса). Это закрывает слепой SSRF вектор.
+    try:
+        a_ans = await resolver.resolve(mta_sts_domain, "A", lifetime=DNS_TOTAL_TIMEOUT)
+        aaaa_ans = await resolver.resolve(mta_sts_domain, "AAAA", lifetime=DNS_TOTAL_TIMEOUT)
+
+        for ans_list in (a_ans, aaaa_ans):
+            for r in ans_list:
+                try:
+                    ip = ipaddress.ip_address(r.to_text())
+                    if (
+                        ip.is_private
+                        or ip.is_loopback
+                        or ip.is_link_local
+                        or ip.is_reserved
+                        or ip.is_multicast
+                    ):
+                        logger.warning(
+                            "mta-sts %s resolves to unsafe IP %s — SSRF blocked",
+                            domain,
+                            ip,
+                        )
+                        return MtaStsResult(txt_present=True, reachable=False)
+                except ValueError:
+                    continue  # malformed IP from resolver — ignore
+    except dns.exception.DNSException:
+        # Не смогли зарезолвить A/AAAA — не блокируем, дадим HTTPS попробовать
+        # (он сам упадёт при необходимости).
+        pass
+    except Exception as exc:
+        logger.debug("mta-sts pre-resolve error %s: %s", domain, exc)
+
+    # 3. HTTPS policy
     policy_url = f"https://mta-sts.{domain}/.well-known/mta-sts.txt"
     timeout = aiohttp.ClientTimeout(total=HTTP_TOTAL_TIMEOUT)
 

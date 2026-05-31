@@ -1,17 +1,46 @@
 ---
 id: TASK-0041
 title: Карточка /whois — кнопка «Глубокий e-mail» (on-demand)
-status: open
+status: in_review
 milestone: v0.13.0
 adr: 040
 area: code
 depends_on: [TASK-0039, TASK-0040]
-branch: ""
-owner: ""
-session: ""
+branch: task/0041-deep-email-button
+owner: claude-code
+session: docs/sessions/2026-06-01_task-0041-deep-email-button.md
 pr: ""
 created: 2026-05-31
 ---
+
+> ## ⛔ Ревью архитектора (2026-06-01) — changes requested (НЕ готово)
+>
+> Заявлено «готово», но это **WIP-заглушка**, не законченная фича. Что есть:
+> - ✅ **Долг 0039 #1 (mx_hosts→DANE)** закрыт: `check_email_deep` читает MX из
+>   `email_intel_cache` и зовёт `fetch_deep_email(domain, mx_hosts=...)`
+>   (сигнатура 0038 уже принимает `mx_hosts`).
+> - ✅ **Долг 0039 #2 (freshness gate)** присутствует — но через `getattr`.
+>
+> **Блокеры мержа:**
+> 1. **Фича-заглушка.** В свежем-кэш-пути захардкожен текст «(TASK-0041 в
+>    разработке)…» вместо реального вывода. **Нет `format_email_deep`** —
+>    кнопка не показывает разбор. Реализовать форматтер: SPF (sources/
+>    lookup_count/exceeds_limit), MTA-STS (mode/mx/max_age/reachable), TLS-RPT,
+>    DANE (per-MX), BIMI; десериализовать JSONB из `email_deep_cache` и
+>    рендерить; `html.escape` на значениях.
+> 2. **Нет тестов.** Добавить unit: хэндлер (свежий кэш→рендер, пусто/протух→
+>    enqueue+«ищу»), `format_email_deep`, прокидывание mx_hosts в
+>    `check_email_deep`. Моки со `spec`/`autospec`.
+> 3. **Anti-drift `getattr`.** `getattr(cached, "next_check_at", None)` — то же
+>    нарушение, что чинит [[TASK-0045]]. Типизировать `EmailDeepCache | None`,
+>    обращаться к `.next_check_at` напрямую.
+> 4. **Хардкод/хак строк.** Захардкоженный русский текст + `t(...searching)
+>    .replace("Поддомены","Глубокий e-mail")` — сломается в EN. Завести
+>    отдельные locale-ключи (searching/header deep email), паритет ru/en.
+> 5. **(Рекомендация) общий on-demand-helper** — вынести и переиспользовать в
+>    обеих кнопках (subdomains + deep), как договорились в ревью 0042.
+>
+> После 1–4 (5 желательно) — снова в ревью.
 
 # TASK-0041 — Кнопка «✉️ Глубокий e-mail» (ADR 040)
 

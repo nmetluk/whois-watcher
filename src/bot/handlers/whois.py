@@ -20,7 +20,8 @@ from redis.asyncio import Redis
 
 from src.bot.keyboards import WhoisAction, subdomains_keyboard, whois_actions
 from src.config.limits import Limits
-from src.db.models import SubdomainEnumCache, User
+<<<<<<< HEAD
+from src.db.models import EmailDeepCache, SubdomainEnumCache, User
 from src.db.repositories import (
     DNSCacheRepository,
     DomainRepository,
@@ -604,13 +605,13 @@ async def _show_deep_email_from_whois_card(
         await query.answer(t("commands.subdomains.invalid_domain", lang), show_alert=True)
         return
 
-    # Freshness gate (долг из 0039)
+    # Freshness gate (долг из 0039) — anti-drift: прямой доступ, без getattr
     async with get_session() as session:
         deep_repo = EmailDeepCacheRepository(session)
-        cached = await deep_repo.get(registrable)
+        cached: EmailDeepCache | None = await deep_repo.get(registrable)
 
     now = datetime.now(tz=UTC)
-    is_fresh = cached and getattr(cached, "next_check_at", None) and cached.next_check_at > now
+    is_fresh = cached is not None and cached.next_check_at > now
 
     if is_fresh:
         # TODO: красивый форматтер (format_email_deep) — пока заглушка

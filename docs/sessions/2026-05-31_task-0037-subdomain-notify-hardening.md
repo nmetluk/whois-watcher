@@ -86,3 +86,24 @@
 ## PR
 
 - #26 — open (готово к ревью)
+
+## Fix iteration (post-review, 2026-05-31)
+
+Архитектор вернул таск на доработку (review commit `9901f2d` на main):
+**Блокирует мерж — отсутствовал unit-тест на FSM cap в `on_subdomain_interval_input`.**
+
+### Что сделано
+- `git fetch && git rebase origin/main` на ветке `task/0037-subdomain-notify-hardening` (интегрирован review-коммит с ⛔ блоком в TASK-0037.md, обновления STATE/INDEX).
+- Добавлены 4 теста в `tests/unit/test_notify_config_handler.py` (новый класс `TestOnSubdomainIntervalInputCap`):
+  - Моки **со `spec`** (Limits, User, Message, FSMContext) — per anti-drift конвенции.
+  - Патчи: `get_limits` (возвращает mock с max=365), `_persist` (AsyncMock), `_send_refreshed_config` (чтобы не лезть в БД на valid-пути).
+  - Кейсы ровно по инварианту:
+    - `1` и `365` → `_persist` вызван с `subdomain_check_interval_override=...`, `state.clear` вызван, saved-ответ.
+    - `366` и `0` → `answer` с invalid (текст содержит диапазон 1…365), `_persist` **не** вызван, clear не вызван.
+- 923 unit-теста зелёные ( +17 к предыдущей сессии).
+- `ruff` / `black --check` / `mypy --strict src` — чисто.
+- Обновлён этот отчёт сессии.
+
+### Следующий шаг
+- Push обновлённой ветки → PR #26 получит фикс.
+- Архитектор смержит после ревью → TASK-0036 (релиз v0.12.0).

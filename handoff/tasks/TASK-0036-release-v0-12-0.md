@@ -5,7 +5,7 @@ status: open
 milestone: v0.12.0
 adr: 038
 area: docs
-depends_on: [TASK-0033, TASK-0034]
+depends_on: [TASK-0033, TASK-0034, TASK-0035, TASK-0037]
 branch: ""
 owner: ""
 session: ""
@@ -17,10 +17,11 @@ created: 2026-05-31
 
 > Тело самодостаточно. Перед стартом:
 > `git checkout main && git pull --rebase origin main`, затем `claim`.
-> **Гейт:** не стартовать, пока не смержены 🟠 **TASK-0033** и **TASK-0034**
-> (закрытие тест-гэпов аудита). См.
-> `handoff/audits/AUDIT-2026-05-31-v0-12-subdomain-monitor.md`, вердикт
-> «fix-then-go».
+> **Гейт:** не стартовать, пока не смержены **все** фиксы аудита:
+> ✅ 🟠 TASK-0033, ✅ 🟠 TASK-0034 (тест-гэпы), 🟡 **TASK-0035**
+> (N+1 + дедуп toggle'ов), 🟢 **TASK-0037** (html.escape + кап интервала).
+> Решение владельца 2026-05-31: влить все фиксы в v0.12.0 (не выносить в
+> v0.12.1). См. `handoff/audits/AUDIT-2026-05-31-v0-12-subdomain-monitor.md`.
 
 ## Цель
 
@@ -38,8 +39,9 @@ TASK-0033 (тесты fan-out) и TASK-0034 (тесты success→enqueue).
 
 ## Предусловия (проверить перед тегом)
 
-- TASK-0033 и TASK-0034 смержены в main, CI зелёный (полный `pytest`,
-  `ruff`/`black --check`/`mypy src`, migration round-trip на Postgres).
+- Смержены в main и CI зелёный (полный `pytest`, `ruff`/`black --check`/
+  `mypy src`, migration round-trip на Postgres): TASK-0033, TASK-0034
+  (✅ done), TASK-0035, TASK-0037.
 - Единственный alembic-head = `20260530_subdomain_monitor` (подтверждено
   аудитом; перепроверить на свежем main).
 
@@ -50,7 +52,10 @@ TASK-0033 (тесты fan-out) и TASK-0034 (тесты success→enqueue).
   periodic subdomain monitoring (ADR 038) — toggle `track_subdomains`
   (opt-in, default off), сигналы new/removed, per-user/per-domain интервал,
   scheduler по образцу SSL, fan-out-уведомления, UX-конфигуратор + FSM
-  интервала. Перенести содержимое из `[Unreleased]`.
+  интервала. Также отметить фиксы из аудита: устойчивость fan-out
+  (без N+1, дедуп toggle'ов — TASK-0035), html.escape в нотификациях +
+  верхний кап интервала проверки (TASK-0037). Перенести содержимое из
+  `[Unreleased]`.
 - (опц.) `docs/`/`STATE.md` — отметить релиз.
 
 ## Миграции БД
@@ -65,7 +70,7 @@ TASK-0033 (тесты fan-out) и TASK-0034 (тесты success→enqueue).
 
 ## Definition of Done
 
-- [ ] Предусловия выше выполнены (0033/0034 в main, CI зелёный)
+- [ ] Предусловия выше выполнены (0033/0034/0035/0037 в main, CI зелёный)
 - [ ] `pyproject` bump 0.11.1 → 0.12.0
 - [ ] Секция `[0.12.0]` в `CHANGELOG.md`
 - [ ] Аннотированный тег `v0.12.0` на актуальном main
@@ -77,5 +82,5 @@ TASK-0033 (тесты fan-out) и TASK-0034 (тесты success→enqueue).
 
 - ADR: `docs/decisions.md` (ADR 037, 038)
 - Аудит: `handoff/audits/AUDIT-2026-05-31-v0-12-subdomain-monitor.md`
-- Блокеры: TASK-0033, TASK-0034 · Follow-up после тега: TASK-0035, TASK-0037
+- Блокеры (все в v0.12.0): TASK-0033 ✅, TASK-0034 ✅, TASK-0035, TASK-0037
 - Образец релизного таска: TASK-0014

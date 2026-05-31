@@ -2,7 +2,7 @@
 id: TASK-0035
 title: Fan-out поддоменов — устранить N+1 и ordering-зависимый дедуп toggle'ов (ADR 038)
 status: open
-milestone: v0.12.1
+milestone: v0.12.0
 adr: 038
 area: code
 depends_on: [TASK-0029]
@@ -18,8 +18,9 @@ created: 2026-05-31
 > Тело самодостаточно. Перед стартом:
 > `git checkout main && git pull --rebase origin main`, затем `claim`.
 > Источник находки — `handoff/audits/AUDIT-2026-05-31-v0-12-subdomain-monitor.md`
-> (findings 🟡 в «Архитектура» и «Производительность»). **Не блокер тега
-> v0.12.0** — follow-up.
+> (findings 🟡 в «Архитектура» и «Производительность»). **Включено в блокеры
+> тега v0.12.0** (решение владельца 2026-05-31: влить все фиксы до релиза) —
+> `TASK-0036` ждёт эту задачу.
 
 ## Цель
 

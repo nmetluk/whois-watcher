@@ -1,14 +1,14 @@
 ---
 id: TASK-0045
 title: Anti-drift — убрать getattr на ORM в subdomains-button freshness
-status: open
+status: claimed
 milestone: v0.13.0
 adr: 040
 area: code
 depends_on: [TASK-0042]
-branch: ""
+branch: task/0045-subdomains-button-getattr-antidrift
 owner: ""
-session: ""
+session: "docs/sessions/2026-06-01_task-0045-getattr-antidrift.md"
 pr: ""
 created: 2026-05-31
 ---

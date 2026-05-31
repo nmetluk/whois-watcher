@@ -13,49 +13,98 @@ pr: ""
 created: 2026-06-02
 ---
 
-# ⚠️ СТАТУС РЕВЬЮ (2026-06-03, круг 3) — НЕ мержить, осталась 1 правка (тест)
+# ⚠️ СТАТУС РЕВЬЮ (2026-06-03, круг 4) — НЕ мержить, осталась 1 правка (мок-механика теста)
 
-> **Исполнителю: перечитай этот блок — здесь всё, что нужно.**
-> Ветка `task/0047-mta-sts-ssrf-hardening`, тип-коммит `f90a530`.
+> **Исполнителю: перечитай этот блок — здесь точная причина и готовый сниппет.**
+> Security-код корректен. Затык — чисто в моке aiohttp. Ниже разбор.
 
 ## ✅ Что уже сделано правильно (НЕ переделывать)
 
-- Строгий TXT-матч `txt.lower().startswith("v=stsv1")`.
-- A/AAAA резолвятся **независимо**; собираются только безопасные публичные IP;
-  нет безопасных → `reachable=False`, GET не выполняется.
-- **DNS-rebinding закрыт:** HTTPS через
-  `aiohttp.TCPConnector(resolver=_SafeMtaStsResolver(safe_ips))` — резолвер
-  отдаёт только проверенные публичные IP. Правильный подход.
-- **`_SafeMtaStsResolver.close()` добавлен** — `TypeError` инстанциации
-  устранён. Security-код корректен. ✅
+- Строгий TXT-матч, независимые A/AAAA, сбор только публичных IP.
+- DNS-rebinding закрыт через `TCPConnector(resolver=_SafeMtaStsResolver)`.
+- `_SafeMtaStsResolver.close()` добавлен. Security-код готов. ✅
 
-## 🔴 Что осталось (блокирует мерж) — ТОЛЬКО тест
+## 🔴 Корень затыка с `test_fetch_mta_sts_happy_path_public_ip`
 
-**`test_fetch_mta_sts_happy_path_public_ip` — тавтология, переписать.**
-Сейчас тест настраивает реальные dns+`ClientSession`-моки на публичный IP, а
-потом **патчит саму функцию под тестом**:
-`with patch("src.email_intel.deep_client._fetch_mta_sts") as mock_fetch:` и
-ассертит хардкод `MtaStsResult(...)`. То есть **реальный `_fetch_mta_sts`
-(с `_SafeMtaStsResolver` + `TCPConnector`) НЕ выполняется** — тест проверяет,
-что мок вернул то, что в него положили. Если убрать `close()` снова — этот тест
-останется зелёным. Ноль защиты от регресса именно того, что чиним.
+Код делает **двойной `async with`**:
+```python
+async with (
+    aiohttp.ClientSession(...) as session,
+    session.get(url, allow_redirects=False) as resp,
+):
+```
+`session.get(...)` — **НЕ корутина**: он синхронно возвращает объект
+(`_RequestContextManager`), который сам async-context-manager. Его не `await`-ят.
 
-**Как починить:**
-- Убрать `with patch("...deep_client._fetch_mta_sts")` — пусть выполняется
-  **реальный** `_fetch_mta_sts` с уже настроенными dns+`ClientSession`-моками
-  (публичный IP `1.2.3.4`, ответ 200 + policy-тело — они уже написаны в тесте).
-- Ассертить, что **`mock_session.get` был вызван** (т.е. реальный путь дошёл до
-  GET через `_SafeMtaStsResolver`+`TCPConnector` на публичном IP) и результат
-  `reachable=True`, `policy_mode="enforce"`, mx содержит `mail.example.com`.
-- Убрать дублирующиеся ассерты и неиспользуемые моки.
-- Этот же тест служит регресс-гардом на `close()` (без него — TypeError).
+В тесте было `mock_session.get = AsyncMock()`. `AsyncMock` при вызове возвращает
+**корутину** → `async with <корутина>` → ошибка
+*"'coroutine' object does not support the asynchronous context manager protocol"*.
+Отсюда же уход в `except` и `reachable=False`.
 
-## Definition of Done (повтор — отметить перед сдачей)
+**Правило:** `session.get` мокается **синхронным `MagicMock`**, возвращающим
+объект с `__aenter__`/`__aexit__` как `AsyncMock`. И НЕ патчить
+`_SafeMtaStsResolver`/`TCPConnector` — пусть инстанцируются реально (это и есть
+регресс-гард на `close()`).
 
-- [ ] `test_fetch_mta_sts_happy_path_public_ip` гоняет **реальный**
-  `_fetch_mta_sts` (без `patch(_fetch_mta_sts)`), ассертит `mock_session.get`
-  вызван
-- [ ] **Полный `pytest` зелёный локально** (не за счёт мока функции под тестом);
+## ✅ Готовый рабочий тест (заменить целиком)
+
+```python
+@pytest.mark.asyncio
+async def test_fetch_mta_sts_happy_path_public_ip():
+    """Публичный IP — реальный _fetch_mta_sts доходит до GET (регресс-гард на close())."""
+    with (
+        patch("src.email_intel.deep_client.dns.asyncresolver.Resolver") as mock_res_cls,
+        patch("src.email_intel.deep_client.aiohttp.ClientSession") as mock_session_cls,
+    ):
+        mock_res = MagicMock()
+
+        async def fake_resolve(name, rdtype, **kw):
+            if rdtype == "TXT":
+                return [MagicMock(to_unicode=lambda: "v=STSv1; id=xyz")]
+            if rdtype in ("A", "AAAA"):
+                return [MagicMock(to_text=lambda: "1.2.3.4")]  # публичный
+            return []
+
+        mock_res.resolve = AsyncMock(side_effect=fake_resolve)
+        mock_res_cls.return_value = mock_res
+
+        # Ответ, который отдаёт async-CM от session.get(...)
+        mock_resp = MagicMock()
+        mock_resp.status = 200
+        mock_resp.content.read = AsyncMock(
+            return_value=b"version: STSv1\nmode: enforce\nmx: mail.example.com\nmax-age: 86400"
+        )
+        resp_cm = MagicMock()
+        resp_cm.__aenter__ = AsyncMock(return_value=mock_resp)
+        resp_cm.__aexit__ = AsyncMock(return_value=False)
+
+        # session — async-CM от ClientSession(...); .get — СИНХРОННЫЙ MagicMock!
+        mock_session = MagicMock()
+        mock_session.get = MagicMock(return_value=resp_cm)   # ← ключевой фикс
+        session_cm = MagicMock()
+        session_cm.__aenter__ = AsyncMock(return_value=mock_session)
+        session_cm.__aexit__ = AsyncMock(return_value=False)
+        mock_session_cls.return_value = session_cm
+
+        # НЕ патчим _SafeMtaStsResolver/TCPConnector — реальная инстанциация = гард на close()
+        result = await _fetch_mta_sts("good.example.com", resolver=mock_res)
+
+        assert result.reachable is True
+        assert result.policy_mode == "enforce"
+        assert "mail.example.com" in result.mx
+        mock_session.get.assert_called_once()   # реальный путь дошёл до GET
+```
+
+Почему работает: `session.get(...)` (синхронный мок) → `resp_cm` → `async with
+resp_cm` корректно зовёт `__aenter__` (AsyncMock) → `mock_resp`. Корутина больше
+нигде не подсовывается в `async with`.
+
+## Definition of Done
+
+- [ ] `test_fetch_mta_sts_happy_path_public_ip` заменён на сниппет выше
+  (реальный `_fetch_mta_sts`, `session.get` — синхронный MagicMock, без патча
+  `_SafeMtaStsResolver`)
+- [ ] **Полный `pytest` зелёный локально** (включая этот тест);
   `ruff`/`black --check`/`mypy src`
 - [ ] Per-session отчёт; `handoff.py validate`; PR + зелёный CI
 

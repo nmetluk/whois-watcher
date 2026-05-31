@@ -30,6 +30,17 @@
    - Использовать `MagicMock(spec=SubdomainEnumCache)` вместо голого мока.
 4. Убедиться, что mypy доволен прямым доступом.
 
-## Статус
+## Статус (2026-06-01)
 
-Начало работы. Следующий шаг — правка `src/bot/handlers/whois.py`.
+**Готово:**
+
+- Убран весь `getattr` на `SubdomainEnumCache` в `whois.py`
+- Функция `_is_subdomain_cache_fresh` теперь типизирована как `SubdomainEnumCache | None`
+- Прямой доступ к полям (`cached.fetched_at`, `cached.subdomains`)
+- Тест `test_uses_getattr_defensively` удалён
+- Моки используют `spec=SubdomainEnumCache`
+- Все проверки зелёные: pytest, ruff, black, mypy
+
+Ветка запушена: `task/0045-subdomains-button-getattr-antidrift`
+
+Готов к PR и ревью.

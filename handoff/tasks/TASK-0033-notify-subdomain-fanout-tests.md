@@ -1,14 +1,14 @@
 ---
 id: TASK-0033
 title: Реальные тесты fan-out notify_subdomain_changes (ADR 038)
-status: open
+status: in_review
 milestone: v0.12.0
 adr: 038
 area: code
 depends_on: [TASK-0029]
-branch: ""
+branch: task/0033-notify-subdomain-fanout-tests
 owner: ""
-session: ""
+session: docs/sessions/2026-05-31_task-0033-notify-subdomain-fanout-tests.md
 pr: ""
 created: 2026-05-31
 ---

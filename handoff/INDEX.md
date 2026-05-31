@@ -12,7 +12,6 @@
 | TASK-0042 | open | v0.13.0 | 040 | code | Карточка /whois — кнопка «Поддомены» (переиспользовать enumeration /subdomains) | — |
 | TASK-0043 | open | v0.13.0 | 040 | audit | Комплексный аудит v0.13 (deep email + on-demand views, ADR 040) | — |
 | TASK-0044 | open | v0.13.0 | 040 | docs | Релиз v0.13.0 — deep email + on-demand views (ADR 040) | — |
-| TASK-0038 | in_review | v0.13.0 | 040 | code | Deep email — парсеры и коллекторы (SPF include / MTA-STS / TLS-RPT / DANE / BIMI) | task/0038-deep-email-parsers-collectors |
 | TASK-0001 | done | v0.8.1 | 034 | code | Багфикс wishlist ↔ tracked (авто-промоут) | task/0001-wishlist-tracked-fix |
 | TASK-0002 | done | v0.9.0 | 035 | code | PSL — зависимость tldextract + src/utils/domains.py | task/0002-psl-utils-domains |
 | TASK-0003 | done | v0.9.0 | 035 | code | Схема user_domains (registrable_domain, is_subdomain) + WHOIS-джойны | task/0003-subdomain-schema-whois-joins |
@@ -50,3 +49,4 @@
 | TASK-0035 | done | v0.12.0 | 038 | code | Fan-out поддоменов — устранить N+1 и ordering-зависимый дедуп toggle'ов (ADR 038) | task/0035-subdomain-fanout-nplus1-toggle-dedup |
 | TASK-0036 | done | v0.12.0 | 038 | docs | Релиз v0.12.0 — мониторинг поддоменов (ADR 037+038) | task/0036-release-v0-12-0 |
 | TASK-0037 | done | v0.12.0 | 038 | code | Hardening поддоменов — html.escape в нотификациях + кап интервала FSM (ADR 038) | task/0037-subdomain-notify-hardening |
+| TASK-0038 | done | v0.13.0 | 040 | code | Deep email — парсеры и коллекторы (SPF include / MTA-STS / TLS-RPT / DANE / BIMI) | task/0038-deep-email-parsers-collectors |

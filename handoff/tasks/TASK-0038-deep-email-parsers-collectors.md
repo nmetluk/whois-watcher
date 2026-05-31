@@ -1,17 +1,28 @@
 ---
 id: TASK-0038
 title: Deep email — парсеры и коллекторы (SPF include / MTA-STS / TLS-RPT / DANE / BIMI)
-status: in_review
+status: done
 milestone: v0.13.0
 adr: 040
 area: code
 depends_on: [TASK-0018]
 branch: task/0038-deep-email-parsers-collectors
-owner: ""
+owner: claude-code
 session: docs/sessions/2026-05-31_task-0038-deep-email-parsers-collectors.md
 pr: ""
 created: 2026-05-31
+completed: 2026-05-31
 ---
+
+> ## ✅ Ревью архитектора (2026-05-31) — merged
+>
+> SPF-резолвер cycle-safe + lookup-limited (инъекция резолвера), MTA-STS fetch
+> с `allow_redirects=False` + size-cap 16KB + total timeout + никогда не raise
+> (graceful), DANE per-MX, TLS-RPT/BIMI парсеры. 22 теста со `spec`/`autospec`.
+> **Два косметических нита → в аудит TASK-0043 (не блокеры):** (1) корневой
+> SPF-lookup учитывается в лимите 10 (чуть строже RFC 7208 — root не считается);
+> (2) механизм `all` (`-all`/`~all`) попадает в `sources`, хотя источником не
+> является. Учесть/почистить при углублении или в аудите.
 
 # TASK-0038 — Deep email: парсеры и коллекторы (ADR 040)
 

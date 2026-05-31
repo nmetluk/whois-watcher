@@ -9,7 +9,7 @@ depends_on: [TASK-0033, TASK-0034, TASK-0035, TASK-0037]
 branch: task/0036-release-v0-12-0
 owner: ""
 session: docs/sessions/2026-05-31_task-0036-release-v0-12-0.md
-pr: ""
+pr: #27
 created: 2026-05-31
 ---
 

@@ -39,7 +39,8 @@
 
 ## Коммиты
 
-(Будут после финального `git commit` в этой сессии)
+- `6d7fd40` — test(TASK-0033): real fan-out tests for notify_subdomain_changes (ADR 038)
+- `c149aa9` — chore(TASK-0033): bind PR #23 in handoff + update session report
 
 ## Проверки
 

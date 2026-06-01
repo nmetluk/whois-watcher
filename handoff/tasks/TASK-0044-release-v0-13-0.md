@@ -9,7 +9,7 @@ depends_on: [TASK-0043, TASK-0047]
 branch: task/0044-release-v0-13-0
 owner: grok
 session: docs/sessions/2026-06-03_task-0044-release-v0-13-0.md
-pr: ""
+pr: "#32"
 created: 2026-05-31
 ---
 

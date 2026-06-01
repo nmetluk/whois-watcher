@@ -1,7 +1,7 @@
 ---
 id: TASK-0049
 title: html.escape во всех change-нотификациях (defense-in-depth)
-status: in_review
+status: done
 milestone: v0.14.0
 adr: ""
 area: code
@@ -11,7 +11,22 @@ owner: grok-4.3
 session: docs/sessions/2026-06-05_task-0049-htmlescape-all-notifications.md
 pr: https://github.com/nmetluk/whois-watcher/pull/34
 created: 2026-06-04
+completed: 2026-06-05
 ---
+
+> ## ✅ Ревью архитектора (2026-06-05) — merged
+>
+> `html.escape` во всех 8 нотификаторах; приоритетные поля закрыты (SSL
+> **issuer** в notify_ssl_changes + send_ssl_reminder, DNS NS/A через
+> `_format_records`, registrar, domain). Тест escape — через **настоящий `t()`**
+> (метачар domain `<b>evil</b>` + registrar `HACKER & "CO" <script>`; ассерты
+> `&lt;`/`&amp;`/`&quot;`, raw-тегов нет, без двойного escape). Попутно честно
+> починены блокирующие CI mypy-ошибки (formatters narrowing, check_email_deep
+> walrus→`list[str]`) и фрагильный мок в `test_check_email_deep_task` (всплыл,
+> когда mx_hosts-путь реально исполнился — признак, что суит гоняли). Чисто.
+> 🟢 Нит → аудит **TASK-0054**: в `format_email_deep` остался пре-существующий
+> `getattr(cache, "fetched_at", None)` (cache не-None после верхнего гарда) —
+> заменить на прямой `cache.fetched_at` (anti-drift + лучше для mypy). Не из 0049.
 
 # TASK-0049 — html.escape во всех нотификациях (v0.14)
 

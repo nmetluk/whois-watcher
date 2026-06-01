@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+import html
 import logging
 from typing import Any
 
@@ -58,8 +59,8 @@ def _format_date(value: object, lang: str) -> str:
     if value is None:
         return t("notifications.change.unknown", lang)
     if isinstance(value, datetime):
-        return value.strftime("%d.%m.%Y")
-    return str(value)
+        return html.escape(value.strftime("%d.%m.%Y"))
+    return html.escape(str(value))
 
 
 async def send_ssl_change_notice(
@@ -97,13 +98,15 @@ async def send_ssl_change_notice(
 
         cache = await cache_repo.get(domain)
 
-        format_args: dict[str, str] = {"domain": domain}
+        safe_domain = html.escape(domain)
+        format_args: dict[str, str] = {"domain": safe_domain}
         if change_type == "issuer_changed":
-            format_args["issuer"] = (
+            issuer = (
                 cache.issuer_o or cache.issuer_cn or t("notifications.value.unknown", user.language)
                 if cache is not None
                 else t("notifications.value.unknown", user.language)
             )
+            format_args["issuer"] = html.escape(str(issuer))
         elif change_type == "not_after_changed":
             format_args["not_after"] = _format_date(
                 cache.not_after if cache is not None else None, user.language

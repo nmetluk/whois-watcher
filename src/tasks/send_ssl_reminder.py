@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import html
 import logging
 from datetime import datetime
 from typing import Any
@@ -61,7 +62,7 @@ def _format_days_left(days: int, lang: str) -> str:
 def _format_date(value: datetime | None, lang: str) -> str:
     if value is None:
         return t("notifications.value.unknown", lang)
-    return value.strftime("%d.%m.%Y")
+    return html.escape(value.strftime("%d.%m.%Y"))
 
 
 async def send_ssl_expiry_reminder(
@@ -110,13 +111,15 @@ async def send_ssl_expiry_reminder(
         issuer = (
             cache.issuer_o or cache.issuer_cn or t("notifications.value.unknown", user.language)
         )
+        safe_issuer = html.escape(str(issuer))
+        safe_domain = html.escape(domain)
         text_body = t(
             "notifications.ssl_expiry.body",
             user.language,
-            domain=domain,
+            domain=safe_domain,
             not_after=_format_date(not_after, user.language),
             days_left=_format_days_left(days_before, user.language),
-            issuer=issuer,
+            issuer=safe_issuer,
         )
         keyboard = ssl_expiry_notification(domain, lang=user.language)
         telegram_id = user.telegram_id

@@ -13,6 +13,7 @@ WHOIS. Шлёт пользователю одно сообщение про пр
 
 from __future__ import annotations
 
+import html
 import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -45,13 +46,13 @@ def _user_wants_problem_notice(user_domain: Any) -> bool:
 def _format_dt_or_never(value: datetime | None, lang: str) -> str:
     if value is None:
         return t("notifications.value.never", lang)
-    return value.strftime("%d.%m.%Y")
+    return html.escape(value.strftime("%d.%m.%Y"))
 
 
 def _format_date_or_unknown(value: datetime | None, lang: str) -> str:
     if value is None:
         return t("notifications.value.unknown", lang)
-    return value.strftime("%d.%m.%Y")
+    return html.escape(value.strftime("%d.%m.%Y"))
 
 
 async def send_problem_notice(ctx: dict[str, Any], user_id: int, domain: str) -> None:
@@ -86,10 +87,11 @@ async def send_problem_notice(ctx: dict[str, Any], user_id: int, domain: str) ->
         last_ok = cache.last_successful_fetch_at if cache is not None else None
         expires_at = cache.expires_at if cache is not None else None
 
+        safe_domain = html.escape(domain)
         text = t(
             "notifications.problem.body",
             user.language,
-            domain=domain,
+            domain=safe_domain,
             last_ok=_format_dt_or_never(last_ok, user.language),
             expires_at=_format_date_or_unknown(expires_at, user.language),
         )

@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+import html
 import logging
 from typing import Any
 
@@ -88,7 +89,8 @@ async def send_email_change_notice(
         if user.is_blocked:
             return
 
-        format_args: dict[str, str] = {"domain": domain}
+        safe_domain = html.escape(domain)
+        format_args: dict[str, str] = {"domain": safe_domain}
 
         text_body = t(locale_key, user.language, **format_args)
         keyboard = change_notification(domain, lang=user.language)

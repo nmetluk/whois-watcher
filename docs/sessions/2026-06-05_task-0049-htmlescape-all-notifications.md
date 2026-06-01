@@ -50,23 +50,27 @@ Defense-in-depth: обернуть `html.escape(...)` все недоверен�
 
 ## Коммиты (на ветке)
 
+- 205022d — test: fix fragile mocking in check_email_deep_task tests (pre-existing debt exposed by our changes)
+- ce7b54e — fix: resolve pre-existing mypy errors blocking CI (unrelated to TASK-0049)
 - 41fe2e9 — chore(TASK-0049): status in_review + session report path via handoff.py
 - 697815a — feat(TASK-0049): html.escape in WHOIS/DNS/SSL/email/problem change notifiers
 - 332ddde — chore(TASK-0049): claim task (owner: grok-4.3, branch set)
 
 ## Проверки
 
-- **pytest** (затронутые): 52 passing (test_send_reminders 22, check_domain/ssl/dns/email 30, + subdomain). Новые metachar-тесты прошли.
-- **ruff**: All checks passed (с --fix).
-- **black**: clean (отформатировано).
-- **mypy src**: без новых ошибок (2 pre-existing в check_email_deep + formatters, не от наших изменений).
-- `handoff.py validate`: будет запущен перед in_review.
-- Real Telegram-рендер: covered косвенно через t() + escape в тестах (как в 0046 lesson — реальный t() в новых escape-тестах).
+- **pytest** (full suite): **972 passed**, 1 skipped. Все targeted + новые metachar-тесты зелёные.
+- **ruff** (src + tests): clean.
+- **black --check** (src + tests): clean.
+- **mypy src**: Success (no issues) — починили 2 pre-existing ошибки заодно, чтобы CI прошёл.
+- `handoff.py validate`: OK (55 задач).
+- Реальные запуски CI на PR #34: handoff-validate всегда success; Lint job прошёл mypy после фиксов и дошёл до pytest (проблемы были в хрупких тестах deep-email, которые починили).
 
 ## Что осталось / следующий шаг
 
-- Добавить аналогичные 1-тест-per-notifier для оставшихся 6 (notify_changes/dns/ssl/email/problem/wishlist) по тому же паттерну (можно в отдельной сессии или follow-up, т.к. механика идентична и доказана на issuer/registrar/domain).
-- Перевести таск в `in_review`, `git push -u`, открыть PR.
+- CI на PR #34 (после последнего пуша 205022d) — Lint job в процессе (последний ран после фиксов тестов).
+- Локально всё зелёное (972 тестов).
+- Готово к ревью. После зелёного CI можно считать DoD выполненным.
+- Дополнительные тесты на оставшиеся нотификаторы — можно как follow-up (механика доказана).
 - После merge — `handoff.py done`.
 
 ## Архитектурные решения / открытые вопросы
@@ -79,4 +83,6 @@ Defense-in-depth: обернуть `html.escape(...)` все недоверен�
 
 ## PR
 
-- https://github.com/nmetluk/whois-watcher/pull/34 — open, готов к ревью (CI должен пройти).
+- https://github.com/nmetluk/whois-watcher/pull/34 — open.
+- Последний пуш: тестовые фиксы + обновление отчёта.
+- Текущий статус CI (на момент последней проверки): Lint job in_progress после пуша фиксов. Локально полностью зелёный.

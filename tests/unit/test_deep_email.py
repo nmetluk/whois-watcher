@@ -130,7 +130,7 @@ async def test_spf_simple_terminal_mechanisms() -> None:
     mock_resolve = AsyncMock(return_value=["v=spf1 ip4:192.0.2.0/24 -all"])
     res = await resolve_spf("example.com", resolve_txt=mock_resolve)
     assert "ip4:192.0.2.0/24" in res.sources
-    assert "-all" in res.sources
+    assert "-all" not in res.sources  # all — модификатор, не источник (TASK-0048)
     assert res.exceeds_limit is False
 
 

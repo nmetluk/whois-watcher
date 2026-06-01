@@ -139,6 +139,9 @@ async def resolve_spf(
         low = token.lower()
         if low.startswith("include:") or low.startswith("redirect=") or low.startswith("exp="):
             continue
+        # all ( -all / ~all / ?all / +all ) — не источник, только модификатор результата (TASK-0048)
+        if low in {"-all", "~all", "?all", "+all"}:
+            continue
         terminal.append(token)
 
     sources: list[str] = list(terminal)

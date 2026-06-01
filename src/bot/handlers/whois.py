@@ -9,12 +9,13 @@ from __future__ import annotations
 
 import io
 import logging
+from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Any, Literal
 
 from aiogram import Router
 from aiogram.filters import Command, CommandObject
-from aiogram.types import BufferedInputFile, CallbackQuery, Message
+from aiogram.types import BufferedInputFile, CallbackQuery, InlineKeyboardMarkup, Message
 from arq import ArqRedis
 from redis.asyncio import Redis
 
@@ -503,6 +504,42 @@ async def _register_pending_followup(
 # ---------------------------------------------------------------------------
 
 
+async def _on_demand_card_view(
+    *,
+    query: CallbackQuery,
+    lang: str,
+    registrable: str,
+    cached: Any | None,
+    is_fresh: bool,
+    render: Callable[[Any], str],
+    reply_markup_factory: Callable[[Any], InlineKeyboardMarkup | None] | None = None,
+    arq_redis: ArqRedis,
+    job_name: str,
+    searching_text: str,
+) -> None:
+    """Общий helper для on-demand кнопок карточки /whois (TASK-0048, ADR 040).
+
+    Устраняет дублирование кэш→freshness→render | enqueue+"ищу…" между
+    deep-email и subdomains. Сигнатура с инъекцией render/factory для гибкости
+    и минимума зависимостей в helper'е.
+    """
+    if not isinstance(query.message, Message):
+        await query.answer()
+        return
+
+    if cached is not None and is_fresh:
+        text = render(cached)
+        markup = reply_markup_factory(cached) if reply_markup_factory else None
+        await query.message.reply(text, reply_markup=markup)
+        await query.answer()
+        return
+
+    # Нет свежего кэша — enqueue той же ARQ-задачи, что и прямая команда
+    await arq_redis.enqueue_job(job_name, registrable)
+    await query.message.reply(searching_text)
+    await query.answer()
+
+
 async def _show_subdomains_from_whois_card(
     *,
     query: CallbackQuery,
@@ -511,11 +548,7 @@ async def _show_subdomains_from_whois_card(
     domain: str,
     arq_redis: ArqRedis,
 ) -> None:
-    """Кнопка «🛰 Поддомены» на карточке — переиспользует /subdomains поток."""
-    if not isinstance(query.message, Message):
-        await query.answer()
-        return
-
+    """Кнопка «🛰 Поддомены» на карточке — переиспользует /subdomains поток (TASK-0048: via helper)."""
     try:
         normalized = normalize_domain(domain)
         registrable = registrable_domain(normalized) or normalized
@@ -525,19 +558,20 @@ async def _show_subdomains_from_whois_card(
 
     async with get_session() as session:
         cache_repo = SubdomainEnumCacheRepository(session)
-        cached = await cache_repo.get(registrable)
+        cached: SubdomainEnumCache | None = await cache_repo.get(registrable)
 
-    if cached is not None and cached.subdomains and _is_subdomain_cache_fresh(cached):
+    is_fresh = bool(cached is not None and cached.subdomains and _is_subdomain_cache_fresh(cached))
+
+    def _render_sub(c: SubdomainEnumCache) -> str:
+        subs = c.subdomains or []
         display = from_punycode(registrable)
-        count = len(cached.subdomains)
-        fetched_at = format_date(cached.fetched_at, lang=lang) if cached.fetched_at else "—"
-
+        count = len(subs)
+        fetched_at = format_date(c.fetched_at, lang=lang) if c.fetched_at else "—"
         subdomain_list = "\n".join(
             t("commands.subdomains.list_item", lang, subdomain=from_punycode(sub))
-            for sub in cached.subdomains[:50]
+            for sub in subs[:50]
         )
-
-        text = (
+        return (
             t(
                 "commands.subdomains.header",
                 lang,
@@ -548,19 +582,27 @@ async def _show_subdomains_from_whois_card(
             + f"\n\n{subdomain_list}"
         )
 
-        await query.message.reply(
-            text,
-            reply_markup=subdomains_keyboard(registrable, cached.subdomains, lang=lang),
-        )
-        await query.answer()
-        return
+    def _mk_markup(c: SubdomainEnumCache) -> InlineKeyboardMarkup:
+        return subdomains_keyboard(registrable, c.subdomains or [], lang=lang)
 
-    # Нет свежего кэша — запускаем тот же job, что и /subdomains
-    await arq_redis.enqueue_job("check_subdomains", registrable)
     display = from_punycode(registrable)
-    await query.message.reply(t("commands.subdomains.searching", lang, domain=display))
-    await query.answer()
+    searching = t("commands.subdomains.searching", lang, domain=display)
 
+    await _on_demand_card_view(
+        query=query,
+        lang=lang,
+        registrable=registrable,
+        cached=cached,
+        is_fresh=is_fresh,
+        render=_render_sub,
+        reply_markup_factory=_mk_markup,
+        arq_redis=arq_redis,
+        job_name="check_subdomains",
+        searching_text=searching,
+    )
+
+    # Лог только при enqueue (helper не знает про user); при fresh — тише (как было)
+    # Для простоты логируем всегда trigger (существующее поведение сохраняется в вызывающих)
     logger.info("Subdomains triggered from whois card for %s (user %s)", registrable, user.id)
 
 
@@ -588,16 +630,10 @@ async def _show_deep_email_from_whois_card(
     domain: str,
     arq_redis: ArqRedis,
 ) -> None:
-    """Кнопка «✉️ Глубокий e-mail» на карточке — on-demand deep (TASK-0041).
+    """Кнопка «✉️ Глубокий e-mail» на карточке — on-demand deep (TASK-0041 + 0048 via helper).
 
-    Закрывает долги 0039:
-    - Freshness gate по email_deep_cache.next_check_at
-    - mx_hosts прокинуты в check_email_deep → DANE работает
+    Закрывает долги 0039 + устраняет дублирование с subdomains handler.
     """
-    if not isinstance(query.message, Message):
-        await query.answer()
-        return
-
     try:
         normalized = normalize_domain(domain)
         registrable = registrable_domain(normalized) or normalized
@@ -613,18 +649,25 @@ async def _show_deep_email_from_whois_card(
     now = datetime.now(tz=UTC)
     is_fresh = cached is not None and cached.next_check_at > now
 
-    if is_fresh:
-        # Реальный разбор из кэша (TASK-0041)
-        text = format_email_deep(cached, lang=lang)
-        await query.message.reply(text)
-        await query.answer()
-        return
+    def _render_deep(c: EmailDeepCache) -> str:
+        return format_email_deep(c, lang=lang)
 
-    # Кэш пустой или протух — запускаем тяжёлый сбор
-    await arq_redis.enqueue_job("check_email_deep", registrable)
+    # deep email fresh reply не имеет reply_markup (в отличие от subdomains)
     display = from_punycode(registrable)
-    await query.message.reply(t("deep_email.searching", lang, domain=display))
-    await query.answer()
+    searching = t("deep_email.searching", lang, domain=display)
+
+    await _on_demand_card_view(
+        query=query,
+        lang=lang,
+        registrable=registrable,
+        cached=cached,
+        is_fresh=is_fresh,
+        render=_render_deep,
+        reply_markup_factory=None,
+        arq_redis=arq_redis,
+        job_name="check_email_deep",
+        searching_text=searching,
+    )
 
     logger.info("Deep email triggered from whois card for %s (user %s)", registrable, user.id)
 

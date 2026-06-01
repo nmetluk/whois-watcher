@@ -50,8 +50,9 @@ Defense-in-depth: обернуть `html.escape(...)` все недоверен�
 
 ## Коммиты (на ветке)
 
+- 41fe2e9 — chore(TASK-0049): status in_review + session report path via handoff.py
+- 697815a — feat(TASK-0049): html.escape in WHOIS/DNS/SSL/email/problem change notifiers
 - 332ddde — chore(TASK-0049): claim task (owner: grok-4.3, branch set)
-- (далее после review/готовности) impl commits по группам notifiers + tests
 
 ## Проверки
 

@@ -52,6 +52,7 @@ async def test_success_calls_fetch_and_upserts() -> None:
         patch("src.tasks.check_email_deep.EmailDeepCacheRepository") as mock_repo_cls,
     ):
         mock_session = MagicMock()
+        mock_session.get = AsyncMock(return_value=None)
         mock_get_session.return_value.__aenter__.return_value = mock_session
 
         mock_fetch.return_value = fake_result
@@ -65,7 +66,7 @@ async def test_success_calls_fetch_and_upserts() -> None:
         result = await check_email_deep(ctx, "example.com")
 
         assert result["status"] == "success"
-        mock_fetch.assert_awaited_once_with("example.com")
+        mock_fetch.assert_awaited_once_with("example.com", mx_hosts=None)
         mock_repo.upsert.assert_awaited()
 
 
@@ -83,6 +84,7 @@ async def test_error_from_collector_calls_update_fail() -> None:
         patch("src.tasks.check_email_deep.EmailDeepCacheRepository") as mock_repo_cls,
     ):
         mock_session = MagicMock()
+        mock_session.get = AsyncMock(return_value=None)
         mock_get_session.return_value.__aenter__.return_value = mock_session
 
         mock_fetch.return_value = err

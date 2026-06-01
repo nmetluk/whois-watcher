@@ -79,4 +79,4 @@ Defense-in-depth: обернуть `html.escape(...)` все недоверен�
 
 ## PR
 
-- TBD — будет открыт после статуса in_review и validate.
+- https://github.com/nmetluk/whois-watcher/pull/34 — open, готов к ревью (CI должен пройти).

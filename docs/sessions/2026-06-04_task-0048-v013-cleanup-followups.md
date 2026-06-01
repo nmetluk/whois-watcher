@@ -67,4 +67,5 @@
 
 ## PR
 
-- (будет) — open, готов к ревью.
+- #33 — open (готов к ревью)
+  https://github.com/nmetluk/whois-watcher/pull/33

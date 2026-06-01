@@ -9,7 +9,7 @@ depends_on: [TASK-0041, TASK-0042]
 branch: task/0048-v013-cleanup-followups
 owner: grok
 session: docs/sessions/2026-06-04_task-0048-v013-cleanup-followups.md
-pr: ""
+pr: "#33"
 created: 2026-06-02
 ---
 

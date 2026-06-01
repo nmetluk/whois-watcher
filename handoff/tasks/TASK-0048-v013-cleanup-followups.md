@@ -24,26 +24,61 @@ created: 2026-06-02
 
 Закрыть накопленные 🟡/🟢 ниты из аудита v0.13 одной пачкой.
 
-## Объём (каждый пункт — отдельный коммит)
+## Объём (каждый пункт — отдельный коммит). Решения уже приняты — следовать.
 
-1. 🟡 **callback_data guard на длинном домене.** Кнопки `deep_email`/
-   `subdomains` (и существующие follow/unfollow/raw) несут полный `domain` в
-   `WhoisAction` → на длинном FQDN пара action+domain может превысить 64 байта
-   Telegram (урок TASK-0024). Добавить guard-тест с max-длинным доменом; при
-   реальном переполнении — перейти на idx/registrable для этих действий.
-2. 🟡 **Общий on-demand-helper.** Вынести из `whois.py` общий хелпер для
-   «кэш→freshness→render | enqueue+ищу» и переиспользовать в
-   `_show_subdomains_from_whois_card` и `_show_deep_email_from_whois_card`
-   (сейчас дублируют паттерн).
-3. 🟢 **SPF root-lookup.** `src/email_intel/spf_resolver.py`: корневой lookup
-   домена не должен считаться в лимите 10 (RFC 7208 §4.6.4 считает только
-   include/redirect/a/mx/ptr/exists). Скорректировать счётчик или задокументировать
-   намеренную строгость.
-4. 🟢 **SPF `all` в sources.** Отфильтровать механизм `all` (`-all`/`~all`/
-   `?all`/`+all`) из `sources` — он не источник.
-5. 🟢 **DMARC compact через locale-ключ.** `src/services/formatters.py`:
-   заменить `t("commands.whois.email_no_dmarc").split(":")[-1].strip()` на
-   отдельный locale-ключ (ru/en паритет).
+1. 🟡 **callback_data ≤ 64 для `deep_email`/`subdomains`.** Эти две кнопки
+   работают по **registrable-родителю** (enumeration/deep идут на eTLD+1), а
+   хэндлеры всё равно делают `registrable_domain(...)`. **Решение:** в
+   `whois_actions` (`src/bot/keyboards.py`) класть в callback этих двух кнопок
+   `registrable_domain(domain)`, а не полный `domain` — короче и семантически
+   верно. (`follow`/`unfollow`/`raw` **не трогать** — им нужен точный домен;
+   их overflow — отдельный пре-существующий долг, вне области.)
+   Хэндлеры `_show_subdomains_from_whois_card`/`_show_deep_email_from_whois_card`
+   уже зовут `registrable_domain` — оставить (idempotent: registrable от
+   registrable = он сам).
+   **Тест:** построить callback для длинного домена (напр.
+   `"a" * 60 + ".example.com"`) и проверить `len(pack().encode()) <= 64`.
+
+2. 🟡 **Общий on-demand-helper.** Вынести в `whois.py` (или
+   `src/bot/handlers/_card_helpers.py`) функцию-шаблон и переиспользовать в обоих
+   хэндлерах кнопок. Предлагаемая сигнатура (callable-инъекция, чтобы не тащить
+   зависимости):
+   ```python
+   async def _on_demand_card_view(
+       *,
+       query: CallbackQuery,
+       lang: str,
+       registrable: str,
+       cached,                       # запись кэша или None
+       is_fresh: bool,               # уже посчитанная свежесть
+       render: Callable[[Any], str], # cached -> текст (только если is_fresh)
+       reply_markup_factory,         # cached -> InlineKeyboardMarkup | None
+       arq_redis: ArqRedis,
+       job_name: str,                # "check_subdomains" | "check_email_deep"
+       searching_text: str,          # локализованный «⏳ ищу…»
+   ) -> None: ...
+   ```
+   Внутри: `if cached is not None and is_fresh: reply(render(cached), …)` иначе
+   `enqueue_job(job_name, registrable)` + reply(searching_text). Оба
+   существующих хэндлера должны только готовить аргументы и звать helper.
+
+3. 🟢 **SPF root-lookup не считать в лимите 10.** В
+   `src/email_intel/spf_resolver.py` корневой TXT-lookup домена не должен
+   уменьшать бюджет (RFC 7208 §4.6.4: считаются только механизмы, вызывающие
+   DNS — include/redirect/a/mx/ptr/exists; начальная проверка домена не
+   считается). Сейчас `current_lookups = _lookups + 1` инкрементит на каждом
+   уровне включая корень. **Решение:** не инкрементить за сам факт входа в
+   домен; увеличивать счётчик только при переходе в `include`/`redirect`.
+   Обновить тест на превышение (порог сместится на 1).
+
+4. 🟢 **SPF `all` не в sources.** В сборке `terminal` отфильтровать токен
+   механизма `all` (`-all`/`~all`/`?all`/`+all`, регистронезависимо) — он не
+   источник, только модификатор результата.
+
+5. 🟢 **DMARC compact через locale-ключ.** В `src/services/formatters.py`
+   заменить `t("commands.whois.email_no_dmarc").split(":")[-1].strip()` на новый
+   ключ `commands.whois.email_dmarc_none_compact` (напр. ru «нет», en «none»);
+   добавить в ru и en (инвариант `test_all_ru_keys_present_in_en`).
 
 ## Миграции БД
 
@@ -51,9 +86,13 @@ created: 2026-06-02
 
 ## Инварианты (защитить тестами)
 
-- callback_data ≤ 64 байт на max-длинном домене.
-- SPF: sources без `all`-механизма; lookup_count по скорректированному правилу.
-- DMARC compact-текст из явного ключа (не split).
+- `deep_email`/`subdomains` callback_data ≤ 64 байт на длинном домене; в
+  callback — registrable.
+- Оба хэндлера кнопок используют общий `_on_demand_card_view` (нет дублирующего
+  кэш→freshness→enqueue кода).
+- SPF: `sources` без `all`-механизма; `lookup_count` без учёта корневого
+  lookup (тест превышения обновлён).
+- DMARC compact-текст из ключа `email_dmarc_none_compact` (не split).
 
 ## Definition of Done
 

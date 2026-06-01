@@ -1,15 +1,15 @@
 ---
 id: TASK-0044
 title: Релиз v0.13.0 — deep email + on-demand views (ADR 040)
-status: open
+status: in_review
 milestone: v0.13.0
 adr: 040
 area: docs
 depends_on: [TASK-0043, TASK-0047]
-branch: ""
-owner: ""
-session: ""
-pr: ""
+branch: task/0044-release-v0-13-0
+owner: grok
+session: docs/sessions/2026-06-03_task-0044-release-v0-13-0.md
+pr: "#32"
 created: 2026-05-31
 ---
 

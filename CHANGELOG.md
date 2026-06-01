@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] — 2026-06-03
+
+Deep email (SPF include-резолвинг + лимит lookups, MTA-STS, TLS-RPT, DANE/TLSA, BIMI) + on-demand deep-views в карточке `/whois` (ADR 040). Кнопки «✉️ Глубокий e-mail» и «🛰 Поддомены». Инлайн MX + статус SPF/DMARC. Фикс свежести карточки. Anti-SSRF + строгий TXT-матч для MTA-STS (TASK-0047). Все блокеры аудита v0.13 закрыты (0038–0042, 0045–0047).
+
+### Added — Deep email + on-demand views (ADR 040)
+
+- **Инлайн MX + статус** в первом сообщении `/whois`: MX-хосты + краткий режим SPF (с include) + политика DMARC (1–2 строки). «Здоровье почты с одного взгляда».
+- **Кнопка «✉️ Глубокий e-mail»**: on-demand глубокий разбор (ARQ + кэш 10 мин). SPF с рекурсивным include/redirect (лимит 10 lookups по RFC 7208, флаг exceeds, перечень sources); MTA-STS (TXT + policy fetch: mode, mx[], max_age); TLS-RPT (rua); DANE/TLSA (top-N MX); BIMI (logo/VMC). Отдельное сообщение-карта почтовой зрелости. Graceful degradation на всех этапах.
+- **Кнопка «🛰 Поддомены»**: on-demand, переиспользует существующий поток enumeration (ADR 037/crt.sh), без дублирования. Показ списка + opt-in «Отслеживать».
+- **Фикс свежести**: пустой кэш SSL/DNS/email-intel/deep → плейсхолдер «⏳ собираю SSL/DNS/MX…» + явный хинт «🔄 Обновить» (вместо пустоты).
+- **MTA-STS hardening (TASK-0047)**: строгий префиксный матч `v=STSv1` (без ложных срабатываний на подстроку «sts»); anti-SSRF — резолв A/AAAA + отсечение приватных/loopback/link-local/ULA/reserved/multicast IP **до** HTTPS GET; защита от DNS-rebinding (кастомный `_SafeMtaStsResolver` + `TCPConnector`, пин IP, `close()`).
+
+### Internal
+
+- Новые: `src/email_intel/{deep_client,deep_parser,deep_types}.py`; ARQ-задача `check_email_deep` (on-demand, redis-guard); таблица `email_deep_cache` (TASK-0039, миграция 20260531).
+- Форматтер `format_email_deep` (с real-`t()` тестами, html.escape, exceeds).
+- 22+ юнит-теста deep-парсеров/коллекторов (SPF циклы/лимит, MTA-STS режимы, graceful); тесты кнопок + freshness (TASK-0046); anti-drift (убраны `getattr` на ORM, TASK-0045).
+- Моки со `spec`/`autospec`; правило CLAUDE.md о real-`t()` в рендер-тестах форматтеров (урок KeyError 'exceeds' в 0046).
+- Alembic-head: `20260531_0000_add_email_deep_cache_table` (single-head, обратимая).
+
 ## [0.12.0] — 2026-05-31
 
 Periodic subdomain monitoring (ADR 038) поверх enumeration (ADR 037). Все блокеры аудита v0.12 закрыты (TASK-0033–0037).

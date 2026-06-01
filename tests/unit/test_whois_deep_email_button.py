@@ -103,11 +103,23 @@ class TestShowDeepEmailFromWhoisCard:
         query.answer.assert_called_once()
 
     def test_deep_email_callback_data_size_guard(self) -> None:
-        """callback_data для deep_email кнопки должен быть ≤ 64 байт."""
+        """callback_data для deep_email кнопки ≤64 байт на длинном FQDN (TASK-0048: keyboards нормализует в registrable только для sub/deep)."""
         from src.bot.keyboards import WhoisAction
+        from src.utils.domains import registrable_domain
 
+        # Короткий
         data = WhoisAction(action="deep_email", domain="example.com").pack()
         assert len(data.encode("utf-8")) <= 64
 
-        # WhoisAction сам валидирует длину — проверяем, что нормальный домен проходит
-        # (длинные домены будут отваливаться на уровне CallbackData, это ожидаемо)
+        # Длинный FQDN (как пришло бы из whois-карточки поддомена)
+        long_sub = "a" * 60 + ".example.com"
+        # В keyboards для action=deep_email (и subdomains) мы теперь кладём registrable
+        reg = registrable_domain(long_sub) or long_sub
+        data_long = WhoisAction(action="deep_email", domain=reg).pack()
+        assert len(data_long.encode("utf-8")) <= 64
+        assert "example.com" in data_long
+        assert len(long_sub.encode("utf-8")) > 64  # исходный не влез бы
+
+        # Прямой конструктор с полным длинным FQDN для deep_email упадёт в aiogram (guard) — это ожидаемо;
+        # именно поэтому мы нормализуем *внутри* whois_actions только для этих двух кнопок.
+        # (Для follow/refresh/raw/wishlist переполнение — отдельный pre-existing долг, не в scope 0048.)

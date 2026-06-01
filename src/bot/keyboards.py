@@ -19,6 +19,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from src.locales import t
+from src.utils.domains import registrable_domain
 
 if TYPE_CHECKING:
     from src.db.models import UserDomain
@@ -226,14 +227,18 @@ def whois_actions(
         callback_data=WhoisAction(action="raw", domain=domain).pack(),
     )
     # TASK-0042 (ADR 040): reuse /subdomains enumeration from the card
+    # TASK-0048: для subdomains/deep_email в callback кладём registrable (короче + семантично),
+    # чтобы не превышать 64 байта Telegram на длинных FQDN (карточка поддомена).
+    # Хэндлеры idempotent (registrable от registrable = сам).
+    reg = registrable_domain(domain) or domain
     builder.button(
         text=t("button.subdomains", lang),
-        callback_data=WhoisAction(action="subdomains", domain=domain).pack(),
+        callback_data=WhoisAction(action="subdomains", domain=reg).pack(),
     )
     # TASK-0041 (ADR 040): on-demand deep email (SPF/MTA-STS/DANE/BIMI)
     builder.button(
         text=t("button.deep_email", lang),
-        callback_data=WhoisAction(action="deep_email", domain=domain).pack(),
+        callback_data=WhoisAction(action="deep_email", domain=reg).pack(),
     )
     if is_tracked:
         builder.button(

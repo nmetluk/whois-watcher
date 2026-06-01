@@ -351,7 +351,8 @@ def format_email_block(
         if cache.dmarc_pct is not None and cache.dmarc_pct < 100:
             dmarc_text += f" {cache.dmarc_pct}%"
     else:
-        dmarc_text = t("commands.whois.email_no_dmarc", lang).split(":")[-1].strip()
+        # TASK-0048: dedicated compact key instead of fragile split on the full "DMARC: ..." string
+        dmarc_text = t("commands.whois.email_dmarc_none_compact", lang, default="none")
 
     status_line = t("commands.whois.email_compact_status", lang, spf=spf_text, dmarc=dmarc_text)
     lines.append("└ " + status_line)

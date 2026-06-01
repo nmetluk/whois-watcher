@@ -1,15 +1,15 @@
 ---
 id: TASK-0048
 title: v0.13 cleanup — callback-guard, on-demand-helper, SPF/DMARC ниты
-status: open
+status: in_review
 milestone: v0.13.1
 adr: 040
 area: code
 depends_on: [TASK-0041, TASK-0042]
-branch: ""
-owner: ""
-session: ""
-pr: ""
+branch: task/0048-v013-cleanup-followups
+owner: grok
+session: docs/sessions/2026-06-04_task-0048-v013-cleanup-followups.md
+pr: "#33"
 created: 2026-06-02
 ---
 

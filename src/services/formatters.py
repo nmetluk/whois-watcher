@@ -614,10 +614,9 @@ def format_email_deep(
         lines.extend(bimi_lines)
 
     # Footer
-    if getattr(cache, "fetched_at", None):
+    fetched_at = getattr(cache, "fetched_at", None)
+    if fetched_at is not None:
         lines.append("")
-        lines.append(
-            t("deep_email.fetched_at", lang, date=format_date(cache.fetched_at, lang=lang))
-        )
+        lines.append(t("deep_email.fetched_at", lang, date=format_date(fetched_at, lang=lang)))
 
     return "\n".join(lines)

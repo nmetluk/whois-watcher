@@ -73,7 +73,7 @@ async def check_email_deep(ctx: dict[str, Any], domain: str) -> dict[str, Any]:
             intel = await intel_repo.get(domain)
             mx_hosts: list[str] | None = None
             if intel and intel.mx_records:
-                mx_hosts = [m.get("host") for m in intel.mx_records if m.get("host")]
+                mx_hosts = [h for m in intel.mx_records if (h := m.get("host")) is not None]
 
         # Передаём mx_hosts → DANE будет работать (закрыт долг из 0039)
         result = await fetch_deep_email(domain, mx_hosts=mx_hosts)

@@ -12,13 +12,16 @@ Graceful degradation: отсутствие записи = валидное со�
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import logging
+import socket
 from collections.abc import Awaitable, Callable
 from typing import Any
 
 import aiohttp
 import dns.asyncresolver
 import dns.exception
+from aiohttp.abc import AbstractResolver, ResolveResult
 
 from src.email_intel.deep_parser import (
     parse_bimi,
@@ -165,17 +168,54 @@ async def _fetch_spf(
         return SpfResolution(sources=[], lookup_count=0, exceeds_limit=False)
 
 
+class _SafeMtaStsResolver(AbstractResolver):
+    """Resolver that only returns pre-approved safe public IPs for a given host.
+
+    Used to prevent DNS rebinding attacks when fetching MTA-STS policy.
+    """
+
+    def __init__(self, safe_ips: list[str]):
+        self._safe_ips = safe_ips
+
+    async def resolve(self, host: str, port: int = 0, family: int = 0) -> list[ResolveResult]:
+        results: list[ResolveResult] = []
+        for ip_str in self._safe_ips:
+            try:
+                ip = ipaddress.ip_address(ip_str)
+                family_val = socket.AF_INET if ip.version == 4 else socket.AF_INET6
+                results.append(
+                    {
+                        "hostname": host,
+                        "host": ip_str,
+                        "port": port,
+                        "family": family_val,
+                        "proto": 0,
+                        "flags": 0,
+                    }
+                )
+            except ValueError:
+                continue
+        return results
+
+    async def close(self) -> None:
+        """Required by aiohttp.AbstractResolver in versions >=3.9."""
+        return None
+
+
 async def _fetch_mta_sts(domain: str, resolver: dns.asyncresolver.Resolver) -> MtaStsResult:
-    """TXT _mta-sts.<d> + HTTPS policy fetch (no redirects, size limit)."""
+    """TXT _mta-sts.<d> + HTTPS policy fetch (no redirects, size limit).
+
+    Includes strict TXT matching and strong anti-SSRF + DNS-rebinding protection.
+    """
     mta_sts_domain = f"{MTA_STS_TXT_PREFIX}{domain}"
 
-    # 1. TXT проверка (наличие и версия)
+    # 1. TXT проверка (наличие и версия) — строгий матч по префиксу v=STSv1
     txt_present = False
     try:
         ans = await resolver.resolve(mta_sts_domain, "TXT", lifetime=DNS_TOTAL_TIMEOUT)
         for r in ans:
-            txt = r.to_unicode()  # dnspython dynamic rdata
-            if "v=sts1" in txt.lower() or "sts" in txt.lower():
+            txt = r.to_unicode().strip()
+            if txt.lower().startswith("v=stsv1"):
                 txt_present = True
                 break
     except dns.exception.DNSException:
@@ -187,7 +227,97 @@ async def _fetch_mta_sts(domain: str, resolver: dns.asyncresolver.Resolver) -> M
     if not txt_present:
         return MtaStsResult(txt_present=False, reachable=False)
 
-    # 2. HTTPS policy
+    # 2. Anti-SSRF + DNS-rebinding protection:
+    #    - Resolve A and AAAA independently (as required)
+    #    - Collect only safe public IPs
+    #    - Use a custom resolver for the actual HTTP connection so that
+    #      aiohttp never sees (and cannot re-resolve to) a private IP.
+    safe_ips: list[str] = []
+
+    # Resolve A independently
+    try:
+        a_ans = await resolver.resolve(mta_sts_domain, "A", lifetime=DNS_TOTAL_TIMEOUT)
+        for r in a_ans:
+            try:
+                ip = ipaddress.ip_address(r.to_text())
+                if not (
+                    ip.is_private
+                    or ip.is_loopback
+                    or ip.is_link_local
+                    or ip.is_reserved
+                    or ip.is_multicast
+                ):
+                    safe_ips.append(str(ip))
+            except ValueError:
+                continue
+    except dns.exception.DNSException:
+        pass
+
+    # Resolve AAAA independently
+    try:
+        aaaa_ans = await resolver.resolve(mta_sts_domain, "AAAA", lifetime=DNS_TOTAL_TIMEOUT)
+        for r in aaaa_ans:
+            try:
+                ip = ipaddress.ip_address(r.to_text())
+                if not (
+                    ip.is_private
+                    or ip.is_loopback
+                    or ip.is_link_local
+                    or ip.is_reserved
+                    or ip.is_multicast
+                ):
+                    safe_ips.append(str(ip))
+            except ValueError:
+                continue
+    except dns.exception.DNSException:
+        pass
+
+    if not safe_ips:
+        logger.warning("mta-sts %s has no safe public IPs — SSRF blocked", domain)
+        return MtaStsResult(txt_present=True, reachable=False)
+
+    # 3. Perform HTTPS request using a custom resolver that only knows our safe IPs.
+    #    This pins the connection to pre-approved public addresses and defeats rebinding.
+    safe_resolver = _SafeMtaStsResolver(safe_ips)
+    connector = aiohttp.TCPConnector(resolver=safe_resolver)
+
+    policy_url = f"https://mta-sts.{domain}/.well-known/mta-sts.txt"
+    timeout = aiohttp.ClientTimeout(total=HTTP_TOTAL_TIMEOUT)
+
+    try:
+        async with (
+            aiohttp.ClientSession(connector=connector, timeout=timeout) as session,
+            session.get(policy_url, allow_redirects=False) as resp,
+        ):
+            if resp.status != 200:
+                logger.debug("mta-sts http %s -> %s", policy_url, resp.status)
+                return MtaStsResult(txt_present=True, reachable=False)
+
+            try:
+                body = await resp.content.read(MTA_STS_MAX_BODY)
+                policy_text = body.decode("utf-8", errors="replace")
+            except Exception as exc:
+                logger.warning("mta-sts body read error %s: %s", domain, exc)
+                return MtaStsResult(txt_present=True, reachable=False)
+
+            result = parse_mta_sts_policy(policy_text)
+            return MtaStsResult(
+                txt_present=True,
+                policy_mode=result.policy_mode,
+                mx=result.mx,
+                max_age=result.max_age,
+                reachable=True,
+            )
+
+    except TimeoutError:
+        logger.debug("mta-sts timeout %s", domain)
+        return MtaStsResult(txt_present=True, reachable=False)
+    except aiohttp.ClientError as exc:
+        logger.debug("mta-sts client error %s: %s", domain, exc)
+        return MtaStsResult(txt_present=True, reachable=False)
+    except Exception as exc:
+        logger.warning("mta-sts unexpected %s: %s", domain, exc)
+        return MtaStsResult(txt_present=True, reachable=False)
     policy_url = f"https://mta-sts.{domain}/.well-known/mta-sts.txt"
     timeout = aiohttp.ClientTimeout(total=HTTP_TOTAL_TIMEOUT)
 

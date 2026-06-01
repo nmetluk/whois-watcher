@@ -1,7 +1,7 @@
 ---
 id: TASK-0047
 title: MTA-STS hardening — anti-SSRF (отсечение приватных IP) + корректный TXT-матч
-status: in_review
+status: done
 milestone: v0.13.0
 adr: 040
 area: code
@@ -11,12 +11,17 @@ owner: claude-code
 session: docs/sessions/2026-06-03_task-0047-mta-sts-ssrf-hardening.md
 pr: ""
 created: 2026-06-02
+completed: 2026-06-03
 ---
 
-# ⚠️ СТАТУС РЕВЬЮ (2026-06-03, круг 4) — НЕ мержить, осталась 1 правка (мок-механика теста)
+# ✅ СТАТУС (2026-06-03, круг 5) — merged
 
-> **Исполнителю: перечитай этот блок — здесь точная причина и готовый сниппет.**
-> Security-код корректен. Затык — чисто в моке aiohttp. Ниже разбор.
+> Security-код приехал от исполнителя (anti-SSRF + DNS-rebinding через кастомный
+> `TCPConnector`/`_SafeMtaStsResolver` + `close()` + строгий TXT-матч + независимые
+> A/AAAA). Исполнитель не смог сделать happy-path тест зелёным (затык в моке
+> aiohttp). **Архитектор применил исправленный тест сам** (`session.get` —
+> синхронный `MagicMock`, отдающий async-CM; без патча `_SafeMtaStsResolver` —
+> регресс-гард на `close()`) и смержил. Разбор затыка — ниже.
 
 ## ✅ Что уже сделано правильно (НЕ переделывать)
 

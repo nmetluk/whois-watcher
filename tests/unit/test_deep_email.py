@@ -18,6 +18,7 @@ import dns.resolver
 import pytest
 
 from src.email_intel.deep_client import (
+    _fetch_mta_sts,
     fetch_bimi,
     fetch_dane,
     fetch_deep_email,
@@ -279,3 +280,122 @@ async def test_deep_collectors_use_autospec_style_mocks() -> None:
     res = await resolve_spf("ex.com", resolve_txt=resolve_txt)
     assert res.exceeds_limit is False
     resolve_txt.assert_called()  # type: ignore[attr-defined]
+
+
+# ---------------------------------------------------------------------
+# TASK-0047: MTA-STS hardening tests (anti-SSRF + strict TXT match)
+# ---------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_fetch_mta_sts_strict_txt_match():
+    """Только v=STSv1 (с ведущими пробелами) считается валидным. Подстрока 'sts' — нет."""
+    with patch("src.email_intel.deep_client.dns.asyncresolver.Resolver") as mock_res_cls:
+        mock_res = MagicMock()
+
+        async def fake_resolve(name, rdtype, **kw):
+            if rdtype == "TXT" and name.startswith("_mta-sts."):
+                # Возвращаем разные TXT в зависимости от домена для теста
+                if "good" in name:
+                    return [MagicMock(to_unicode=lambda: "  v=STSv1; id=12345")]
+                if "bad-substring" in name:
+                    return [MagicMock(to_unicode=lambda: "random costs sts text")]
+                return []
+            return []
+
+        mock_res.resolve = AsyncMock(side_effect=fake_resolve)
+        mock_res_cls.return_value = mock_res
+
+        # Хорошая запись
+        res_good = await _fetch_mta_sts("good.example.com", resolver=mock_res)
+        assert res_good.txt_present is True
+
+        # Плохая (только подстрока)
+        res_bad = await _fetch_mta_sts("bad-substring.example.com", resolver=mock_res)
+        assert res_bad.txt_present is False
+
+
+@pytest.mark.asyncio
+async def test_fetch_mta_sts_rejects_private_ip_no_get():
+    """При резолве в приватный/loopback IP — GET не выполняется, reachable=False."""
+    with (
+        patch("src.email_intel.deep_client.dns.asyncresolver.Resolver") as mock_res_cls,
+        patch("src.email_intel.deep_client.aiohttp.ClientSession") as mock_session_cls,
+    ):
+        mock_res = MagicMock()
+
+        async def fake_resolve(name, rdtype, **kw):
+            if rdtype == "TXT":
+                return [MagicMock(to_unicode=lambda: "v=STSv1; id=abc")]
+            if rdtype == "A":
+                # Приватный IP
+                return [MagicMock(to_text=lambda: "10.0.0.5")]
+            if rdtype == "AAAA":
+                return []
+            return []
+
+        mock_res.resolve = AsyncMock(side_effect=fake_resolve)
+        mock_res_cls.return_value = mock_res
+
+        mock_session = AsyncMock()
+        mock_session_cls.return_value.__aenter__.return_value = mock_session
+
+        result = await _fetch_mta_sts("attacker.example.com", resolver=mock_res)
+
+        assert result.txt_present is True
+        assert result.reachable is False
+        # Самое важное — сессия не создавалась / GET не звали
+        mock_session_cls.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_fetch_mta_sts_happy_path_public_ip():
+    """Публичный IP — реальный _fetch_mta_sts доходит до GET (регресс-гард на close()).
+
+    Ключ корректного мока aiohttp: ``session.get(...)`` — НЕ корутина, а синхронно
+    возвращаемый async-context-manager. Поэтому ``session.get`` — синхронный
+    ``MagicMock``, отдающий объект с ``__aenter__``/``__aexit__`` как ``AsyncMock``.
+    ``_SafeMtaStsResolver``/``TCPConnector`` НЕ патчим — их реальная инстанциация
+    и есть регресс-гард на ``close()`` (без него был бы TypeError).
+    """
+    with (
+        patch("src.email_intel.deep_client.dns.asyncresolver.Resolver") as mock_res_cls,
+        patch("src.email_intel.deep_client.aiohttp.ClientSession") as mock_session_cls,
+    ):
+        mock_res = MagicMock()
+
+        async def fake_resolve(name, rdtype, **kw):
+            if rdtype == "TXT":
+                return [MagicMock(to_unicode=lambda: "v=STSv1; id=xyz")]
+            if rdtype in ("A", "AAAA"):
+                return [MagicMock(to_text=lambda: "1.2.3.4")]  # публичный
+            return []
+
+        mock_res.resolve = AsyncMock(side_effect=fake_resolve)
+        mock_res_cls.return_value = mock_res
+
+        # Ответ, который отдаёт async-CM от session.get(...)
+        mock_resp = MagicMock()
+        mock_resp.status = 200
+        mock_resp.content.read = AsyncMock(
+            return_value=b"version: STSv1\nmode: enforce\nmx: mail.example.com\nmax-age: 86400"
+        )
+        resp_cm = MagicMock()
+        resp_cm.__aenter__ = AsyncMock(return_value=mock_resp)
+        resp_cm.__aexit__ = AsyncMock(return_value=False)
+
+        # session — async-CM от ClientSession(...); .get — СИНХРОННЫЙ MagicMock
+        mock_session = MagicMock()
+        mock_session.get = MagicMock(return_value=resp_cm)
+        session_cm = MagicMock()
+        session_cm.__aenter__ = AsyncMock(return_value=mock_session)
+        session_cm.__aexit__ = AsyncMock(return_value=False)
+        mock_session_cls.return_value = session_cm
+
+        result = await _fetch_mta_sts("good.example.com", resolver=mock_res)
+
+        assert result.txt_present is True
+        assert result.reachable is True
+        assert result.policy_mode == "enforce"
+        assert "mail.example.com" in result.mx
+        mock_session.get.assert_called_once()  # реальный путь дошёл до GET

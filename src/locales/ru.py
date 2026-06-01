@@ -433,6 +433,7 @@ LOCALE: dict[str, str] = {
     "commands.whois.email_spf_mode.none": "нет записи",
     "commands.whois.email_line_dmarc": "DMARC: {policy}",
     "commands.whois.email_no_dmarc": "DMARC: не настроен",
+    "commands.whois.email_dmarc_none_compact": "нет",
     "commands.whois.email_dmarc_policy.none": "нет",
     "commands.whois.email_dmarc_policy.quarantine": "карантин",
     "commands.whois.email_dmarc_policy.reject": "отклонять",

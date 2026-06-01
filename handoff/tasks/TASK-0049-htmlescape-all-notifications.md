@@ -1,13 +1,13 @@
 ---
 id: TASK-0049
 title: html.escape во всех change-нотификациях (defense-in-depth)
-status: open
+status: claimed
 milestone: v0.14.0
 adr: ""
 area: code
 depends_on: []
-branch: ""
-owner: ""
+branch: task/0049-htmlescape-all-notifications
+owner: grok-4.3
 session: ""
 pr: ""
 created: 2026-06-04

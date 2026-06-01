@@ -1,7 +1,8 @@
 ---
 id: TASK-0048
 title: v0.13 cleanup — callback-guard, on-demand-helper, SPF/DMARC ниты
-status: in_review
+status: done
+completed: 2026-06-04
 milestone: v0.13.1
 adr: 040
 area: code

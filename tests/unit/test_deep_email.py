@@ -153,7 +153,9 @@ async def test_spf_recursive_include() -> None:
     assert (
         res.lookup_count >= 1
     )  # root не заряжается; только include-механизм (сдвиг на 1 после TASK-0048)
-    assert "-all" in res.sources  # терминалы со всех уровней собраны
+    # all-механизмы (-all/~all) — модификаторы, не источники: отфильтрованы (TASK-0048 #4)
+    assert "-all" not in res.sources
+    assert "~all" not in res.sources
 
 
 @pytest.mark.asyncio

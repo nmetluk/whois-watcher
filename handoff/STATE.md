@@ -212,9 +212,15 @@ DNS-rebinding (кастомный `TCPConnector`/`_SafeMtaStsResolver` + `close(
 тег `v0.13.0`, подготовка к деплою. Все блокеры аудита (0043/0047) закрыты;
 фича-код + тесты + anti-drift в main.
 
-**Следующий шаг:** 🟡/🟢 **TASK-0048** (v0.13 cleanup: callback-guard на длинных
-доменах, общий on-demand-helper, SPF nit'ы, DMARC locale-ключ). После —
-roadmap **v1.0** (web-дашборд, публичный API, орг-аккаунты, Prometheus) + tech-debt.
+✅ **TASK-0048 закрыт** (PR #33, cleanup: callback→registrable для
+subdomains/deep_email, общий `_on_demand_card_view`, SPF lookup-счёт по RFC 7208
++ фильтр `all` из sources, DMARC compact через locale-ключ). Стале-ассерт
+`-all in sources` в `test_spf_recursive_include` поправлен архитектором при
+мерже (исполнитель не прогнал полный pytest — суит был бы красный).
+
+**Следующий шаг:** **деплой v0.13.0** (`bash scripts/deploy.sh`) после
+подтверждения зелёного CI на main. Дальше — roadmap **v1.0** (web-дашборд,
+публичный API, орг-аккаунты, Prometheus) + tech-debt.
 
 ---
 

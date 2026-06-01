@@ -9,7 +9,7 @@ depends_on: []
 branch: task/0049-htmlescape-all-notifications
 owner: grok-4.3
 session: docs/sessions/2026-06-05_task-0049-htmlescape-all-notifications.md
-pr: ""
+pr: https://github.com/nmetluk/whois-watcher/pull/34
 created: 2026-06-04
 ---
 

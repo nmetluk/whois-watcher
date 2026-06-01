@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import html
 import logging
 from datetime import datetime
 from typing import Any
@@ -67,14 +68,15 @@ def _format_value(value: object, lang: str) -> str:
     if value is None:
         return t("notifications.change.unknown", lang)
     if isinstance(value, list):
-        return (
+        raw = (
             ", ".join(str(item) for item in value)
             if value
             else t("notifications.change.unknown", lang)
         )
+        return html.escape(raw)
     if isinstance(value, datetime):
-        return value.strftime("%d.%m.%Y")
-    return str(value)
+        return html.escape(value.strftime("%d.%m.%Y"))
+    return html.escape(str(value))
 
 
 async def send_change_notice(
@@ -112,10 +114,11 @@ async def send_change_notice(
         if user.is_blocked:
             return
 
+        safe_domain = html.escape(domain)
         text = t(
             locale_key,
             user.language,
-            domain=domain,
+            domain=safe_domain,
             old=_format_value(old_value, user.language),
             new=_format_value(new_value, user.language),
         )

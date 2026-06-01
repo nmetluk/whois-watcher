@@ -14,6 +14,7 @@ wishlist-домен переходит из ``is_registered=True`` в ``False`` 
 
 from __future__ import annotations
 
+import html
 import logging
 from typing import Any
 
@@ -59,7 +60,8 @@ async def send_wishlist_available_notice(
         telegram_id = user.telegram_id
 
     display = from_punycode(domain)
-    title = t("notifications.wishlist.available.title", lang, domain=display)
+    safe_display = html.escape(display)
+    title = t("notifications.wishlist.available.title", lang, domain=safe_display)
     body = t("notifications.wishlist.available.body", lang)
     text = f"{title}\n\n{body}"
     keyboard = _build_keyboard(domain, lang=lang)

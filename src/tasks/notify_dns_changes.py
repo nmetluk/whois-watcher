@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import html
 import logging
 from typing import Any
 
@@ -71,10 +72,10 @@ _TYPE_MAP: dict[str, tuple[str, str, str]] = {
 
 
 def _format_records(records: list[str] | None) -> str:
-    """Форматирует список IP/NS для текста уведомления."""
+    """Форматирует список IP/NS для текста уведомления (с HTML-escape)."""
     if not records:
         return "—"
-    return ", ".join(records)
+    return ", ".join(html.escape(r) for r in records)
 
 
 async def send_dns_change_notice(
@@ -113,7 +114,8 @@ async def send_dns_change_notice(
         cache = await cache_repo.get(domain)
 
         # Контекстные параметры для локали
-        format_args: dict[str, str] = {"domain": domain}
+        safe_domain = html.escape(domain)
+        format_args: dict[str, str] = {"domain": safe_domain}
         if cache is not None:
             if change_type == "a_changed":
                 format_args["records"] = _format_records(cache.a_records)

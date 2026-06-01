@@ -105,8 +105,11 @@ async def resolve_spf(
 
     visited = visited | {normalized}
 
-    # Базовый lookup этого домена
-    current_lookups = _lookups + 1
+    # Базовый "lookup" этого домена (TXT для SPF записи).
+    # Корневой (и include/redirect target) fetch НЕ считается в лимите 10
+    # (RFC 7208 §4.6.4: считаются только механизмы, вызывающие доп. DNS).
+    # Инкремент только при переходе в include/redirect (см. рекурсивные вызовы).
+    current_lookups = _lookups
     if current_lookups > SPF_LOOKUP_LIMIT:
         return SpfResolution(sources=[], lookup_count=current_lookups, exceeds_limit=True)
 
@@ -150,7 +153,7 @@ async def resolve_spf(
             inc,
             resolve_txt=resolve_txt,
             _visited=visited,
-            _lookups=current_lookups,
+            _lookups=current_lookups + 1,  # include: mechanism costs +1 lookup
         )
         current_lookups = sub.lookup_count
         sources.extend(sub.sources)
@@ -167,7 +170,7 @@ async def resolve_spf(
                 redirect,
                 resolve_txt=resolve_txt,
                 _visited=visited,
-                _lookups=current_lookups,
+                _lookups=current_lookups + 1,  # redirect= mechanism costs +1 lookup
             )
             current_lookups = sub.lookup_count
             sources.extend(sub.sources)

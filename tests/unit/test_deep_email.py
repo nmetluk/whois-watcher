@@ -120,7 +120,8 @@ async def test_spf_no_record_returns_empty() -> None:
     res = await resolve_spf("example.com", resolve_txt=mock_resolve)
     assert res.sources == []
     assert res.exceeds_limit is False
-    assert res.lookup_count >= 1
+    # Root domain SPF fetch не считается в лимите (RFC 7208 §4.6.4) — после TASK-0048 может быть 0
+    assert res.lookup_count >= 0
 
 
 @pytest.mark.asyncio
@@ -149,7 +150,9 @@ async def test_spf_recursive_include() -> None:
     res = await resolve_spf("example.com", resolve_txt=resolve_txt)
     assert "ip4:216.58.0.0/16" in res.sources
     assert "_spf.google.com" not in res.sources  # include сам не в sources
-    assert res.lookup_count >= 2
+    assert (
+        res.lookup_count >= 1
+    )  # root не заряжается; только include-механизм (сдвиг на 1 после TASK-0048)
     assert "-all" in res.sources  # терминалы со всех уровней собраны
 
 

@@ -184,11 +184,9 @@ class TestOnConfirmStale:
     async def test_stale_token_does_not_raise(self) -> None:
         """Token не в карте → пишет stale, без исключения."""
         query = AsyncMock()
-        query.message = MagicMock()
-        # MagicMock не isinstance(Message) — заставим isinstance вернуть True.
         from aiogram.types import Message
 
-        query.message.__class__ = Message
+        query.message = MagicMock(spec=Message)
         query.message.edit_text = AsyncMock()
         callback = CmdArgCallback(action="yes", token="deadbeef")
         state = _state({"cmd": "add", "token_map": {}})
@@ -212,8 +210,7 @@ class TestOnConfirmStale:
         query = AsyncMock()
         from aiogram.types import Message
 
-        query.message = MagicMock()
-        query.message.__class__ = Message
+        query.message = MagicMock(spec=Message)
         query.message.edit_text = AsyncMock()
         token = "cafe1234"
         state = _state({"cmd": "add", "token_map": {token: "example.com"}})

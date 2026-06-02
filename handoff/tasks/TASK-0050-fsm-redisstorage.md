@@ -9,7 +9,7 @@ depends_on: []
 branch: task/0050-fsm-redisstorage
 owner: grok-4.3
 session: docs/sessions/2026-06-06_task-0050-fsm-redisstorage.md
-pr: ""
+pr: https://github.com/nmetluk/whois-watcher/pull/35
 created: 2026-06-04
 ---
 

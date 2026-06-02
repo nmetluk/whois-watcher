@@ -1,17 +1,25 @@
 ---
 id: TASK-0052
 title: Интеграционные тесты ARQ-тасок на реальных Postgres+Redis (pytest-docker)
-status: open
+status: done
 milestone: v0.14.0
 adr: ""
 area: code
 depends_on: []
-branch: ""
-owner: ""
-session: ""
-pr: ""
+branch: task/0052-arq-integration-tests
+owner: grok-4.3
+session: docs/sessions/2026-06-08_task-0052-arq-integration-tests.md
+pr: https://github.com/nmetluk/whois-watcher/pull/37
 created: 2026-06-04
+completed: 2026-06-08
 ---
+
+> ## ✅ Ревью архитектора (2026-06-08) — merged
+>
+> pytest-docker + маркеры `integration`/`arq`; conftest: CI → github-services
+> (postgres+redis уже в ci.yml), локально → pytest-docker compose. Реальные
+> `check_subdomains`/`check_email_deep` против настоящих Postgres+Redis (upsert,
+> redis-guard, enqueue). Тесты исполняются в CI (`pytest -v`, сервисы есть).
 
 # TASK-0052 — Интеграционные тесты ARQ (v0.14)
 

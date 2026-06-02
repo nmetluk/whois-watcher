@@ -6,11 +6,9 @@
 
 | ID | Статус | Майлстоун | ADR | Область | Тема | Ветка |
 |----|--------|-----------|-----|---------|------|-------|
-| TASK-0052 | open | v0.14.0 | — | code | Интеграционные тесты ARQ-тасок на реальных Postgres+Redis (pytest-docker) | — |
 | TASK-0053 | open | v0.14.0 | — | docs | Доки — MIGRATIONS.md + нормы дедупликации алертов (ADR 019) | — |
 | TASK-0054 | open | v0.14.0 | 041 | audit | Аудит v0.14 (стабилизация — FSM/Redis, html.escape, интеграц. тесты) | — |
 | TASK-0055 | open | v0.14.0 | 041 | docs | Релиз v0.14.0 — стабилизация (FSM/Redis, html.escape, тех-долг) | — |
-| TASK-0051 | in_review | v0.14.0 | — | code | DENIC — значок «expiry скрыт реестром» в /list и подсказка | task/0051-denic-expiry-hidden-marker |
 | TASK-0001 | done | v0.8.1 | 034 | code | Багфикс wishlist ↔ tracked (авто-промоут) | task/0001-wishlist-tracked-fix |
 | TASK-0002 | done | v0.9.0 | 035 | code | PSL — зависимость tldextract + src/utils/domains.py | task/0002-psl-utils-domains |
 | TASK-0003 | done | v0.9.0 | 035 | code | Схема user_domains (registrable_domain, is_subdomain) + WHOIS-джойны | task/0003-subdomain-schema-whois-joins |
@@ -61,3 +59,5 @@
 | TASK-0048 | done | v0.13.1 | 040 | code | v0.13 cleanup — callback-guard, on-demand-helper, SPF/DMARC ниты | task/0048-v013-cleanup-followups |
 | TASK-0049 | done | v0.14.0 | — | code | html.escape во всех change-нотификациях (defense-in-depth) | task/0049-htmlescape-all-notifications |
 | TASK-0050 | done | v0.14.0 | 041 | code | FSM MemoryStorage → RedisStorage (ADR 041) | task/0050-fsm-redisstorage |
+| TASK-0051 | done | v0.14.0 | — | code | DENIC — значок «expiry скрыт реестром» в /list и подсказка | task/0051-denic-expiry-hidden-marker |
+| TASK-0052 | done | v0.14.0 | — | code | Интеграционные тесты ARQ-тасок на реальных Postgres+Redis (pytest-docker) | task/0052-arq-integration-tests |

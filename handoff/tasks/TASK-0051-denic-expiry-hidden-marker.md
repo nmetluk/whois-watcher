@@ -1,7 +1,7 @@
 ---
 id: TASK-0051
 title: DENIC — значок «expiry скрыт реестром» в /list и подсказка
-status: in_review
+status: done
 milestone: v0.14.0
 adr: ""
 area: code
@@ -11,7 +11,17 @@ owner: grok-4.3
 session: docs/sessions/2026-06-07_task-0051-denic-expiry-hidden-marker.md
 pr: https://github.com/nmetluk/whois-watcher/pull/36
 created: 2026-06-04
+completed: 2026-06-07
 ---
+
+> ## ✅ Ревью архитектора (2026-06-07) — merged
+>
+> `is_expiry_hidden_by_registry` (PSL-suffix, конфигурируемо, graceful);
+> formatter показывает 🔒 + `line_expires_hidden`/`row_expiry_hidden` вместо
+> «нет данных». 🟢 Нит → аудит 0054: `Settings.no_expiry_tlds` объявлен, но
+> формуттер зовёт `is_expiry_hidden_by_registry(domain)` без проброса settings →
+> используется дефолт `KNOWN_NO_EXPIRY_SUFFIXES={de}`; settings-поле пока не
+> подключено (две точки правды). Либо прокинуть settings, либо убрать поле.
 
 # TASK-0051 — DENIC expiry-hidden marker (v0.14)
 

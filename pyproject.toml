@@ -72,6 +72,7 @@ dev = [
     "types-redis>=4.0",
     "types-python-dateutil>=2.0",
     "fakeredis>=2.20,<3.0",  # for FSM RedisStorage integration tests (ADR 041, TASK-0050)
+    "pytest-docker>=3.0,<4.0",  # for real Postgres+Redis integration tests of ARQ tasks (TASK-0052)
 ]
 
 [build-system]
@@ -198,6 +199,7 @@ markers = [
     "unit: unit tests",
     "integration: integration tests (require docker services)",
     "slow: tests that take noticeable time",
+    "arq: ARQ integration tests (pytest-docker)",
 ]
 filterwarnings = [
     "error",

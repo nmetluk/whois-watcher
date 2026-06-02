@@ -301,6 +301,8 @@ docker compose --profile dev up
 alembic revision --autogenerate -m "описание"
 alembic upgrade head
 
+См. `MIGRATIONS.md` — подробный гайд (autogenerate, SQL-литералы в дефолтах, down_revision от head, single-head, round-trip, чек-лист).
+
 # Тесты
 pytest                            # все
 pytest tests/unit/                # только юнит

@@ -6,7 +6,6 @@
 
 | ID | Статус | Майлстоун | ADR | Область | Тема | Ветка |
 |----|--------|-----------|-----|---------|------|-------|
-| TASK-0053 | open | v0.14.0 | — | docs | Доки — MIGRATIONS.md + нормы дедупликации алертов (ADR 019) | — |
 | TASK-0054 | open | v0.14.0 | 041 | audit | Аудит v0.14 (стабилизация — FSM/Redis, html.escape, интеграц. тесты) | — |
 | TASK-0055 | open | v0.14.0 | 041 | docs | Релиз v0.14.0 — стабилизация (FSM/Redis, html.escape, тех-долг) | — |
 | TASK-0001 | done | v0.8.1 | 034 | code | Багфикс wishlist ↔ tracked (авто-промоут) | task/0001-wishlist-tracked-fix |
@@ -61,3 +60,4 @@
 | TASK-0050 | done | v0.14.0 | 041 | code | FSM MemoryStorage → RedisStorage (ADR 041) | task/0050-fsm-redisstorage |
 | TASK-0051 | done | v0.14.0 | — | code | DENIC — значок «expiry скрыт реестром» в /list и подсказка | task/0051-denic-expiry-hidden-marker |
 | TASK-0052 | done | v0.14.0 | — | code | Интеграционные тесты ARQ-тасок на реальных Postgres+Redis (pytest-docker) | task/0052-arq-integration-tests |
+| TASK-0053 | done | v0.14.0 | — | docs | Доки — MIGRATIONS.md + нормы дедупликации алертов (ADR 019) | task/0053-docs-migrations-alerts |

@@ -17,6 +17,7 @@ Cron:
 from __future__ import annotations
 
 import logging
+from contextlib import suppress
 from typing import Any
 
 from arq.connections import RedisSettings
@@ -27,6 +28,7 @@ from redis.asyncio import Redis as AsyncRedis
 from src.bot.app import create_bot
 from src.config.limits import Limits, get_limits
 from src.config.settings import Settings, get_settings
+from src.services.audit import audit
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +66,14 @@ async def _on_startup(ctx: dict[str, Any]) -> None:
         await alerts.send_info("worker started", f"environment={settings.environment}")
     except Exception:
         logger.exception("Failed to send worker-start alert")
+        with suppress(Exception):  # pragma: no cover
+            await audit(
+                level="critical",
+                category="startup",
+                message="worker startup alert failed",
+                actor="system",
+                context={"environment": getattr(settings, "environment", "unknown")},
+            )
 
 
 async def _on_shutdown(ctx: dict[str, Any]) -> None:
@@ -102,7 +112,7 @@ def _build_functions() -> list[Any]:
     from src.tasks.check_email_intel import check_email_intel
     from src.tasks.check_ssl import check_ssl
     from src.tasks.check_subdomains import check_subdomains
-    from src.tasks.cleanup import cleanup_old_events, cleanup_orphan_cache
+    from src.tasks.cleanup import cleanup_old_audit_log, cleanup_old_events, cleanup_orphan_cache
     from src.tasks.daily_stats import send_daily_summary
     from src.tasks.dns_scheduler import dns_scheduler_tick
     from src.tasks.email_intel_scheduler import email_intel_scheduler_tick
@@ -133,6 +143,7 @@ def _build_functions() -> list[Any]:
         send_daily_summary,
         cleanup_orphan_cache,
         cleanup_old_events,
+        cleanup_old_audit_log,
         send_wishlist_available_notice,
         proxy_health_check,
         # RIR/ASN lookup (Этап 13, ADR 031)
@@ -159,7 +170,7 @@ def _build_functions() -> list[Any]:
 
 
 def _build_cron_jobs() -> list[Any]:
-    from src.tasks.cleanup import cleanup_old_events, cleanup_orphan_cache
+    from src.tasks.cleanup import cleanup_old_audit_log, cleanup_old_events, cleanup_orphan_cache
     from src.tasks.daily_stats import send_daily_summary
     from src.tasks.dns_scheduler import dns_scheduler_tick
     from src.tasks.email_intel_scheduler import email_intel_scheduler_tick
@@ -252,6 +263,13 @@ def _build_cron_jobs() -> list[Any]:
             name="cleanup_old_events",
             hour={4},
             minute={10},
+        ),
+        # TASK-0061: чистим audit_log по retention (90 дней по умолчанию).
+        cron(
+            cleanup_old_audit_log,
+            name="cleanup_old_audit_log",
+            hour={4},
+            minute={20},
         ),
     ]
 

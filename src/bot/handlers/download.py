@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from contextlib import suppress
 from typing import Any, cast
 
 from aiogram import Bot, F, Router
@@ -45,6 +46,7 @@ from src.db.models import User
 from src.db.repositories import DomainRepository, WhoisCacheRepository
 from src.db.session import get_session
 from src.locales import t
+from src.services.audit import audit
 from src.services.csv_io import parse_domain_file
 
 logger = logging.getLogger(__name__)
@@ -126,6 +128,14 @@ async def cmd_download(
     # лишним состоянием.
     if await _is_rate_limited(redis, user.id, limits):
         await message.answer(t("download.rate_limit", lang, limit=limits.max_downloads_per_day))
+        with suppress(Exception):  # pragma: no cover
+            await audit(
+                level="warning",
+                category="rate_limit",
+                message="download rate limit hit",
+                actor=str(user.telegram_id),
+                context={"limit": limits.max_downloads_per_day},
+            )
         return
 
     await state.clear()

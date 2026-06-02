@@ -1,14 +1,14 @@
 ---
 id: TASK-0061
 title: Вписать audit() в инцидент-точки + retention 90 дней
-status: open
+status: in_review
 milestone: v0.15.0
 adr: 042
 area: code
 depends_on: [TASK-0057]
-branch: ""
-owner: ""
-session: ""
+branch: task/0061-wire-audit-retention
+owner: grok-4.3
+session: docs/sessions/2026-06-09_task-0061-wire-audit-retention.md
 pr: ""
 created: 2026-06-08
 ---

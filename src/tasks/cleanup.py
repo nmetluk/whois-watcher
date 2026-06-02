@@ -11,6 +11,7 @@ from typing import Any
 
 from sqlalchemy import text
 
+from src.config.settings import Settings, get_settings
 from src.db.repositories import WhoisCacheRepository
 from src.db.session import get_session
 
@@ -40,4 +41,17 @@ async def cleanup_old_events(ctx: dict[str, Any]) -> None:
         logger.info("cleanup_old_events: removed %d rows", removed)
 
 
-__all__ = ["cleanup_old_events", "cleanup_orphan_cache"]
+async def cleanup_old_audit_log(ctx: dict[str, Any]) -> None:
+    """Удаляет записи ``audit_log`` старше N дней (N из settings.audit_retention_days, дефолт 90 по ADR 042)."""
+    settings: Settings = ctx.get("settings") or get_settings()
+    days = settings.audit_retention_days
+    del ctx
+    sql = f"DELETE FROM audit_log WHERE created_at < now() - interval '{days} days'"
+    async with get_session() as session:
+        result = await session.execute(text(sql))
+    removed = getattr(result, "rowcount", 0) or 0
+    if removed:
+        logger.info("cleanup_old_audit_log: removed %d rows (retention=%d days)", removed, days)
+
+
+__all__ = ["cleanup_old_events", "cleanup_orphan_cache", "cleanup_old_audit_log"]

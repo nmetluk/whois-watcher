@@ -31,16 +31,28 @@ Redis, что ARQ) с `state_ttl`, чтобы state переживал рест�
 при каждом деплое; настоящего TTL нет (эмулируется `clear_state_on_command`).
 См. ADR 041.
 
+## Готовые факты (сверено архитектором — следовать)
+
+- `from aiogram.fsm.storage.redis import RedisStorage` **доступен**; `redis>=5.0`
+  уже в `pyproject.toml`. **Новых зависимостей не нужно.**
+- Готовый конфиг: `settings.redis_url` (= `redis://{redis_host}:{redis_port}/{redis_db}`).
+  Использовать `RedisStorage.from_url(settings.redis_url, state_ttl=…, data_ttl=…)`.
+- Дефолтный `DefaultKeyBuilder` aiogram уже даёт префикс `fsm` — **не конфликтует**
+  с ARQ-ключами (`arq:`). Достаточно дефолта; явный `key_builder` опционален.
+- `state_ttl`/`data_ttl` принимают `int` секунд или `timedelta`.
+
 ## Изменения по файлам
 
-- `src/bot/app.py` — `Dispatcher(storage=RedisStorage.from_url(<redis_url>,
-  state_ttl=…, data_ttl=…))` (или через готовый `Redis`-клиент). Namespacing
-  ключей (`key_builder`/префикс `fsm:`), чтобы не пересекаться с ARQ/кэшем.
-- `src/config/settings.py` — `REDIS_FSM_TTL` (дефолт 300 c), если нужен конфиг;
-  переиспользовать существующий Redis URL из настроек.
-- `pyproject.toml` — проверить, что redis-экстра aiogram доступна (redis уже в
-  стеке через ARQ; добавить `aiogram[redis]`/зависимость только если её нет).
-- `clear_state_on_command` middleware — **оставить** (другая задача).
+- `src/bot/app.py` (`build_dispatcher`) — заменить `MemoryStorage()` на
+  `RedisStorage.from_url(settings.redis_url, state_ttl=<ttl>, data_ttl=<ttl>)`.
+  ⚠️ **Тесты тоже зовут `build_dispatcher`** (docstring «MemoryStorage в
+  проде/тестах»). Чтобы не тянуть Redis в юнит-тестах сборки — сделать
+  `storage` **инъектируемым параметром**: `build_dispatcher(..., storage:
+  BaseStorage | None = None)`; если `None` → RedisStorage из конфига (прод),
+  тесты/фикстуры передают `MemoryStorage()` явно. Обновить вызовы.
+- `src/config/settings.py` — `redis_fsm_ttl: int = Field(300, ge=1)` (сек).
+- `clear_state_on_command` middleware — **оставить** (решает другую задачу).
+- (опц.) `docs/architecture.md` — обновить упоминание MemoryStorage.
 
 ## Миграции БД
 

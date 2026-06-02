@@ -8,7 +8,7 @@ area: docs
 depends_on: [TASK-0054]
 branch: ""
 owner: architect
-session: ""
+session: docs/sessions/2026-06-08_task-0055-release-v0-14-0.md
 pr: ""
 created: 2026-06-04
 completed: 2026-06-08

@@ -9,7 +9,7 @@ depends_on: []
 branch: task/0053-docs-migrations-alerts
 owner: grok-4.3
 session: docs/sessions/2026-06-08_task-0053-docs-migrations-alerts.md
-pr: ""
+pr: https://github.com/nmetluk/whois-watcher/pull/38
 created: 2026-06-04
 ---
 

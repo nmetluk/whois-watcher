@@ -1,7 +1,7 @@
 ---
 id: TASK-0052
 title: Интеграционные тесты ARQ-тасок на реальных Postgres+Redis (pytest-docker)
-status: claimed
+status: in_review
 milestone: v0.14.0
 adr: ""
 area: code
@@ -9,7 +9,7 @@ depends_on: []
 branch: task/0052-arq-integration-tests
 owner: grok-4.3
 session: ""
-pr: ""
+pr: https://github.com/nmetluk/whois-watcher/pull/37
 created: 2026-06-04
 ---
 

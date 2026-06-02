@@ -29,6 +29,16 @@ helper `audit(...)`, который вписывается в инцидент-�
 `system_events` — аналитика для сводок (retention 30д). `audit_log` —
 **инциденты с контекстом** (retention 90д). Это разные таблицы (ADR 042).
 
+## Готовые факты (сверено архитектором)
+
+- Образец модели — `SystemEvent` (`src/db/models.py`): `id BigInteger` PK
+  autoincrement, поля `String(...)`, `details JSONB nullable`, `created_at
+  DateTime(timezone=True) server_default=func.now()` + индексы. `audit_log`
+  делать **в том же стиле**, но это **отдельная** таблица (system_events —
+  аналитика, retention 30д; audit_log — инциденты, 90д). Не сливать.
+- Репозиторий — паттерн из `src/db/repositories/` (наследовать `BaseRepository`,
+  `self.session`). Регистрация в `repositories/__init__.py`.
+
 ## Изменения по файлам
 
 - `migrations/versions/<new>.py` — таблица `audit_log`: `id` PK,

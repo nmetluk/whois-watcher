@@ -103,6 +103,7 @@ def _build_functions() -> list[Any]:
     from src.tasks.check_ssl import check_ssl
     from src.tasks.check_subdomains import check_subdomains
     from src.tasks.cleanup import cleanup_old_events, cleanup_orphan_cache
+    from src.tasks.daily_graph_report import daily_graph_report
     from src.tasks.daily_stats import send_daily_summary
     from src.tasks.dns_scheduler import dns_scheduler_tick
     from src.tasks.email_intel_scheduler import email_intel_scheduler_tick
@@ -134,6 +135,7 @@ def _build_functions() -> list[Any]:
         cleanup_orphan_cache,
         cleanup_old_events,
         send_wishlist_available_notice,
+        daily_graph_report,
         proxy_health_check,
         # RIR/ASN lookup (Этап 13, ADR 031)
         rir_health_check,
@@ -160,6 +162,7 @@ def _build_functions() -> list[Any]:
 
 def _build_cron_jobs() -> list[Any]:
     from src.tasks.cleanup import cleanup_old_events, cleanup_orphan_cache
+    from src.tasks.daily_graph_report import daily_graph_report
     from src.tasks.daily_stats import send_daily_summary
     from src.tasks.dns_scheduler import dns_scheduler_tick
     from src.tasks.email_intel_scheduler import email_intel_scheduler_tick
@@ -231,6 +234,13 @@ def _build_cron_jobs() -> list[Any]:
         cron(
             ssl_reminders_scheduler,
             name="ssl_reminders_scheduler",
+            minute={0},
+        ),
+        # ADR 042, TASK-0060: дневные графики в 21:00 МСК (18:00 UTC). 06:00 текстовая сводка остаётся.
+        cron(
+            daily_graph_report,
+            name="daily_graph_report",
+            hour={18},
             minute={0},
         ),
         # Раз в сутки в 03:00 UTC = 06:00 по Москве — сразу после ночного окна.

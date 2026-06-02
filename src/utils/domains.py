@@ -133,3 +133,41 @@ def is_public_suffix_only(domain: str) -> bool:
     """
     parts = split_domain(domain)
     return bool(parts.suffix) and not bool(parts.registrable)
+
+
+# TLDs / public suffixes where the registry is known to *never* publish
+# an expiry date (e.g. DENIC for .de). This is policy, not missing data.
+# Used by formatters to show a dedicated "hidden by registry" marker/icon
+# + tooltip instead of generic "no data" (TASK-0051).
+# The list lives in Settings (no_expiry_tlds) for expandability; this is
+# the default / fallback.
+KNOWN_NO_EXPIRY_SUFFIXES: frozenset[str] = frozenset({"de"})
+
+
+def is_expiry_hidden_by_registry(domain: str, no_expiry_tlds: set[str] | None = None) -> bool:
+    """Returns True if this TLD/registry is known to hide the expiry date.
+
+    Detection is based on the public suffix (from PSL via tldextract).
+    The check is case-insensitive and uses the registrable suffix.
+
+    Args:
+        domain: domain name (any case, IDN ok).
+        no_expiry_tlds: optional override set of suffixes (from Settings).
+            If None, falls back to KNOWN_NO_EXPIRY_SUFFIXES.
+
+    Returns:
+        True for e.g. "example.de", "foo.co.de" etc.
+
+    This is used in /list rows and whois cards to avoid showing
+    "no data" for expected cases (DENIC etc.).
+    """
+    try:
+        suffix = split_domain(domain).suffix.lower()
+        if no_expiry_tlds is not None:
+            tlds: set[str] = set(no_expiry_tlds)
+        else:
+            tlds = set(KNOWN_NO_EXPIRY_SUFFIXES)
+        return suffix in tlds
+    except Exception:
+        # On any parse error treat as "not hidden" (will fall to "no data")
+        return False

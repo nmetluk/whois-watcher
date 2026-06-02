@@ -393,6 +393,7 @@ LOCALE: dict[str, str] = {
     "commands.whois.section_expiry": "📅 Срок действия",
     "commands.whois.line_registered": "Зарегистрирован: {date}",
     "commands.whois.line_expires": "Истекает: {date} ({days_until})",
+    "commands.whois.line_expires_hidden": "дата истечения скрыта реестром (DENIC и др.)",
     "commands.whois.line_updated": "Обновлён: {date}",
     "commands.whois.line_registrar": "🏢 Регистратор: {registrar}",
     "commands.whois.line_owner": "👤 Владелец: {owner}",
@@ -449,6 +450,7 @@ LOCALE: dict[str, str] = {
     # ------------------------------------------------------------------
     "commands.list.row_known": "{emoji} {subdomain_mark}{domain} — {days_until} ({date}){muted}",
     "commands.list.row_unknown": "{emoji} {subdomain_mark}{domain} — нет данных{muted}",
+    "commands.list.row_expiry_hidden": "{emoji} {subdomain_mark}{domain} — дата скрыта реестром{muted}",
     "commands.list.row_wishlist": "🎯 {domain} — жду освобождения",
     "commands.list.muted_suffix": " 🔕",
     "commands.list.unknown_value": "—",

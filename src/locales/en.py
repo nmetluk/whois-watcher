@@ -377,6 +377,7 @@ LOCALE: dict[str, str] = {
     "commands.whois.section_expiry": "📅 Expiry",
     "commands.whois.line_registered": "Registered: {date}",
     "commands.whois.line_expires": "Expires: {date} ({days_until})",
+    "commands.whois.line_expires_hidden": "expiry date hidden by registry (DENIC etc.)",
     "commands.whois.line_updated": "Updated: {date}",
     "commands.whois.line_registrar": "🏢 Registrar: {registrar}",
     "commands.whois.line_owner": "👤 Owner: {owner}",
@@ -434,6 +435,7 @@ LOCALE: dict[str, str] = {
     # ------------------------------------------------------------------
     "commands.list.row_known": "{emoji} {subdomain_mark}{domain} — {days_until} ({date}){muted}",
     "commands.list.row_unknown": "{emoji} {subdomain_mark}{domain} — no data{muted}",
+    "commands.list.row_expiry_hidden": "{emoji} {subdomain_mark}{domain} — expiry date hidden by registry{muted}",
     "commands.list.row_wishlist": "🎯 {domain} — waiting for it to drop",
     "commands.list.muted_suffix": " 🔕",
     "commands.list.unknown_value": "—",

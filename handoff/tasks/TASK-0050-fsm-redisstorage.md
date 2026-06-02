@@ -1,15 +1,15 @@
 ---
 id: TASK-0050
 title: FSM MemoryStorage → RedisStorage (ADR 041)
-status: open
+status: in_review
 milestone: v0.14.0
 adr: 041
 area: code
 depends_on: []
-branch: ""
-owner: ""
-session: ""
-pr: ""
+branch: task/0050-fsm-redisstorage
+owner: grok-4.3
+session: docs/sessions/2026-06-06_task-0050-fsm-redisstorage.md
+pr: https://github.com/nmetluk/whois-watcher/pull/35
 created: 2026-06-04
 ---
 

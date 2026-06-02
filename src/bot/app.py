@@ -12,7 +12,7 @@ from __future__ import annotations
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.storage.base import BaseStorage
 from arq import ArqRedis
 from redis.asyncio import Redis
 
@@ -43,16 +43,31 @@ def create_dispatcher(
     limits: Limits,
     redis: Redis[str],
     arq_redis: ArqRedis | None = None,
+    storage: BaseStorage | None = None,
 ) -> Dispatcher:
-    """Собирает Dispatcher: MemoryStorage + middleware + роутеры.
+    """Собирает Dispatcher: RedisStorage (FSM) + middleware + роутеры.
 
     Зависимости (``settings``, ``limits``, ``redis``, ``arq_redis``) кладутся
     в ``workflow_data`` — будут доступны хэндлерам через одноимённые параметры.
 
     ``arq_redis`` опционален: в проде это пул ARQ для постановки задач, в
     тестах сборки Dispatcher достаточно None — задачи всё равно не дёргаем.
+
+    ``storage`` опционален (для тестов): если None — создаётся ``RedisStorage``
+    с ``state_ttl`` из настроек + namespacing ``fsm:`` (ADR 041).
     """
-    dp = Dispatcher(storage=MemoryStorage())
+    if storage is None:
+        from aiogram.fsm.storage.base import DefaultKeyBuilder
+        from aiogram.fsm.storage.redis import RedisStorage
+
+        storage = RedisStorage.from_url(
+            settings.redis_url,
+            state_ttl=settings.redis_fsm_ttl,
+            data_ttl=settings.redis_fsm_ttl,
+            key_builder=DefaultKeyBuilder(prefix="fsm"),
+        )
+
+    dp = Dispatcher(storage=storage)
 
     # Прокидываем зависимости — aiogram автоматически инжектирует одноимённые
     # параметры в хэндлеры (например, ``redis: Redis``).

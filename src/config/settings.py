@@ -88,6 +88,13 @@ class Settings(BaseSettings):
     redis_port: int = Field(6379, ge=1, le=65535)
     redis_db: int = Field(0, ge=0, le=15)
 
+    # FSM (ADR 041, TASK-0050) — TTL for aiogram FSM states in Redis
+    redis_fsm_ttl: int = Field(
+        300,
+        ge=1,
+        description="TTL (seconds) for FSM states. Abandoned flows expire automatically.",
+    )
+
     # ------------------------------------------------------------------
     # Admin
     # ------------------------------------------------------------------

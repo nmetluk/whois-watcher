@@ -8,12 +8,18 @@
 
 from __future__ import annotations
 
+# For FSM RedisStorage integration test (TASK-0050)
+import asyncio
 from unittest.mock import AsyncMock
 
+import fakeredis.aioredis
 import pytest
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiogram.fsm.storage.base import DefaultKeyBuilder, StorageKey
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.types import BotCommand
 
 from src.bot.app import create_bot, create_dispatcher
@@ -43,10 +49,12 @@ def _session_redis() -> AsyncMock:
 
 @pytest.fixture(scope="session")
 def dispatcher(_session_redis: AsyncMock) -> Dispatcher:
+    # Pass explicit MemoryStorage for composition tests (no need for real FSM storage here).
     return create_dispatcher(
         settings=get_settings(),
         limits=get_limits(),
         redis=_session_redis,
+        storage=MemoryStorage(),
     )
 
 
@@ -122,3 +130,63 @@ class TestCommandsList:
         for cmd in (*COMMANDS_RU, *COMMANDS_EN):
             assert isinstance(cmd, BotCommand)
             assert cmd.description.strip()
+
+
+class TestFSMRedisStorage:
+    """Интеграционный тест FSM storage на fakeredis (persist после «рестарта» + TTL).
+
+    Требование TASK-0050 / ADR 041.
+    """
+
+    @pytest.mark.asyncio
+    async def test_state_persists_across_storage_instances_and_expires_by_ttl(self) -> None:
+        """State записанный в одном storage виден в новом (имитация рестарта бота).
+
+        Заброшенный state истекает по state_ttl.
+        """
+        fake_redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+        key_builder = DefaultKeyBuilder(prefix="fsm")
+        ttl = 1  # секунда для быстрого теста
+
+        storage1 = RedisStorage(
+            redis=fake_redis,
+            state_ttl=ttl,
+            data_ttl=ttl,
+            key_builder=key_builder,
+        )
+
+        storage_key = StorageKey(
+            bot_id=123,
+            chat_id=456,
+            user_id=789,
+            thread_id=None,
+            business_connection_id=None,
+            destiny="default",
+        )
+
+        # Записываем state и data
+        await storage1.set_state(storage_key, "ListSearchStates:waiting_for_query")
+        await storage1.set_data(storage_key, {"query": "example.com", "page": 1})
+
+        # Проверяем persist
+        assert await storage1.get_state(storage_key) == "ListSearchStates:waiting_for_query"
+        assert await storage1.get_data(storage_key) == {"query": "example.com", "page": 1}
+
+        # «Рестарт»: новый экземпляр storage на том же Redis
+        storage2 = RedisStorage(
+            redis=fake_redis,
+            state_ttl=ttl,
+            data_ttl=ttl,
+            key_builder=key_builder,
+        )
+        assert await storage2.get_state(storage_key) == "ListSearchStates:waiting_for_query"
+        assert await storage2.get_data(storage_key) == {"query": "example.com", "page": 1}
+
+        # Ждём истечения TTL
+        await asyncio.sleep(ttl + 0.5)
+
+        assert await storage2.get_state(storage_key) is None
+        assert await storage2.get_data(storage_key) == {}
+
+        await storage1.close()
+        await storage2.close()

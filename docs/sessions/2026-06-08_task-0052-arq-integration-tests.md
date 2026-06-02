@@ -59,4 +59,4 @@
 
 ## PR
 
-- TBD (после in_review)
+- https://github.com/nmetluk/whois-watcher/pull/37

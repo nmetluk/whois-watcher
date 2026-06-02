@@ -1,14 +1,14 @@
 ---
 id: TASK-0058
 title: Ежечасный бекап Postgres (pg_dump, ротация 36, verify)
-status: open
+status: in_review
 milestone: v0.15.0
 adr: 042
 area: code
 depends_on: []
-branch: ""
-owner: ""
-session: ""
+branch: task/0058-postgres-hourly-backup
+owner: grok-4.3
+session: docs/sessions/2026-06-09_task-0058-postgres-hourly-backup.md
 pr: ""
 created: 2026-06-08
 ---
@@ -23,6 +23,24 @@ created: 2026-06-08
 
 ARQ cron `backup_postgres` (ежечасно): `pg_dump` → gzip → `BACKUP_DIR`, ротация
 до 36 файлов, проверка валидности, запись статуса для ежечасного отчёта.
+
+## Готовые факты (сверено архитектором — следовать)
+
+- Подключение из `settings`: `postgres_host` (в проде `postgres`),
+  `postgres_port`, `postgres_user`, `postgres_db`, `postgres_password`
+  (**`SecretStr`** → `.get_secret_value()`). pg_dump: `-h {host} -p {port}
+  -U {user} -d {db} -Fc -f <file>`, пароль через env `PGPASSWORD` в
+  subprocess (НЕ в аргументах/логах).
+- **Cron исполняется в scheduler-сервисе** (`command: python -m src.worker
+  --scheduler` в `docker-compose.yml`). Значит дамп пишет этот процесс → том
+  `backups` монтировать **на `scheduler`** (и на `worker` — образ общий, не
+  повредит). Проверь, в каком воркере реально регистрируются `cron_jobs`
+  (`src/worker.py` + `arq_config._build_cron_jobs`).
+- Образ — `python:3.12-slim-bookworm`. `postgresql-client-16` ставится из
+  PGDG-репозитория (apt.postgresql.org), т.к. в bookworm-default обычно 15.
+  Версия клиента = серверу (PG16).
+- `audit_log`/`system_events` — модель-образец `SystemEvent` (BigInteger PK
+  autoincrement, JSONB, `server_default=func.now()`).
 
 ## Изменения по файлам
 

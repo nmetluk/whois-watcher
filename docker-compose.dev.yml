@@ -38,6 +38,8 @@ services:
       - ./src:/app/src
       - ./migrations:/app/migrations
       - ./alembic.ini:/app/alembic.ini:ro
+      # ADR 042: локальная папка для бекапов в dev (не named volume)
+      - ./backups:/backups
     command: ["python", "-m", "src.worker"]
 
   scheduler:
@@ -48,4 +50,6 @@ services:
       - ./src:/app/src
       - ./migrations:/app/migrations
       - ./alembic.ini:/app/alembic.ini:ro
+      # ADR 042: локальная папка для бекапов в dev (не named volume)
+      - ./backups:/backups
     command: ["python", "-m", "src.worker", "--scheduler"]

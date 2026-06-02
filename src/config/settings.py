@@ -267,6 +267,24 @@ class Settings(BaseSettings):
     )
 
     # ------------------------------------------------------------------
+    # Backups (ADR 042, TASK-0058) — ежечасный pg_dump в scheduler
+    # ------------------------------------------------------------------
+    backup_dir: str = Field(
+        "/backups",
+        description="Directory where pg_dump writes backups (docker volume mount point).",
+    )
+    backup_keep: int = Field(
+        36,
+        ge=1,
+        description="Number of most recent backup files to keep during rotation (by mtime).",
+    )
+    backup_min_bytes: int = Field(
+        1024,
+        ge=0,
+        description="Minimum acceptable dump file size (bytes) for verify to pass.",
+    )
+
+    # ------------------------------------------------------------------
     # Вычисляемые свойства
     # ------------------------------------------------------------------
     @computed_field  # type: ignore[prop-decorator]

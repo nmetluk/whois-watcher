@@ -9,7 +9,7 @@ depends_on: []
 branch: task/0051-denic-expiry-hidden-marker
 owner: grok-4.3
 session: docs/sessions/2026-06-07_task-0051-denic-expiry-hidden-marker.md
-pr: ""
+pr: https://github.com/nmetluk/whois-watcher/pull/36
 created: 2026-06-04
 ---
 

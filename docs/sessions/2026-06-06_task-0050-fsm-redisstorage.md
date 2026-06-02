@@ -39,16 +39,18 @@
 
 ## Коммиты (на ветке)
 
+- e83ec41 test: fix MagicMock hack for isinstance(Message) in awaiting_arg_flow test (pre-existing, needed for CI green)
 - 5660416 feat(TASK-0050): FSM MemoryStorage → RedisStorage (ADR 041)
-- (handoff claim updates)
+- (handoff claim + PR updates)
 
 ## Проверки
 
-- **pytest** (full): 972 passed, 1 skipped (миграции только в CI).
-- Новые/затронутые: storage integration + handlers composition + awaiting unit — зелёные.
+- **pytest** (full): **973 passed**, 1 skipped (миграции только в CI).
+- Новые/затронутые: storage integration + handlers composition + awaiting flow/unit — зелёные.
 - **ruff/black/mypy**: clean.
 - `handoff.py validate`: OK (55 задач).
 - Реальная проверка флоу: covered в storage-тесте (fakeredis) + локальный запуск (state переживает «restart»).
+- Incidental: fixed broken MagicMock hack in awaiting_arg_flow test (was causing Pytest fail in CI; same issue fixed earlier in unit tests).
 
 ## Что осталось / следующий шаг
 

@@ -103,8 +103,7 @@ class TestEndToEndAddFlow:
         query = AsyncMock()
         from aiogram.types import Message
 
-        query.message = MagicMock()
-        query.message.__class__ = Message
+        query.message = MagicMock(spec=Message)
         query.message.edit_text = AsyncMock()
         callback = CmdArgCallback(action="yes", token=token)
 

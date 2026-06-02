@@ -74,6 +74,7 @@ jobs:
         # Минимальный набор env-переменных, чтобы pydantic-settings не падал
         # на отсутствии обязательных полей. Конкретные тесты ходят в БД
         # только если им это нужно — большинство юнит-тестов про БД мокает.
+        # ARQ integration (TASK-0052) now uses real services (github services in CI, pytest-docker locally).
         env:
           BOT_TOKEN: "test:ci-bot-token"
           WEBHOOK_BASE_URL: "https://ci.example.com"

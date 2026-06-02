@@ -25,6 +25,24 @@ ARQ cron `daily_graph_report` (21:00 МСК = `hour={18}` UTC): графики
 использования за ~14 дней → PNG в админ-канал. Текстовая сводка 06:00
 (`send_daily_summary`) **остаётся** как есть.
 
+## Готовые факты (сверено архитектором)
+
+- Источник метрик — те же таблицы, что в `src/tasks/daily_stats.py`:
+  per-day ряды через `GROUP BY date_trunc('day', <ts>)` за N=14 дней:
+  - новые пользователи: `users.created_at`;
+  - активные: `users.last_active_at`;
+  - новые домены: `user_domains.added_at`;
+  - уведомления: лог отправленных (тот, что `daily_stats` читает для
+    `notification_type` — взять оттуда таблицу/колонку `sent_at`);
+  - события/ошибки: `system_events.created_at` (+ severity).
+  - **lookups/день** — уточнить источник: `system_events` с `event_type`
+    lookup'а, либо счётчик в `whois_cache`/логах; если явного нет — взять
+    ближайший прокси и отметить в session-отчёте.
+- `matplotlib.use("Agg")` **до** `import matplotlib.pyplot` (headless, без
+  DISPLAY). Рендер CPU-bound → `asyncio.to_thread`.
+- Cron в проде исполняется в scheduler-сервисе; фото шлёт `bot` из ctx в
+  `settings.admin_channel_id`.
+
 ## Изменения по файлам
 
 - `pyproject.toml` — `matplotlib>=3.8,<4.0` в основные deps.

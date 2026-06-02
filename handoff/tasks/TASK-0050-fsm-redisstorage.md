@@ -1,7 +1,7 @@
 ---
 id: TASK-0050
 title: FSM MemoryStorage → RedisStorage (ADR 041)
-status: in_review
+status: done
 milestone: v0.14.0
 adr: 041
 area: code
@@ -11,7 +11,18 @@ owner: grok-4.3
 session: docs/sessions/2026-06-06_task-0050-fsm-redisstorage.md
 pr: https://github.com/nmetluk/whois-watcher/pull/35
 created: 2026-06-04
+completed: 2026-06-06
 ---
+
+> ## ✅ Ревью архитектора (2026-06-06) — merged
+>
+> `RedisStorage.from_url(settings.redis_url, state_ttl/data_ttl=redis_fsm_ttl,
+> key_builder=DefaultKeyBuilder(prefix="fsm"))`; `storage` инъектируем в
+> `create_dispatcher` (тесты передают MemoryStorage). `redis_fsm_ttl=300` в
+> settings; `aiogram[redis]` + `fakeredis` (dev) добавлены. Интеграционный тест
+> на fakeredis: storage1 пишет → **storage2 (имитация рестарта) читает тот же
+> state/data** → после `sleep(ttl)` истекает. Unit-моки `awaiting_arg` почищены
+> на `MagicMock(spec=Message)` (улучшение). Полный прогон зелёный (973 теста).
 
 # TASK-0050 — FSM → RedisStorage (ADR 041)
 

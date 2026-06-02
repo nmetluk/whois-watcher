@@ -67,4 +67,4 @@
 
 ## PR
 
-- TBD (после in_review + push).
+- https://github.com/nmetluk/whois-watcher/pull/35 — open.

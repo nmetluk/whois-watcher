@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] — 2026-06-08
+
+Стабилизационный релиз — погашение тех-долга, без новых пользовательских фич
+(ADR 041). Все блокеры аудита v0.14 закрыты (TASK-0049…0054).
+
+### Changed
+
+- **FSM-состояния переехали в Redis** (`MemoryStorage` → `RedisStorage`,
+  ADR 041): контекст диалогов (`/whois`-аргументы, редактирование дней/SSL-дней/
+  интервала поддоменов, поиск по списку, настройки, скачивание) **переживает
+  рестарт бота** и истекает по TTL (`REDIS_FSM_TTL`, дефолт 300 c). Тот же
+  Redis, что ARQ; ключи неймспейснуты (`fsm:`).
+
+### Security
+
+- **`html.escape` во всех change-нотификациях** (whois/dns/ssl/email/problem/
+  wishlist/reminders) — defense-in-depth. Особо: экранируется **issuer
+  SSL-сертификата** (CN/O контролируются тем, кто выпустил сертификат), NS-записи,
+  сырые email-политики, registrar. Раньше экранирование было только в
+  subdomain-уведомлениях (TASK-0037).
+
+### Added
+
+- **Значок «🔒 expiry скрыт реестром»** в `/list` и карточке `/whois` для
+  реестров без публикации даты истечения (DENIC `.de` и подобные) — вместо
+  вводящего в заблуждение «нет данных». Список TLD конфигурируем.
+- **Интеграционные тесты ARQ** на реальных Postgres+Redis (pytest-docker
+  локально / сервисы в CI): `check_subdomains`, `check_email_deep` —
+  UPSERT-семантика, redis-guard, enqueue (ловят дрейф, который моки скрывают).
+- Документация: `MIGRATIONS.md` (гайд по миграциям) + нормы дедупликации
+  админ-алертов (ADR 019).
+
+### Internal
+
+- Новые dev-зависимости: `fakeredis`, `pytest-docker`; `aiogram[redis]`.
+- Конвенция CLAUDE.md: хотя бы один рендер-тест форматтера через настоящий
+  `t()` (урок KeyError в deep-email).
+
 ## [0.13.0] — 2026-06-03
 
 Deep email (SPF include-резолвинг + лимит lookups, MTA-STS, TLS-RPT, DANE/TLSA, BIMI) + on-demand deep-views в карточке `/whois` (ADR 040). Кнопки «✉️ Глубокий e-mail» и «🛰 Поддомены». Инлайн MX + статус SPF/DMARC. Фикс свежести карточки. Anti-SSRF + строгий TXT-матч для MTA-STS (TASK-0047). Все блокеры аудита v0.13 закрыты (0038–0042, 0045–0047).

@@ -1,17 +1,22 @@
 ---
 id: TASK-0055
 title: Релиз v0.14.0 — стабилизация (FSM/Redis, html.escape, тех-долг)
-status: open
+status: done
 milestone: v0.14.0
 adr: 041
 area: docs
 depends_on: [TASK-0054]
 branch: ""
-owner: ""
+owner: architect
 session: ""
 pr: ""
 created: 2026-06-04
+completed: 2026-06-08
 ---
+
+> **Итог (2026-06-08):** релиз сделан архитектором напрямую на main — bump
+> `pyproject` 0.13.0→0.14.0, секция CHANGELOG `[0.14.0]`, аннотированный тег
+> `v0.14.0`. Деплой — отдельным шагом (`bash scripts/deploy.sh`).
 
 # TASK-0055 — Релиз v0.14.0 (стабилизация)
 

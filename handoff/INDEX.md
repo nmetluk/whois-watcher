@@ -6,7 +6,6 @@
 
 | ID | Статус | Майлстоун | ADR | Область | Тема | Ветка |
 |----|--------|-----------|-----|---------|------|-------|
-| TASK-0055 | open | v0.14.0 | 041 | docs | Релиз v0.14.0 — стабилизация (FSM/Redis, html.escape, тех-долг) | — |
 | TASK-0056 | open | v0.14.1 | — | code | v0.14 cleanup — подключить no_expiry_tlds + sweep getattr-на-ORM | — |
 | TASK-0001 | done | v0.8.1 | 034 | code | Багфикс wishlist ↔ tracked (авто-промоут) | task/0001-wishlist-tracked-fix |
 | TASK-0002 | done | v0.9.0 | 035 | code | PSL — зависимость tldextract + src/utils/domains.py | task/0002-psl-utils-domains |
@@ -62,3 +61,4 @@
 | TASK-0052 | done | v0.14.0 | — | code | Интеграционные тесты ARQ-тасок на реальных Postgres+Redis (pytest-docker) | task/0052-arq-integration-tests |
 | TASK-0053 | done | v0.14.0 | — | docs | Доки — MIGRATIONS.md + нормы дедупликации алертов (ADR 019) | task/0053-docs-migrations-alerts |
 | TASK-0054 | done | v0.14.0 | 041 | audit | Аудит v0.14 (стабилизация — FSM/Redis, html.escape, интеграц. тесты) | — |
+| TASK-0055 | done | v0.14.0 | 041 | docs | Релиз v0.14.0 — стабилизация (FSM/Redis, html.escape, тех-долг) | — |

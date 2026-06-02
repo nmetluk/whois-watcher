@@ -1,14 +1,14 @@
 ---
 id: TASK-0053
 title: Доки — MIGRATIONS.md + нормы дедупликации алертов (ADR 019)
-status: open
+status: in_review
 milestone: v0.14.0
 adr: ""
 area: docs
 depends_on: []
-branch: ""
-owner: ""
-session: ""
+branch: task/0053-docs-migrations-alerts
+owner: grok-4.3
+session: docs/sessions/2026-06-08_task-0053-docs-migrations-alerts.md
 pr: ""
 created: 2026-06-04
 ---

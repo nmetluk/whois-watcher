@@ -1,17 +1,23 @@
 ---
 id: TASK-0054
 title: Аудит v0.14 (стабилизация — FSM/Redis, html.escape, интеграц. тесты)
-status: open
+status: done
 milestone: v0.14.0
 adr: 041
 area: audit
 depends_on: [TASK-0049, TASK-0050, TASK-0051, TASK-0052, TASK-0053]
 branch: ""
-owner: ""
-session: ""
+owner: architect
+session: handoff/audits/AUDIT-2026-06-08-v0-14-stabilization.md
 pr: ""
 created: 2026-06-04
+completed: 2026-06-08
 ---
+
+> **Итог (2026-06-08):** аудит проведён, отчёт
+> `handoff/audits/AUDIT-2026-06-08-v0-14-stabilization.md`. Вердикт — **GO**
+> (тег v0.14.0 после зелёного CI). 🔴/🟠 нет; 🟢 → **TASK-0056** (опц., v0.14.1:
+> подключить/убрать `no_expiry_tlds`, sweep `getattr`-на-ORM).
 
 # TASK-0054 — Аудит v0.14 (стабилизация)
 

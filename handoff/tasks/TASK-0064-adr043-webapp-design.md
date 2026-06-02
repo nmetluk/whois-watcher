@@ -1,0 +1,60 @@
+---
+id: TASK-0064
+title: ADR 043 — WebApp-слой бота (дизайн-спайк, следующий этап)
+status: open
+milestone: v0.16.0
+adr: 043
+area: docs
+depends_on: [TASK-0063]
+branch: ""
+owner: ""
+session: ""
+pr: ""
+created: 2026-06-08
+---
+
+# TASK-0064 — ADR 043: WebApp-слой (дизайн-спайк)
+
+> **Следующий этап после админ/ops-слоя (v0.15).** Архитекторская задача:
+> сначала забрать дизайн, затем написать ADR 043 и разбить на исполнительские
+> таски. Не начинать, пока v0.15 не закрыт (фокус — один раздел за раз).
+
+## Цель
+
+Спроектировать WebApp-слой для бота (Telegram WebApp / mini-app): забрать
+дизайн-файл от дизайнера, прочитать его readme, выделить реализуемые аспекты,
+оформить ADR 043 (объём, архитектура: как WebApp общается с ботом/бэкендом,
+auth через Telegram initData, какие данные read-only показываем, какие действия)
+и завести исполнительские таски.
+
+## Вход от дизайнера (2026-06-08)
+
+> Fetch this design file, read its readme, and implement the relevant aspects
+> of the design.
+> `https://api.anthropic.com/v1/design/h/QQppZ07KPWTVsPPorafRTQ?open_file=app%2FWhois+Watcher+WebApp.html`
+> Implement: `app/Whois Watcher WebApp.html`
+
+## Шаги (при старте)
+
+1. Забрать дизайн-файл по ссылке (web_fetch; если страница client-rendered/
+   за авторизацией и вернётся пустой shell — эскалировать на Claude in Chrome
+   `navigate` + `get_page_text`, по правилам окружения). Прочитать readme
+   дизайна и `app/Whois Watcher WebApp.html`.
+2. Зафиксировать требования/экраны/компоненты в ADR 043.
+3. Принять архитектурные решения: Telegram WebApp (mini-app) vs внешний веб;
+   auth через `initData` (валидация подписи бот-токеном); бэкенд — расширить
+   webhook-сервис или отдельный API (перекличка с roadmap v1.0 «публичный API»);
+   read-only vs действия; CSP/секьюрити; хостинг статики (nginx).
+4. Разбить на таски (схема/эндпоинты → фронт → интеграция → аудит → релиз).
+
+## Definition of Done (для этого спайка)
+
+- [ ] Дизайн забран и зафиксирован (скриншоты/HTML/readme — в репо или ADR)
+- [ ] ADR 043 написан (объём v0.16, архитектура, auth, безопасность, альтернативы)
+- [ ] Заведены исполнительские таски следующего этапа
+- [ ] `handoff.py validate`; PR (docs)
+
+## Ссылки
+
+- Roadmap v1.0 (web-дашборд / публичный API) — переклички учесть.
+- Связанные: после v0.15 (TASK-0063).

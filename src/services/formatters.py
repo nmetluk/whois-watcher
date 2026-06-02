@@ -20,6 +20,7 @@ from src.db.models import (
 )
 from src.dns_monitor import detect_ns_mismatch
 from src.locales import t
+from src.utils.domains import is_expiry_hidden_by_registry
 from src.utils.formatting import format_date, format_days_until, get_expiry_emoji
 from src.utils.idn import from_punycode
 from src.whois.status_format import format_statuses
@@ -82,6 +83,9 @@ def format_whois_response(
                 days_until=days_text,
             )
         )
+    elif is_expiry_hidden_by_registry(data.domain):
+        # Registry policy (e.g. DENIC .de) — not missing data (TASK-0051)
+        expiry_lines.append("├ " + t("commands.whois.line_expires_hidden", lang))
     if data.updated_at is not None:
         expiry_lines.append(
             "└ "
@@ -157,6 +161,17 @@ def format_list_row(
     muted_suffix = t("commands.list.muted_suffix", lang) if muted else ""
 
     if cache is None or cache.expires_at is None:
+        if is_expiry_hidden_by_registry(user_domain.domain):
+            # DENIC (.de) and similar — registry policy, not missing data (TASK-0051)
+            emoji = "🔒"
+            return t(
+                "commands.list.row_expiry_hidden",
+                lang,
+                emoji=emoji,
+                domain=display,
+                muted=muted_suffix,
+                subdomain_mark=subdomain_mark,
+            )
         emoji = get_expiry_emoji(None)
         return t(
             "commands.list.row_unknown",

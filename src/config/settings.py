@@ -96,6 +96,18 @@ class Settings(BaseSettings):
     )
 
     # ------------------------------------------------------------------
+    # DENIC and similar registries (TASK-0051) — expiry hidden by registry
+    # ------------------------------------------------------------------
+    no_expiry_tlds: list[str] = Field(
+        default_factory=lambda: ["de"],
+        description=(
+            "TLDs (suffixes) where the registry deliberately does not publish "
+            "expiry date (e.g. DENIC .de). Used to show special '🔒 hidden by registry' "
+            "marker in /list and whois card instead of generic 'no data'."
+        ),
+    )
+
+    # ------------------------------------------------------------------
     # Admin
     # ------------------------------------------------------------------
     admin_channel_id: int | None = Field(

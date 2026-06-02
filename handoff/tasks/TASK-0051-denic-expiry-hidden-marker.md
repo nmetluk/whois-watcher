@@ -1,13 +1,13 @@
 ---
 id: TASK-0051
 title: DENIC — значок «expiry скрыт реестром» в /list и подсказка
-status: open
+status: claimed
 milestone: v0.14.0
 adr: ""
 area: code
 depends_on: []
-branch: ""
-owner: ""
+branch: task/0051-denic-expiry-hidden-marker
+owner: grok-4.3
 session: ""
 pr: ""
 created: 2026-06-04

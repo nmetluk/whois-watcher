@@ -10,10 +10,16 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from unittest.mock import MagicMock
 
 from src.db.models import UserDomain, WhoisCache
 from src.services.formatters import format_list_row
-from src.utils.domains import is_public_suffix_only, is_subdomain, split_domain
+from src.utils.domains import (
+    is_expiry_hidden_by_registry,
+    is_public_suffix_only,
+    is_subdomain,
+    split_domain,
+)
 
 NOW = datetime(2026, 5, 29, 12, 0, tzinfo=UTC)
 
@@ -172,3 +178,47 @@ class TestListRowSubdomainMark:
         out = format_list_row(user_domain, cache, lang="ru", now=NOW)
         assert "↳ www.example.com" in out
         assert "нет данных" in out
+
+
+class TestExpiryHiddenByRegistry:
+    """Тесты классификации «expiry скрыт реестром» (DENIC .de и др., TASK-0051).
+
+    Используем моки со spec для UserDomain / WhoisCache (anti-drift).
+    """
+
+    def test_is_expiry_hidden_de(self) -> None:
+        assert is_expiry_hidden_by_registry("example.de") is True
+        assert is_expiry_hidden_by_registry("foo.bar.de") is True
+        assert is_expiry_hidden_by_registry("EXAMPLE.DE") is True
+
+    def test_is_expiry_hidden_other_tld(self) -> None:
+        assert is_expiry_hidden_by_registry("example.com") is False
+        assert is_expiry_hidden_by_registry("example.ru") is False
+
+    def test_format_list_row_de_hidden_shows_marker(self) -> None:
+        """Для .de без expires_at показываем «дата скрыта реестром», не «нет данных»."""
+        ud = MagicMock(spec=UserDomain)
+        ud.domain = "example.de"
+        ud.is_subdomain = False
+        ud.is_muted = False
+        # getattr in code for is_subdomain
+        cache = MagicMock(spec=WhoisCache)
+        cache.expires_at = None
+
+        out = format_list_row(ud, cache, lang="ru")
+        assert "🔒" in out
+        assert "дата скрыта реестром" in out
+        assert "нет данных" not in out
+
+    def test_format_list_row_com_with_none_shows_unknown(self) -> None:
+        """Обычный TLD без данных — прежнее «нет данных»."""
+        ud = MagicMock(spec=UserDomain)
+        ud.domain = "example.com"
+        ud.is_subdomain = False
+        ud.is_muted = False
+        cache = MagicMock(spec=WhoisCache)
+        cache.expires_at = None
+
+        out = format_list_row(ud, cache, lang="ru")
+        assert "нет данных" in out
+        assert "скрыта реестром" not in out

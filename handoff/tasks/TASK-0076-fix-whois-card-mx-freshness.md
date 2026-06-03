@@ -9,7 +9,7 @@ depends_on: []
 branch: task/0076-fix-whois-card-mx-freshness
 owner: grok-4.3
 session: docs/sessions/2026-06-09_task-0076-fix-whois-card-mx-freshness.md
-pr: ""
+pr: https://github.com/nmetluk/whois-watcher/pull/51
 created: 2026-06-09
 ---
 

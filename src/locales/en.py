@@ -404,6 +404,10 @@ LOCALE: dict[str, str] = {
     "commands.whois.dns_unreachable": "🌐 <b>DNS</b>: ⚠️ unreachable",
     "commands.whois.dns_mx_only": "🌐 <b>DNS</b>: MX only (email-only domain)",
     "commands.whois.dns_no_dns": "🌐 <b>DNS</b>: no records",
+    # Background delivery of /whois card updates (TASK-0076)
+    "tasks.deliver.dns_update": "🌐 <b>DNS · {domain}</b> (update):",
+    "tasks.deliver.ssl_update": "🔒 <b>SSL · {domain}</b> (update):",
+    "tasks.deliver.email_update": "📧 <b>Email · {domain}</b> (update):",
     # Email-intel (TASK-0018, ADR 036)
     "commands.whois.email_section": "📧 <b>Email</b>",
     "commands.whois.email_unreachable": "📧 <b>Email</b>: ⚠️ unreachable",

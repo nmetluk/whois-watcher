@@ -56,6 +56,7 @@ from src.dns_monitor import (
     enrich_with_asn,
     resolve_records,
 )
+from src.locales import t
 from src.observability import bind_log_context, clear_log_context
 from src.services.formatters import format_dns_block
 
@@ -77,10 +78,6 @@ async def check_dns(
 ) -> None:
     """ARQ-задача: проверить DNS-записи одного домена."""
     redis: AsyncRedis[str] = ctx["sync_redis"]
-
-    # ensure deliver params in scope for nested/inner success code (TASK-0076)
-    deliver_chat_id = deliver_chat_id
-    deliver_lang = deliver_lang
 
     bind_log_context(domain=domain, subsystem="dns")
     try:
@@ -187,9 +184,7 @@ async def _check_dns_locked(domain: str, ctx: dict[str, Any]) -> None:
             )
 
             # TASK-0076: доставка DNS обновления для whois карточки
-            dchat = locals().get("deliver_chat_id")
-            dlang = locals().get("deliver_lang")
-            if dchat:
+            if deliver_chat_id:
                 bot: Bot = ctx.get("bot")  # type: ignore[assignment]
                 if bot:
                     try:
@@ -197,17 +192,21 @@ async def _check_dns_locked(domain: str, ctx: dict[str, Any]) -> None:
                             cr = DNSCacheRepository(session)
                             cache = await cr.get(domain)
                         if cache:
-                            block = format_dns_block(cache, lang=dlang or "ru")
+                            block = format_dns_block(cache, lang=deliver_lang or "ru")
                             if block:
-                                text = f"🌐 DNS для {domain} (обновление):\n{block}"
-                                await bot.send_message(dchat, text)
+                                header = t(
+                                    "tasks.deliver.dns_update",
+                                    deliver_lang or "ru",
+                                    domain=domain,
+                                )
+                                await bot.send_message(deliver_chat_id, f"{header}\n{block}")
                                 logger.info(
                                     "Delivered DNS update to chat %s for %s",
-                                    dchat,
+                                    deliver_chat_id,
                                     domain,
                                 )
                     except Exception as dexc:
-                        logger.warning("Failed DNS deliver to %s: %s", dchat, dexc)
+                        logger.warning("Failed DNS deliver to %s: %s", deliver_chat_id, dexc)
         else:
             # invalid_domain / disabled — конфигурационные, не сетевые:
             # is_reachable не трогаем (становится / остаётся True или None).

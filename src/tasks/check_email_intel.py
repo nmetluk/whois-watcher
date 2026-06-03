@@ -28,6 +28,7 @@ from src.email_intel.client import fetch_email_intel
 from src.email_intel.diff import EmailIntelDiff, compute_email_diff
 from src.email_intel.scheduler import calculate_next_email_check
 from src.email_intel.types import EmailIntelError, EmailIntelResult
+from src.locales import t
 from src.observability import bind_log_context, clear_log_context
 from src.services.formatters import format_email_block
 
@@ -99,10 +100,6 @@ async def check_email_intel(
 ) -> None:
     """ARQ-задача: проверить email-intel одного домена."""
     redis: AsyncRedis[str] = ctx["sync_redis"]
-
-    # ensure deliver params (TASK-0076)
-    deliver_chat_id = deliver_chat_id
-    deliver_lang = deliver_lang
 
     bind_log_context(domain=domain, subsystem="email_intel")
     try:
@@ -192,8 +189,10 @@ async def _handle_success(
                 if cache:
                     block = format_email_block(cache, lang=deliver_lang or "ru")
                     if block:
-                        text = f"📧 Email intel для {domain} (обновление):\n{block}"
-                        await bot.send_message(deliver_chat_id, text)
+                        header = t(
+                            "tasks.deliver.email_update", deliver_lang or "ru", domain=domain
+                        )
+                        await bot.send_message(deliver_chat_id, f"{header}\n{block}")
                         logger.info(
                             "Delivered email intel update to chat %s for %s",
                             deliver_chat_id,

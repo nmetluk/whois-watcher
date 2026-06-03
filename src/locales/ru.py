@@ -420,6 +420,10 @@ LOCALE: dict[str, str] = {
     "commands.whois.dns_unreachable": "🌐 <b>DNS</b>: ⚠️ не отвечает",
     "commands.whois.dns_mx_only": "🌐 <b>DNS</b>: только MX (email-only домен)",
     "commands.whois.dns_no_dns": "🌐 <b>DNS</b>: записей нет",
+    # Доставка фоновых обновлений карточки /whois (TASK-0076)
+    "tasks.deliver.dns_update": "🌐 <b>DNS · {domain}</b> (обновление):",
+    "tasks.deliver.ssl_update": "🔒 <b>SSL · {domain}</b> (обновление):",
+    "tasks.deliver.email_update": "📧 <b>Email · {domain}</b> (обновление):",
     # Email-intel (TASK-0018, ADR 036)
     "commands.whois.email_section": "📧 <b>Email</b>",
     "commands.whois.email_unreachable": "📧 <b>Email</b>: ⚠️ не отвечает",

@@ -24,6 +24,7 @@ from redis.asyncio import Redis as AsyncRedis
 from src.db.models import SSLCache, UserDomain
 from src.db.repositories import DomainRepository, SSLCacheRepository
 from src.db.session import get_session
+from src.locales import t
 from src.observability import bind_log_context, clear_log_context
 from src.services.formatters import format_ssl_block
 from src.ssl.client import fetch_certificate
@@ -73,10 +74,6 @@ async def check_ssl(
 ) -> None:
     """ARQ-задача: проверить SSL-сертификат одного домена."""
     redis: AsyncRedis[str] = ctx["sync_redis"]
-
-    # ensure deliver params visible to _handle_success (TASK-0076)
-    deliver_chat_id = deliver_chat_id
-    deliver_lang = deliver_lang
 
     bind_log_context(domain=domain, subsystem="ssl")
     try:
@@ -160,8 +157,10 @@ async def _handle_success(
                 if cache:
                     block = format_ssl_block(cache, lang=deliver_lang or "ru")
                     if block:
-                        text = f"🔒 SSL для {domain} (обновление):\n{block}"
-                        await bot.send_message(deliver_chat_id, text)
+                        header = t(
+                            "tasks.deliver.ssl_update", deliver_lang or "ru", domain=domain
+                        )
+                        await bot.send_message(deliver_chat_id, f"{header}\n{block}")
                         logger.info(
                             "Delivered SSL update to chat %s for %s", deliver_chat_id, domain
                         )

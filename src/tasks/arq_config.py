@@ -108,6 +108,7 @@ def _build_functions() -> list[Any]:
     from src.tasks.dns_scheduler import dns_scheduler_tick
     from src.tasks.email_intel_scheduler import email_intel_scheduler_tick
     from src.tasks.expiry_scheduler import expiry_notification_scheduler
+    from src.tasks.hourly_ops_report import hourly_ops_report
     from src.tasks.notify_changes import send_change_notice
     from src.tasks.notify_dns_changes import send_dns_change_notice
     from src.tasks.notify_email_changes import send_email_change_notice
@@ -137,6 +138,7 @@ def _build_functions() -> list[Any]:
         cleanup_old_events,
         send_wishlist_available_notice,
         proxy_health_check,
+        hourly_ops_report,
         # RIR/ASN lookup (Этап 13, ADR 031)
         rir_health_check,
         # SSL (Этап 12, ADR 030)
@@ -167,6 +169,7 @@ def _build_cron_jobs() -> list[Any]:
     from src.tasks.dns_scheduler import dns_scheduler_tick
     from src.tasks.email_intel_scheduler import email_intel_scheduler_tick
     from src.tasks.expiry_scheduler import expiry_notification_scheduler
+    from src.tasks.hourly_ops_report import hourly_ops_report
     from src.tasks.proxy_health import proxy_health_check
     from src.tasks.rir_health import rir_health_check
     from src.tasks.scheduler import scheduler_tick
@@ -240,6 +243,12 @@ def _build_cron_jobs() -> list[Any]:
         cron(
             backup_postgres,
             name="backup_postgres",
+            minute={0},
+        ),
+        # ADR 042, TASK-0059: ежечасный ops-отчёт (статистика + статус бекапа).
+        cron(
+            hourly_ops_report,
+            name="hourly_ops_report",
             minute={0},
         ),
         # Раз в сутки в 03:00 UTC = 06:00 по Москве — сразу после ночного окна.

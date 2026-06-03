@@ -1,17 +1,22 @@
 ---
 id: TASK-0059
 title: Ежечасный ops-отчёт в админ-канал (статистика + статус бекапа)
-status: open
+status: done
 milestone: v0.15.0
 adr: 042
 area: code
 depends_on: [TASK-0058]
-branch: ""
-owner: ""
-session: ""
-pr: ""
+branch: task/0059-hourly-ops-report
+owner: grok-4.3
+session: docs/sessions/2026-06-09_task-0059-hourly-ops-report.md
+pr: 41
 created: 2026-06-08
+completed: 2026-06-09
 ---
+
+> ✅ Ревью архитектора (2026-06-09) — merged. Бекап-статус из `ops:last_backup`
+> (нет/ok=False → «FAILED», не крашится), `send_ops` без дедупа, no-op без
+> admin-channel. Merge-конфликт `arq_config` (cron-регистрация) разрешён union.
 
 # TASK-0059 — Ежечасный ops-отчёт (ADR 042)
 

@@ -9,7 +9,7 @@ depends_on: []
 branch: task/0077-fix-deep-email-empty
 owner: grok-4.3
 session: docs/sessions/2026-06-09_task-0077-fix-deep-email-empty.md
-pr: ""
+pr: https://github.com/nmetluk/whois-watcher/pull/52
 created: 2026-06-09
 ---
 

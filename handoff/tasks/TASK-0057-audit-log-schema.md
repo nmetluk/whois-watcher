@@ -9,7 +9,7 @@ depends_on: []
 branch: task/0057-audit-log-schema
 owner: grok-4.3
 session: docs/sessions/2026-06-09_task-0057-audit-log-schema.md
-pr: ""
+pr: 39
 created: 2026-06-08
 ---
 

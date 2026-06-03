@@ -9,7 +9,7 @@ depends_on: []
 branch: task/0058-postgres-hourly-backup
 owner: grok-4.3
 session: docs/sessions/2026-06-09_task-0058-postgres-hourly-backup.md
-pr: ""
+pr: 40
 created: 2026-06-08
 ---
 

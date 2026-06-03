@@ -22,6 +22,8 @@
 | v0.11.0 | Subdomain enumeration через crt.sh, on-demand (ADR 037) | 2026-05-30 |
 | v0.11.1 | Wishlist — независимые списки (ADR 039) | 2026-05-30 |
 | v0.12.0 | Periodic subdomain monitoring + алерты (ADR 038) | 2026-05-31 |
+| v0.15.0 | Админ/ops-слой (ADR 042) | 2026-06-09 |
+| v0.15.1 | Hotfix: on-demand delivery + deep email (ADR 040) | 2026-06-09 |
 
 Patch-релизы (`.1`/`.2`) с фиксами — в CHANGELOG.md. Полный лог фич
 каждого релиза — там же.

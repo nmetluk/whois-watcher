@@ -1,0 +1,16 @@
+import React, { useEffect, useState } from 'react';
+import { Icon } from '../components/Icon';
+import { fetchCalendar } from '../lib/api';
+const MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const DOW = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+export const CalendarScreen: React.FC<any> = ({ onOpenDomain, toast }) => {
+  const [view, setView] = useState({ y: new Date().getFullYear(), m: new Date().getMonth() });
+  const [data, setData] = useState<any>(null);
+  const [selDay, setSelDay] = useState<number | null>(null);
+  useEffect(() => { const ms = `${view.y}-${String(view.m+1).padStart(2,'0')}`; fetchCalendar(ms).then(setData).catch(()=>setData({heat:{},agenda:[]})); }, [view]);
+  const first = new Date(view.y, view.m, 1); const startDow = (first.getDay() + 6) % 7; const daysInMonth = new Date(view.y, view.m + 1, 0).getDate(); const cells: (number|null)[] = []; for (let i=0;i<startDow;i++) cells.push(null); for (let dd=1;dd<=daysInMonth;dd++) cells.push(dd);
+  const move = (delta:number) => { let m=view.m+delta, y=view.y; if(m<0){m=11;y--;} if(m>11){m=0;y++;} setView({y,m}); setSelDay(null); };
+  const heat = (dd:number) => { if(!data?.heat) return ''; const key=`${view.y}-${view.m}-${dd}`; const n = data.heat[key]||0; return n===0?'':n<=1?'heat-1':n<=3?'heat-2':'heat-3'; };
+  const selList = selDay && data?.agenda ? data.agenda.filter((a:any)=>parseInt(a.date.split('.')[0])===selDay) : [];
+  return <div className="tg-pad tg-pad-b"><div className="tg-cal"><div style={{display:'flex',alignItems:'center',marginBottom:12}}><button className="tg-hbtn" style={{width:32,height:32}} onClick={()=>move(-1)}><Icon name="chevron_left" /></button><div style={{flex:1,textAlign:'center',fontSize:16,fontWeight:700}}>{MONTHS[view.m]} {view.y}</div><button className="tg-hbtn" style={{width:32,height:32}} onClick={()=>move(1)}><Icon name="chevron_right" /></button></div><div className="tg-cal-grid">{DOW.map(d=><div key={d} className="tg-cal-dow">{d}</div>)}{cells.map((dd,i)=>{ if(!dd) return <div key={i} />; const n = data?.heat?.[`${view.y}-${view.m}-${dd}`]||0; return <div key={i} className={"tg-cal-cell " + heat(dd) + (n?' has':'')} onClick={()=> n && setSelDay(selDay===dd?null:dd)}>{dd}{n>0 && <div className="tg-cal-dots"><i /></div>}</div>; })}</div></div><button className="pv-btn" style={{width:'100%',justifyContent:'center',marginTop:12}} onClick={()=>toast('iCal (stub)','event_available')}><Icon name="calendar_add_on" />Экспортировать в календарь (iCal)</button>{selDay && selList.length>0 && <div className="tg-section-label">{selDay} {MONTHS[view.m]} · {selList.length} доменов</div>}{selList.map((a:any,i:number)=><div key={i} className="tg-irow tap" onClick={()=>onOpenDomain({id:a.id})}>{a.domain} — {a.daysLeft} дн.</div>) }<div className="tg-section-label">Истекают в {MONTHS[view.m]}</div>{(data?.agenda||[]).slice(0,5).map((a:any,i:number)=><div key={i} className="tg-irow tap" onClick={()=>onOpenDomain({id:a.id})}>{a.domain}</div>)}</div>;
+};

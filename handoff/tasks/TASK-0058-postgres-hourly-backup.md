@@ -1,7 +1,7 @@
 ---
 id: TASK-0058
 title: Ежечасный бекап Postgres (pg_dump, ротация 36, verify)
-status: in_review
+status: done
 milestone: v0.15.0
 adr: 042
 area: code
@@ -11,7 +11,14 @@ owner: grok-4.3
 session: docs/sessions/2026-06-09_task-0058-postgres-hourly-backup.md
 pr: 40
 created: 2026-06-08
+completed: 2026-06-09
 ---
+
+> ✅ Ревью архитектора (2026-06-09) — merged. `create_subprocess_exec` (не shell),
+> PGPASSWORD через env (не в логах), verify через `pg_restore --list`, ротация
+> `sorted(reverse=True)[keep:]` (держит новейшие 36), статус в `ops:last_backup`,
+> never-raises. Dockerfile += postgresql-client-16 (PGDG), том `ww_backups` на
+> worker+scheduler. Deploy: пересобрать образ + создать том.
 
 # TASK-0058 — Ежечасный бекап Postgres (ADR 042)
 

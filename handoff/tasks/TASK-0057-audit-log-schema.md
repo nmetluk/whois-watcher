@@ -1,7 +1,7 @@
 ---
 id: TASK-0057
 title: Аудит-лог — таблица audit_log + репозиторий + helper audit()
-status: in_review
+status: done
 milestone: v0.15.0
 adr: 042
 area: code
@@ -11,7 +11,12 @@ owner: grok-4.3
 session: docs/sessions/2026-06-09_task-0057-audit-log-schema.md
 pr: 39
 created: 2026-06-08
+completed: 2026-06-09
 ---
+
+> ✅ Ревью архитектора (2026-06-09) — merged. Миграция `20260609_audit_log`
+> (down_revision=email_deep, single-head, обратима, SQL-литералы); `audit()`
+> best-effort (try/except, никогда не бросает); модель в стиле SystemEvent.
 
 # TASK-0057 — audit_log: схема + репозиторий + helper (ADR 042)
 

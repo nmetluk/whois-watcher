@@ -1,7 +1,7 @@
 ---
 id: TASK-0077
 title: 🔴 Диагностика+фикс — глубокий e-mail всегда пустой
-status: claimed
+status: in_review
 milestone: v0.15.1
 adr: 040
 area: code

@@ -6,6 +6,7 @@
 - ``#anomaly`` — массовые WHOIS-фейлы, аномалии трафика
 - ``#info``    — важные события (старт/стоп процессов)
 - ``#daily``   — ежедневная сводка
+- ``#ops``     — ежечасный технический отчёт (статистика + бекапы); без дедупа
 
 Дедупликация — Redis-ключ ``alert:<hash>`` с TTL
 ``Limits.alert_dedup_ttl_minutes``. Hash считается от
@@ -82,12 +83,22 @@ class AlertService:
         body = _format_daily_summary(stats)
         await self._send(severity="daily", icon="📊", title="Daily summary", details=body)
 
+    async def send_ops(self, text: str) -> None:
+        """📟 #ops — ежечасный технический отчёт (статистика + статус бекапа).
+
+        **Без дедупликации** — контент меняется каждый час, всегда отправляем.
+        Технический канал, текст на английском/смешанном по необходимости.
+        """
+        await self._send(severity="ops", icon="📟", title="Ops (hour)", details=text, dedup=False)
+
     # ------------------------------------------------------------------
     # Внутренняя реализация
     # ------------------------------------------------------------------
 
-    async def _send(self, *, severity: str, icon: str, title: str, details: str) -> None:
-        """Универсальный путь: тег #severity, дедуп через Redis, отправка."""
+    async def _send(
+        self, *, severity: str, icon: str, title: str, details: str, dedup: bool = True
+    ) -> None:
+        """Универсальный путь: тег #severity, (опц.) дедуп через Redis, отправка."""
         channel_id = self._settings.admin_channel_id
         if channel_id is None:
             logger.warning(
@@ -96,7 +107,9 @@ class AlertService:
             )
             return
 
-        if not await self._reserve_dedup_slot(severity=severity, title=title, details=details):
+        if dedup and not await self._reserve_dedup_slot(
+            severity=severity, title=title, details=details
+        ):
             logger.debug(
                 "AlertService: duplicate alert suppressed",
                 extra={"severity": severity, "title": title},

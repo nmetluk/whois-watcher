@@ -1,14 +1,14 @@
 ---
 id: TASK-0059
 title: Ежечасный ops-отчёт в админ-канал (статистика + статус бекапа)
-status: open
+status: in_review
 milestone: v0.15.0
 adr: 042
 area: code
 depends_on: [TASK-0058]
-branch: ""
-owner: ""
-session: ""
+branch: task/0059-hourly-ops-report
+owner: grok-4.3
+session: docs/sessions/2026-06-09_task-0059-hourly-ops-report.md
 pr: ""
 created: 2026-06-08
 ---

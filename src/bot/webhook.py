@@ -27,6 +27,7 @@ from arq import create_pool
 from redis.asyncio import Redis
 
 from src.bot.commands import COMMANDS_EN, COMMANDS_RU
+from src.bot.webapp.api import setup_webapp_on_main
 from src.config.limits import get_limits
 from src.config.settings import Settings
 from src.db.session import dispose_engine
@@ -53,6 +54,10 @@ def create_app(
     """Создаёт aiohttp-приложение со всеми эндпойнтами и lifecycle-хуками."""
     app = web.Application()
     app.router.add_get("/health", _health)
+
+    # WebApp JSON API (ADR 043 / TASK-0066/70). Mounted at /api/webapp/*
+    # Auth (initData) + CORS inside the subapp. Read + Write.
+    setup_webapp_on_main(app, settings=settings)
 
     SimpleRequestHandler(
         dispatcher=dp,

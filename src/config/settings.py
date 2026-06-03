@@ -283,6 +283,13 @@ class Settings(BaseSettings):
         ge=0,
         description="Minimum acceptable dump file size (bytes) for verify to pass.",
     )
+    # Audit log retention (ADR 042, TASK-0061)
+    # ------------------------------------------------------------------
+    audit_retention_days: int = Field(
+        90,
+        ge=1,
+        description="How many days to keep records in audit_log before cleanup (default 90 per ADR 042).",
+    )
 
     # ------------------------------------------------------------------
     # Вычисляемые свойства

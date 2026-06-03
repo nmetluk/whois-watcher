@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import logging
+from contextlib import suppress
 
 from aiogram import Router
 from aiogram.filters import Command, CommandObject
@@ -26,6 +27,7 @@ from src.db.models import User, UserDomain, WhoisCache
 from src.db.session import get_session
 from src.locales import t
 from src.services.alerts import AlertService
+from src.services.audit import audit
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +78,14 @@ async def cmd_admin(
         )
         await alerts.send_info("manual alert", rest)
         await message.answer(t("admin.alert_sent", lang))
+        with suppress(Exception):  # pragma: no cover
+            await audit(
+                level="info",
+                category="admin_action",
+                message="manual alert sent",
+                actor=str(message.from_user.id) if message.from_user else "admin",
+                context={"text_len": len(rest)},
+            )
         return
 
     await message.answer(t("admin.unknown", lang))

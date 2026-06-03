@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import logging
+from contextlib import suppress
 from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -25,6 +26,7 @@ from src.db.session import get_session
 from src.email_intel.deep_client import fetch_deep_email
 from src.email_intel.deep_types import DeepEmailError, DeepEmailResult
 from src.observability import bind_log_context, clear_log_context
+from src.services.audit import audit
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +132,18 @@ async def check_email_deep(ctx: dict[str, Any], domain: str) -> dict[str, Any]:
 
     except Exception as exc:
         logger.exception("Unexpected error in check_email_deep for %s", domain)
+        with suppress(Exception):  # pragma: no cover
+            await audit(
+                level="error",
+                category="task_failure",
+                message="check_email_deep failed",
+                actor="system",
+                context={
+                    "task": "check_email_deep",
+                    "domain": domain,
+                    "error": str(exc),
+                },
+            )
         return {
             "status": "internal_error",
             "domain": domain,

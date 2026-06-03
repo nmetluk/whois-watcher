@@ -17,6 +17,7 @@ Lifecycle:
 from __future__ import annotations
 
 import logging
+from contextlib import suppress
 
 from aiogram import Bot, Dispatcher
 from aiogram.types import BotCommandScopeDefault
@@ -30,6 +31,7 @@ from src.config.limits import get_limits
 from src.config.settings import Settings
 from src.db.session import dispose_engine
 from src.services.alerts import AlertService
+from src.services.audit import audit
 from src.tasks.arq_config import get_redis_settings
 
 logger = logging.getLogger(__name__)
@@ -132,3 +134,11 @@ async def _try_send_critical(
         await alerts.send_critical(title, details)
     except Exception:
         logger.exception("Failed to send critical alert: %s", title)
+        with suppress(Exception):  # pragma: no cover
+            await audit(
+                level="critical",
+                category="webhook",
+                message="failed to send critical alert",
+                actor="system",
+                context={"title": title},
+            )

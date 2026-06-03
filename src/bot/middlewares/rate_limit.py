@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from contextlib import suppress
 from typing import Any
 
 from aiogram import BaseMiddleware
@@ -27,6 +28,7 @@ from redis.asyncio import Redis
 from src.config.limits import Limits
 from src.db.models import User
 from src.locales import t
+from src.services.audit import audit
 
 # Команды, для которых работает «дорогой» WHOIS-лимит.
 _WHOIS_COMMANDS = frozenset({"/whois", "/check"})
@@ -138,3 +140,13 @@ async def _reply_rate_limit(event: TelegramObject, user: User, retry_after: int)
         await event.answer(text)
     elif isinstance(event, CallbackQuery):
         await event.answer(text, show_alert=True)
+
+    # Записать инцидент rate_limit (best-effort, не должен влиять на ответ пользователю).
+    with suppress(Exception):  # pragma: no cover - audit swallows anyway
+        await audit(
+            level="warning",
+            category="rate_limit",
+            message="rate limit hit",
+            actor=str(user.telegram_id),
+            context={"retry_after": retry_after},
+        )

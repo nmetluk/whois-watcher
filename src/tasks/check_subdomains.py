@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import logging
+from contextlib import suppress
 from datetime import UTC, datetime
 from typing import Any
 
@@ -22,6 +23,7 @@ from redis.asyncio import Redis as AsyncRedis
 from src.db.repositories import SubdomainEnumCacheRepository
 from src.db.session import get_session
 from src.observability import bind_log_context, clear_log_context
+from src.services.audit import audit
 from src.subdomains.client import fetch_subdomains
 from src.subdomains.diff import compute_subdomain_diff
 from src.subdomains.scheduler import calculate_next_subdomain_check
@@ -154,6 +156,18 @@ async def check_subdomains(ctx: dict[str, Any], registrable_domain: str) -> dict
 
     except Exception as exc:
         logger.exception("Unexpected error in check_subdomains for %s", registrable_domain)
+        with suppress(Exception):  # pragma: no cover
+            await audit(
+                level="error",
+                category="task_failure",
+                message="check_subdomains failed",
+                actor="system",
+                context={
+                    "task": "check_subdomains",
+                    "registrable_domain": registrable_domain,
+                    "error": str(exc),
+                },
+            )
         return {
             "status": "internal_error",
             "registrable_domain": registrable_domain,

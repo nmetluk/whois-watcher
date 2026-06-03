@@ -1,17 +1,23 @@
 ---
 id: TASK-0061
 title: Вписать audit() в инцидент-точки + retention 90 дней
-status: open
+status: done
 milestone: v0.15.0
 adr: 042
 area: code
 depends_on: [TASK-0057]
-branch: ""
-owner: ""
-session: ""
-pr: ""
+branch: task/0061-wire-audit-retention
+owner: grok-4.3
+session: docs/sessions/2026-06-09_task-0061-wire-audit-retention.md
+pr: 43
 created: 2026-06-08
+completed: 2026-06-09
 ---
+
+> ✅ Ревью архитектора (2026-06-09) — merged. `audit()` вписан в инцидент-точки
+> (admin/download/rate_limit/webhook/startup/check_*), `cleanup_old_audit_log`
+> (retention из `settings.audit_retention_days`=90). Merge-конфликты
+> (arq_config imports, settings, .env) разрешены union.
 
 # TASK-0061 — audit() в инцидент-точки + retention (ADR 042)
 

@@ -10,6 +10,7 @@
         user = await users.get_by_telegram_id(12345)
 """
 
+from src.db.repositories.audit_log import AuditLogRepository
 from src.db.repositories.base import BaseRepository
 from src.db.repositories.dns_cache import DNSCacheRepository
 from src.db.repositories.domains import DomainRepository
@@ -23,6 +24,7 @@ from src.db.repositories.whois_cache import WhoisCacheRepository
 from src.db.repositories.wishlist import WishlistRepository
 
 __all__ = [
+    "AuditLogRepository",
     "BaseRepository",
     "DNSCacheRepository",
     "DomainRepository",

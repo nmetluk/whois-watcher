@@ -1,14 +1,14 @@
 ---
 id: TASK-0057
 title: Аудит-лог — таблица audit_log + репозиторий + helper audit()
-status: open
+status: in_review
 milestone: v0.15.0
 adr: 042
 area: code
 depends_on: []
-branch: ""
-owner: ""
-session: ""
+branch: task/0057-audit-log-schema
+owner: grok-4.3
+session: docs/sessions/2026-06-09_task-0057-audit-log-schema.md
 pr: ""
 created: 2026-06-08
 ---

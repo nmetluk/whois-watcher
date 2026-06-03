@@ -384,6 +384,35 @@ class SystemEvent(Base):
 
 
 # ---------------------------------------------------------------------------
+# audit_log (ADR 042, TASK-0057)
+# ---------------------------------------------------------------------------
+class AuditLog(Base):
+    """Журнал инцидентов/аудита для разбора нештатных ситуаций (retention 90д).
+
+    Отдельная от ``system_events`` (аналитика, retention 30д). См. ADR 042.
+    """
+
+    __tablename__ = "audit_log"
+    __table_args__ = (Index("ix_audit_log_category_created", "category", "created_at"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    # 'info' | 'warning' | 'error' | 'critical'
+    level: Mapped[str] = mapped_column(String(16), nullable=False)
+    # 'task_failure' | 'rate_limit' | 'admin_action' | 'webhook' | 'startup' | 'other'
+    category: Mapped[str] = mapped_column(String(32), nullable=False)
+    # user_id (str) или "system"
+    actor: Mapped[str | None] = mapped_column(Text, nullable=True)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    context: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<AuditLog id={self.id} level={self.level} category={self.category}>"
+
+
+# ---------------------------------------------------------------------------
 # ssl_cache (Этап 12, ADR 030)
 # ---------------------------------------------------------------------------
 class SSLCache(Base):

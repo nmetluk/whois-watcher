@@ -7,7 +7,6 @@
 | ID | Статус | Майлстоун | ADR | Область | Тема | Ветка |
 |----|--------|-----------|-----|---------|------|-------|
 | TASK-0056 | open | v0.14.1 | — | code | v0.14 cleanup — подключить no_expiry_tlds + sweep getattr-на-ORM | — |
-| TASK-0057 | open | v0.15.0 | 042 | code | Аудит-лог — таблица audit_log + репозиторий + helper audit() | — |
 | TASK-0058 | open | v0.15.0 | 042 | code | Ежечасный бекап Postgres (pg_dump, ротация 36, verify) | — |
 | TASK-0059 | open | v0.15.0 | 042 | code | Ежечасный ops-отчёт в админ-канал (статистика + статус бекапа) | — |
 | TASK-0060 | open | v0.15.0 | 042 | code | Дневной графический отчёт 21:00 МСК (matplotlib) + сохранить 06:00 | — |
@@ -15,6 +14,7 @@
 | TASK-0062 | open | v0.15.0 | 042 | audit | Аудит v0.15 (админ/ops-слой: бекапы, отчёты, аудит-лог) | — |
 | TASK-0063 | open | v0.15.0 | 042 | docs | Релиз v0.15.0 — админ/ops-слой (бекапы, отчёты, аудит-лог) | — |
 | TASK-0064 | open | v0.16.0 | 043 | docs | ADR 043 — WebApp-слой бота (дизайн-спайк, следующий этап) | — |
+| TASK-0057 | in_review | v0.15.0 | 042 | code | Аудит-лог — таблица audit_log + репозиторий + helper audit() | task/0057-audit-log-schema |
 | TASK-0001 | done | v0.8.1 | 034 | code | Багфикс wishlist ↔ tracked (авто-промоут) | task/0001-wishlist-tracked-fix |
 | TASK-0002 | done | v0.9.0 | 035 | code | PSL — зависимость tldextract + src/utils/domains.py | task/0002-psl-utils-domains |
 | TASK-0003 | done | v0.9.0 | 035 | code | Схема user_domains (registrable_domain, is_subdomain) + WHOIS-джойны | task/0003-subdomain-schema-whois-joins |

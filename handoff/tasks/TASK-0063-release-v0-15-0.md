@@ -1,17 +1,22 @@
 ---
 id: TASK-0063
 title: Релиз v0.15.0 — админ/ops-слой (бекапы, отчёты, аудит-лог)
-status: open
+status: done
 milestone: v0.15.0
 adr: 042
 area: docs
 depends_on: [TASK-0062]
 branch: ""
-owner: ""
-session: ""
+owner: architect
+session: docs/sessions/2026-06-09_task-0063-release-v0-15-0.md
 pr: ""
 created: 2026-06-08
+completed: 2026-06-09
 ---
+
+> **Итог (2026-06-09):** релиз сделан архитектором — bump 0.14.0→0.15.0, секция
+> CHANGELOG `[0.15.0]`, тег `v0.15.0`. Деплой: пересобрать образ (pg-client-16),
+> том `ww_backups`, env. Подтвердить зелёный CI перед деплоем.
 
 # TASK-0063 — Релиз v0.15.0 (ADR 042)
 

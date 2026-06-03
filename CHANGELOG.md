@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] — 2026-06-09
+
+Админ/ops-слой для эксплуатации прода (ADR 042): бекапы, отчёты, аудит-лог.
+Без изменений пользовательского поведения.
+
+### Added
+
+- **Ежечасные бекапы Postgres.** ARQ cron `backup_postgres`: `pg_dump -Fc` →
+  `BACKUP_DIR`, ротация (храним `BACKUP_KEEP=36` свежих), проверка валидности
+  (`pg_restore --list`), статус в Redis `ops:last_backup`. Redis не бекапим
+  (регенерируем).
+- **Ежечасный ops-отчёт** в админ-канал: статистика за час (активные/lookups/
+  новые домены/ошибки) + подтверждение успешного бекапа (или ❌ FAILED).
+- **Дневной графический отчёт 21:00 МСК** (matplotlib): графики использования
+  за ~14 дней. Текстовая сводка 06:00 сохранена.
+- **Аудит-лог** (`audit_log`, retention 90 дней): записи об инцидентах для
+  разбора нештатных ситуаций (фейлы задач, rate-limit, admin-действия,
+  webhook/startup) через best-effort helper `audit()`.
+
+### Internal
+
+- Новая зависимость: `matplotlib` (backend Agg, headless). Dev:
+  `postgresql-client-16` в worker-образе.
+- Миграция `20260609_audit_log` (single-head, обратима).
+- Новые настройки: `BACKUP_DIR`, `BACKUP_KEEP`, `BACKUP_MIN_BYTES`,
+  `AUDIT_RETENTION_DAYS`. Новый docker-том `ww_backups` (worker/scheduler).
+
+### Deploy
+
+- ⚠️ Пересобрать образ (добавлен `postgresql-client-16`), создать том
+  `ww_backups`, выставить `BACKUP_*`/`AUDIT_RETENTION_DAYS`.
+
 ## [0.14.0] — 2026-06-08
 
 Стабилизационный релиз — погашение тех-долга, без новых пользовательских фич

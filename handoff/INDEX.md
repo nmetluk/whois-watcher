@@ -2,14 +2,14 @@
 
 > АВТО-генерируется `python scripts/handoff.py board`. Не править руками.
 
-Всего задач: 64
+Всего задач: 65
 
 | ID | Статус | Майлстоун | ADR | Область | Тема | Ветка |
 |----|--------|-----------|-----|---------|------|-------|
 | TASK-0056 | open | v0.14.1 | — | code | v0.14 cleanup — подключить no_expiry_tlds + sweep getattr-на-ORM | — |
-| TASK-0062 | open | v0.15.0 | 042 | audit | Аудит v0.15 (админ/ops-слой: бекапы, отчёты, аудит-лог) | — |
 | TASK-0063 | open | v0.15.0 | 042 | docs | Релиз v0.15.0 — админ/ops-слой (бекапы, отчёты, аудит-лог) | — |
 | TASK-0064 | open | v0.16.0 | 043 | docs | ADR 043 — WebApp-слой бота (дизайн-спайк, следующий этап) | — |
+| TASK-0065 | open | v0.15.1 | 042 | code | Бекапы — офсайт-копия + шифрование (durability) + мелочи аудита v0.15 | — |
 | TASK-0001 | done | v0.8.1 | 034 | code | Багфикс wishlist ↔ tracked (авто-промоут) | task/0001-wishlist-tracked-fix |
 | TASK-0002 | done | v0.9.0 | 035 | code | PSL — зависимость tldextract + src/utils/domains.py | task/0002-psl-utils-domains |
 | TASK-0003 | done | v0.9.0 | 035 | code | Схема user_domains (registrable_domain, is_subdomain) + WHOIS-джойны | task/0003-subdomain-schema-whois-joins |
@@ -70,3 +70,4 @@
 | TASK-0059 | done | v0.15.0 | 042 | code | Ежечасный ops-отчёт в админ-канал (статистика + статус бекапа) | task/0059-hourly-ops-report |
 | TASK-0060 | done | v0.15.0 | 042 | code | Дневной графический отчёт 21:00 МСК (matplotlib) + сохранить 06:00 | task/0060-daily-graph-report |
 | TASK-0061 | done | v0.15.0 | 042 | code | Вписать audit() в инцидент-точки + retention 90 дней | task/0061-wire-audit-retention |
+| TASK-0062 | done | v0.15.0 | 042 | audit | Аудит v0.15 (админ/ops-слой: бекапы, отчёты, аудит-лог) | — |

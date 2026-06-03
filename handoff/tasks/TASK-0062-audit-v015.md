@@ -1,17 +1,24 @@
 ---
 id: TASK-0062
 title: Аудит v0.15 (админ/ops-слой: бекапы, отчёты, аудит-лог)
-status: open
+status: done
 milestone: v0.15.0
 adr: 042
 area: audit
 depends_on: [TASK-0057, TASK-0058, TASK-0059, TASK-0060, TASK-0061]
 branch: ""
-owner: ""
-session: ""
+owner: architect
+session: handoff/audits/AUDIT-2026-06-09-v0-15-admin-ops.md
 pr: ""
 created: 2026-06-08
+completed: 2026-06-09
 ---
+
+> **Итог (2026-06-09):** аудит проведён, отчёт
+> `handoff/audits/AUDIT-2026-06-09-v0-15-admin-ops.md`. Вердикт **GO** (тег
+> v0.15.0 после зелёного CI + пересборки образа с pg-client-16). 🔴/🟠 нет;
+> 🟢 → TASK-0065 (офсайт/шифрование бекапов). Закрывает пробел, вызвавший
+> недавнюю потерю данных (не было бекапов).
 
 # TASK-0062 — Аудит v0.15 (админ/ops-слой)
 

@@ -1,7 +1,7 @@
 ---
 id: TASK-0076
 title: 🔴 Фикс — инлайн MX в первом /whois не появляется (карточка не доставляет фоновые данные)
-status: claimed
+status: in_review
 milestone: v0.15.1
 adr: 040
 area: code

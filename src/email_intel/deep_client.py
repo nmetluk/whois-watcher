@@ -91,6 +91,9 @@ async def fetch_deep_email(
     resolver = dns.asyncresolver.Resolver()
     resolver.timeout = DNS_QUERY_TIMEOUT
     resolver.lifetime = DNS_TOTAL_TIMEOUT
+    # TASK-0077: использовать публичные DNS в контейнере (системный resolver может быть ограничен)
+    resolver.nameservers = ["1.1.1.1", "8.8.8.8"]
+    logger.info("fetch_deep_email resolver nameservers set to public for %s", normalized)
 
     # Создаём injectable resolve_txt для SPF (использует resolver)
     async def _resolve_txt_for_spf(d: str) -> list[str] | None:

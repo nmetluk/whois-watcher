@@ -94,3 +94,13 @@ src/_build_info.py
 # крутится сервер до текущего деплоя (для будущего rollback). Меняется
 # на каждый деплой, в репо не нужен.
 .last-deployed-commit
+
+# WebApp frontend (Vite + React/TS)
+webapp/node_modules/
+webapp/dist/
+webapp/.vite/
+webapp/.env.local
+webapp/.env.*.local
+webapp/npm-debug.log*
+webapp/yarn-debug.log*
+webapp/yarn-error.log*

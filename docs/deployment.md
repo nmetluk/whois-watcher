@@ -496,6 +496,85 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
+### WebApp (Telegram mini-app) — статическая сборка + прокси API (v0.16+, ADR 043)
+
+Фронтенд собирается отдельно (Vite). Статика отдаётся nginx, API `/api/webapp` проксируется на bot.
+
+#### Сборка на сервере (в ручном деплое или CI)
+```bash
+cd /path/to/whois-watcher
+cd webapp
+npm ci
+npm run build   # → dist/
+sudo mkdir -p /var/www/whoiswatcher-webapp
+sudo rm -rf /var/www/whoiswatcher-webapp/*
+sudo cp -r dist/* /var/www/whoiswatcher-webapp/
+sudo chown -R www-data:www-data /var/www/whoiswatcher-webapp
+```
+
+#### Обновлённый кусок nginx-конфига (вставьте в server { ... } после ssl)
+```nginx
+    # === WebApp static (SPA) ===
+    location /webapp/ {
+        alias /var/www/whoiswatcher-webapp/;
+        try_files $uri /webapp/index.html;
+        # Optional: add_headers for security
+    }
+
+    # === WebApp API — только для mini-app (должен быть ДО общих location / ) ===
+    location /api/webapp/ {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+
+        proxy_connect_timeout 10s;
+        proxy_send_timeout    30s;
+        proxy_read_timeout    30s;
+    }
+
+    # Health (как раньше)
+    location = /health {
+        proxy_pass http://127.0.0.1:8080/health;
+        access_log off;
+    }
+
+    # Webhook (как раньше, специфично)
+    location /webhook {
+        proxy_pass http://127.0.0.1:8080;
+        # ... те же заголовки
+    }
+
+    # Всё остальное — WebApp или 404 (или старый catch-all на bot при необходимости)
+    location / {
+        # Если хотите, чтобы корень тоже был webapp:
+        # alias /var/www/whoiswatcher-webapp/;
+        # try_files $uri /index.html;
+        # Или оставьте прокси на bot для старых ссылок:
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+```
+
+**Важно:** порядок location в nginx имеет значение — более специфичные (`/api/webapp`, `/webhook`) должны быть выше общих.
+
+#### Запуск mini-app из бота
+В коде бота (будет добавлено в последующих тасках) используйте:
+```python
+from aiogram.types import WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup
+kb = InlineKeyboardMarkup(inline_keyboard=[[
+    InlineKeyboardButton(text="Открыть WebApp", web_app=WebAppInfo(url="https://<ваш-домен>/webapp/"))
+]])
+```
+
+Затем в Telegram: бот → кнопка → WebApp должен открыться, инициировать initData, и запросы к `/api/webapp` будут аутентифицированы.
+
 ### Проверки доступности
 
 С самого сервера:

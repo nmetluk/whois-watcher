@@ -1,12 +1,12 @@
 ---
 id: TASK-0067
 title: WebApp frontend — foundation (Vite+React, токены PIN Voice, Telegram SDK, сборка+nginx)
-status: open
+status: in_review
 milestone: v0.16.0
 adr: 043
 area: code
 depends_on: []
-branch: ""
+branch: task/0067-webapp-frontend-foundation
 owner: ""
 session: ""
 pr: ""

@@ -19,6 +19,7 @@ from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from aiogram import Bot
 from redis.asyncio import Redis as AsyncRedis
 
 from src.db.repositories import EmailDeepCacheRepository, EmailIntelCacheRepository
@@ -27,6 +28,7 @@ from src.email_intel.deep_client import fetch_deep_email
 from src.email_intel.deep_types import DeepEmailError, DeepEmailResult
 from src.observability import bind_log_context, clear_log_context
 from src.services.audit import audit
+from src.services.formatters import format_email_deep
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +52,18 @@ def _serialize_deep_result(result: DeepEmailResult) -> dict[str, Any]:
     }
 
 
-async def check_email_deep(ctx: dict[str, Any], domain: str) -> dict[str, Any]:
-    """ARQ-задача: выполнить deep email сбор для домена (on-demand)."""
+async def check_email_deep(
+    ctx: dict[str, Any],
+    domain: str,
+    deliver_chat_id: int | None = None,
+    deliver_lang: str | None = None,
+) -> dict[str, Any]:
+    """ARQ-задача: выполнить deep email сбор для домена (on-demand).
+
+    Args:
+        ...
+        deliver_chat_id / deliver_lang: TASK-0075 — дослать результат в чат по готовности.
+    """
     redis: AsyncRedis[str] = ctx["sync_redis"]
 
     bind_log_context(domain=domain, subsystem="email_deep")
@@ -122,6 +134,29 @@ async def check_email_deep(ctx: dict[str, Any], domain: str) -> dict[str, Any]:
                 "ok" if data["mta_sts"] else "none",
                 "ok" if data["bimi"] else "none",
             )
+
+            # TASK-0075: доставка результата on-demand (кнопка с карточки /whois)
+            if deliver_chat_id:
+                bot: Bot = ctx.get("bot")  # type: ignore[assignment]
+                if bot:
+                    try:
+                        async with get_session() as session:
+                            repo = EmailDeepCacheRepository(session)
+                            cache = await repo.get(domain)
+                        if cache:
+                            text = format_email_deep(cache, lang=deliver_lang or "ru")
+                            await bot.send_message(deliver_chat_id, text)
+                            logger.info(
+                                "Delivered on-demand deep-email result to chat %s for %s",
+                                deliver_chat_id,
+                                domain,
+                            )
+                    except Exception as deliver_exc:
+                        logger.warning(
+                            "Failed to deliver deep-email result to %s: %s",
+                            deliver_chat_id,
+                            deliver_exc,
+                        )
 
             return {
                 "status": "success",

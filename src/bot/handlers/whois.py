@@ -535,7 +535,18 @@ async def _on_demand_card_view(
         return
 
     # Нет свежего кэша — enqueue той же ARQ-задачи, что и прямая команда
-    await arq_redis.enqueue_job(job_name, registrable)
+    # Передаём контекст доставки результата (TASK-0075): чтобы задача дослала
+    # результат в чат кликнувшего (без повторного тапа).
+    deliver_chat_id = None
+    deliver_lang = lang
+    if isinstance(query.message, Message):
+        deliver_chat_id = query.message.chat.id
+    await arq_redis.enqueue_job(
+        job_name,
+        registrable,
+        deliver_chat_id=deliver_chat_id,
+        deliver_lang=deliver_lang,
+    )
     await query.message.reply(searching_text)
     await query.answer()
 

@@ -64,6 +64,9 @@ class TestShowSubdomainsFromWhoisCard:
         query.answer = AsyncMock()
         query.message = MagicMock(spec=Message)
         query.message.reply = AsyncMock()
+        # for TASK-0075 deliver_chat_id
+        query.message.chat = MagicMock()
+        query.message.chat.id = 12345
         return query
 
     def _make_user(self) -> User:
@@ -133,7 +136,9 @@ class TestShowSubdomainsFromWhoisCard:
                 arq_redis=arq_redis,
             )
 
-        arq_redis.enqueue_job.assert_awaited_once_with("check_subdomains", "example.com")
+        arq_redis.enqueue_job.assert_awaited_once_with(
+            "check_subdomains", "example.com", deliver_chat_id=12345, deliver_lang="en"
+        )
         query.message.reply.assert_called_once()  # сообщение «ищу…»
         query.answer.assert_called_once()
 

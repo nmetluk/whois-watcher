@@ -337,3 +337,93 @@ class TestCheckSubdomainsSuccessEnqueue:
 
         # Ничего не дёргаем
         mock_arq_redis.enqueue_job.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_success_with_deliver_chat_id_sends_message(
+        self, mock_sync_redis: AsyncMock, mock_arq_redis: AsyncMock
+    ) -> None:
+        """TASK-0075: success + deliver_chat_id → бот шлёт результат (без notify diff)."""
+        from src.tasks.check_subdomains import check_subdomains
+
+        ctx = _ctx(sync_redis=mock_sync_redis, arq_redis=mock_arq_redis)
+        # bot in ctx for delivery
+        bot_mock = AsyncMock()
+        ctx["bot"] = bot_mock
+
+        mock_sync_redis.set = AsyncMock(return_value=True)
+
+        success_result = SubdomainEnumResult(
+            registrable_domain="example.com",
+            subdomains=["www1.example.com"],
+            is_reachable=True,
+        )
+
+        mock_old = None
+        mock_session = AsyncMock()
+
+        with patch("src.tasks.check_subdomains.get_session") as mock_get:
+            mock_get.return_value.__aenter__.return_value = mock_session
+
+            mock_repo = MagicMock()
+            mock_repo.get = AsyncMock(return_value=mock_old)
+            mock_repo.get_min_check_interval = AsyncMock(return_value=7)
+            mock_repo.upsert = AsyncMock()
+
+            with (
+                patch(
+                    "src.tasks.check_subdomains.SubdomainEnumCacheRepository",
+                    return_value=mock_repo,
+                ),
+                patch("src.tasks.check_subdomains.fetch_subdomains", return_value=success_result),
+            ):
+                result = await check_subdomains(
+                    ctx, "example.com", deliver_chat_id=999, deliver_lang="ru"
+                )
+
+                assert result["status"] == "success"
+                # Доставка: send_message вызван
+                bot_mock.send_message.assert_awaited_once()
+                call = bot_mock.send_message.call_args
+                assert call[0][0] == 999  # chat_id
+                assert "example.com" in call[0][1]  # text has domain
+
+    @pytest.mark.asyncio
+    async def test_success_without_deliver_does_not_send(
+        self, mock_sync_redis: AsyncMock, mock_arq_redis: AsyncMock
+    ) -> None:
+        """Без deliver_chat_id (прямой /subdomains) — не шлём, как раньше."""
+        from src.tasks.check_subdomains import check_subdomains
+
+        ctx = _ctx(sync_redis=mock_sync_redis, arq_redis=mock_arq_redis)
+        bot_mock = AsyncMock()
+        ctx["bot"] = bot_mock
+
+        mock_sync_redis.set = AsyncMock(return_value=True)
+
+        success_result = SubdomainEnumResult(
+            registrable_domain="example.com",
+            subdomains=["www1.example.com"],
+            is_reachable=True,
+        )
+
+        mock_old = None
+        mock_session = AsyncMock()
+
+        with patch("src.tasks.check_subdomains.get_session") as mock_get:
+            mock_get.return_value.__aenter__.return_value = mock_session
+
+            mock_repo = MagicMock()
+            mock_repo.get = AsyncMock(return_value=mock_old)
+            mock_repo.get_min_check_interval = AsyncMock(return_value=7)
+            mock_repo.upsert = AsyncMock()
+
+            with (
+                patch(
+                    "src.tasks.check_subdomains.SubdomainEnumCacheRepository",
+                    return_value=mock_repo,
+                ),
+                patch("src.tasks.check_subdomains.fetch_subdomains", return_value=success_result),
+            ):
+                await check_subdomains(ctx, "example.com")  # без deliver
+
+                bot_mock.send_message.assert_not_called()

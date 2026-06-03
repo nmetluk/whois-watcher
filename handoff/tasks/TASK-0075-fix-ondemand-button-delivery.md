@@ -1,14 +1,14 @@
 ---
 id: TASK-0075
 title: 🔴 Фикс — on-demand кнопки не досылают результат (поддомены, глубокий e-mail)
-status: open
+status: claimed
 milestone: v0.15.1
 adr: 040
 area: code
 depends_on: []
-branch: ""
-owner: ""
-session: ""
+branch: task/0075-fix-ondemand-button-delivery
+owner: grok-4.3
+session: docs/sessions/2026-06-09_task-0075-fix-ondemand-button-delivery.md
 pr: ""
 created: 2026-06-09
 ---

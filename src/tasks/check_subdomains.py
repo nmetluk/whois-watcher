@@ -17,17 +17,22 @@ from contextlib import suppress
 from datetime import UTC, datetime
 from typing import Any
 
+from aiogram import Bot
 from arq import ArqRedis
 from redis.asyncio import Redis as AsyncRedis
 
+from src.bot.keyboards import subdomains_keyboard
 from src.db.repositories import SubdomainEnumCacheRepository
 from src.db.session import get_session
+from src.locales import t
 from src.observability import bind_log_context, clear_log_context
 from src.services.audit import audit
 from src.subdomains.client import fetch_subdomains
 from src.subdomains.diff import compute_subdomain_diff
 from src.subdomains.scheduler import calculate_next_subdomain_check
 from src.subdomains.types import SubdomainEnumError
+from src.utils.formatting import format_date
+from src.utils.idn import from_punycode
 
 logger = logging.getLogger(__name__)
 
@@ -38,12 +43,20 @@ def _in_progress_key(registrable_domain: str) -> str:
     return f"subdomain_check_in_progress:{registrable_domain}"
 
 
-async def check_subdomains(ctx: dict[str, Any], registrable_domain: str) -> dict[str, Any]:
+async def check_subdomains(
+    ctx: dict[str, Any],
+    registrable_domain: str,
+    deliver_chat_id: int | None = None,
+    deliver_lang: str | None = None,
+) -> dict[str, Any]:
     """ARQ-задача: проверить поддомены registrable-домена.
 
     Args:
         ctx: ARQ context
         registrable_domain: Registrable-домен (eTLD+1, ADR 035)
+        deliver_chat_id: если задан (on-demand с кнопки whois-карточки, TASK-0075) —
+            после успеха дослать результат в этот чат (bot.send_message).
+        deliver_lang: язык для локализации доставленного сообщения.
 
     Returns:
         dict с результатом для хэндлера (или команды)
@@ -140,6 +153,50 @@ async def check_subdomains(ctx: dict[str, Any], registrable_domain: str) -> dict
                     len(diff.new),
                     len(diff.removed),
                 )
+
+            # TASK-0075: если вызов был с deliver_chat_id (on-demand кнопка с карточки /whois),
+            # досылаем результат в чат кликнувшего (один раз, без повторного нажатия).
+            if deliver_chat_id:
+                bot: Bot = ctx.get("bot")  # type: ignore[assignment]
+                if bot:
+                    try:
+                        display = from_punycode(registrable_domain)
+                        subs = result.subdomains or []
+                        count = len(subs)
+                        fetched_at = format_date(now, lang=deliver_lang or "ru") if now else "—"
+                        subdomain_list = "\n".join(
+                            t(
+                                "commands.subdomains.list_item",
+                                deliver_lang or "ru",
+                                subdomain=from_punycode(sub),
+                            )
+                            for sub in subs[:50]
+                        )
+                        text = (
+                            t(
+                                "commands.subdomains.header",
+                                deliver_lang or "ru",
+                                domain=display,
+                                count=count,
+                                fetched_at=fetched_at,
+                            )
+                            + f"\n\n{subdomain_list}"
+                        )
+                        markup = subdomains_keyboard(
+                            registrable_domain, subs, lang=deliver_lang or "ru"
+                        )
+                        await bot.send_message(deliver_chat_id, text, reply_markup=markup)
+                        logger.info(
+                            "Delivered on-demand subdomains result to chat %s for %s",
+                            deliver_chat_id,
+                            registrable_domain,
+                        )
+                    except Exception as deliver_exc:
+                        logger.warning(
+                            "Failed to deliver subdomains result to %s: %s",
+                            deliver_chat_id,
+                            deliver_exc,
+                        )
 
             logger.info(
                 "Subdomain enumeration completed for %s: %d subdomains found",

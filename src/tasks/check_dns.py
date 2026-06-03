@@ -38,6 +38,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
+from aiogram import Bot
 from arq import ArqRedis
 from redis.asyncio import Redis as AsyncRedis
 
@@ -56,6 +57,7 @@ from src.dns_monitor import (
     resolve_records,
 )
 from src.observability import bind_log_context, clear_log_context
+from src.services.formatters import format_dns_block
 
 logger = logging.getLogger(__name__)
 
@@ -67,9 +69,18 @@ def _in_progress_key(domain: str) -> str:
     return f"dns_check_in_progress:{domain}"
 
 
-async def check_dns(ctx: dict[str, Any], domain: str) -> None:
+async def check_dns(
+    ctx: dict[str, Any],
+    domain: str,
+    deliver_chat_id: int | None = None,
+    deliver_lang: str | None = None,
+) -> None:
     """ARQ-задача: проверить DNS-записи одного домена."""
     redis: AsyncRedis[str] = ctx["sync_redis"]
+
+    # ensure deliver params in scope for nested/inner success code (TASK-0076)
+    deliver_chat_id = deliver_chat_id
+    deliver_lang = deliver_lang
 
     bind_log_context(domain=domain, subsystem="dns")
     try:
@@ -174,6 +185,29 @@ async def _check_dns_locked(domain: str, ctx: dict[str, Any]) -> None:
                 last_changed_at=last_changed_at,
                 next_check_at=next_check_at,
             )
+
+            # TASK-0076: доставка DNS обновления для whois карточки
+            dchat = locals().get("deliver_chat_id")
+            dlang = locals().get("deliver_lang")
+            if dchat:
+                bot: Bot = ctx.get("bot")  # type: ignore[assignment]
+                if bot:
+                    try:
+                        async with get_session() as session:
+                            cr = DNSCacheRepository(session)
+                            cache = await cr.get(domain)
+                        if cache:
+                            block = format_dns_block(cache, lang=dlang or "ru")
+                            if block:
+                                text = f"🌐 DNS для {domain} (обновление):\n{block}"
+                                await bot.send_message(dchat, text)
+                                logger.info(
+                                    "Delivered DNS update to chat %s for %s",
+                                    dchat,
+                                    domain,
+                                )
+                    except Exception as dexc:
+                        logger.warning("Failed DNS deliver to %s: %s", dchat, dexc)
         else:
             # invalid_domain / disabled — конфигурационные, не сетевые:
             # is_reachable не трогаем (становится / остаётся True или None).

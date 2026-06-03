@@ -1,14 +1,14 @@
 ---
 id: TASK-0076
 title: 🔴 Фикс — инлайн MX в первом /whois не появляется (карточка не доставляет фоновые данные)
-status: open
+status: claimed
 milestone: v0.15.1
 adr: 040
 area: code
 depends_on: []
-branch: ""
-owner: ""
-session: ""
+branch: task/0076-fix-whois-card-mx-freshness
+owner: grok-4.3
+session: docs/sessions/2026-06-09_task-0076-fix-whois-card-mx-freshness.md
 pr: ""
 created: 2026-06-09
 ---

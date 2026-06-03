@@ -155,7 +155,9 @@ async def _send_whois_card(
         ssl_cache = await ssl_repo.get(ssl_target)
         if ssl_cache is None:
             await ssl_repo.upsert(ssl_target)
-            await arq_redis.enqueue_job("check_ssl", ssl_target)
+            await arq_redis.enqueue_job(
+                "check_ssl", ssl_target, deliver_chat_id=message.chat.id, deliver_lang=lang
+            )
         # ADR 032: DNS-блок аналогично — bootstrap + enqueue check_dns. Сама
         # задача защищена redis-флагом dns_check_in_progress.
         dns_repo = DNSCacheRepository(session)
@@ -164,7 +166,9 @@ async def _send_whois_card(
         dns_cache = await dns_repo.get(dns_target)
         if dns_cache is None:
             await dns_repo.upsert(dns_target)
-            await arq_redis.enqueue_job("check_dns", dns_target)
+            await arq_redis.enqueue_job(
+                "check_dns", dns_target, deliver_chat_id=message.chat.id, deliver_lang=lang
+            )
         # ADR 036: Email-intel блок аналогично — bootstrap + enqueue check_email_intel.
         # Сама задача защищена redis-флагом email_check_in_progress.
         email_repo = EmailIntelCacheRepository(session)
@@ -173,7 +177,12 @@ async def _send_whois_card(
         email_cache = await email_repo.get(email_target)
         if email_cache is None:
             await email_repo.upsert(email_target)
-            await arq_redis.enqueue_job("check_email_intel", email_target)
+            await arq_redis.enqueue_job(
+                "check_email_intel",
+                email_target,
+                deliver_chat_id=message.chat.id,
+                deliver_lang=lang,
+            )
         whois_ns = list(cached.name_servers or []) if cached is not None else None
 
     # Формируем тело карточки

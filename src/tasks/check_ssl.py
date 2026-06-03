@@ -17,6 +17,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
+from aiogram import Bot
 from arq import ArqRedis
 from redis.asyncio import Redis as AsyncRedis
 
@@ -24,6 +25,7 @@ from src.db.models import SSLCache, UserDomain
 from src.db.repositories import DomainRepository, SSLCacheRepository
 from src.db.session import get_session
 from src.observability import bind_log_context, clear_log_context
+from src.services.formatters import format_ssl_block
 from src.ssl.client import fetch_certificate
 from src.ssl.diff import SSLDiff, compute_ssl_diff
 from src.ssl.scheduler import calculate_next_ssl_check
@@ -63,9 +65,18 @@ def _cache_to_certificate(cache: SSLCache) -> SSLCertificate | None:
     )
 
 
-async def check_ssl(ctx: dict[str, Any], domain: str) -> None:
+async def check_ssl(
+    ctx: dict[str, Any],
+    domain: str,
+    deliver_chat_id: int | None = None,
+    deliver_lang: str | None = None,
+) -> None:
     """ARQ-задача: проверить SSL-сертификат одного домена."""
     redis: AsyncRedis[str] = ctx["sync_redis"]
+
+    # ensure deliver params visible to _handle_success (TASK-0076)
+    deliver_chat_id = deliver_chat_id
+    deliver_lang = deliver_lang
 
     bind_log_context(domain=domain, subsystem="ssl")
     try:
@@ -88,7 +99,9 @@ async def check_ssl(ctx: dict[str, Any], domain: str) -> None:
                 await _handle_failure(domain, result, ctx)
                 return
 
-            await _handle_success(domain, result, old_cert, existing, ctx)
+            await _handle_success(
+                domain, result, old_cert, existing, ctx, deliver_chat_id, deliver_lang
+            )
         finally:
             await redis.delete(_in_progress_key(domain))
     finally:
@@ -106,6 +119,8 @@ async def _handle_success(
     old_cert: SSLCertificate | None,
     old_cache: SSLCache | None,
     ctx: dict[str, Any],
+    deliver_chat_id: int | None = None,
+    deliver_lang: str | None = None,
 ) -> None:
     """UPSERT в кэш, diff, постановка change-notice подписчикам."""
     now = datetime.now(tz=UTC)
@@ -133,6 +148,25 @@ async def _handle_success(
     async with get_session() as session:
         cache_repo = SSLCacheRepository(session)
         await cache_repo.upsert(domain, **fields)
+
+    # TASK-0076: доставка SSL обновления для whois карточки (если запрошено с deliver)
+    if deliver_chat_id:
+        bot: Bot = ctx.get("bot")  # type: ignore[assignment]
+        if bot:
+            try:
+                async with get_session() as session:
+                    cr = SSLCacheRepository(session)
+                    cache = await cr.get(domain)
+                if cache:
+                    block = format_ssl_block(cache, lang=deliver_lang or "ru")
+                    if block:
+                        text = f"🔒 SSL для {domain} (обновление):\n{block}"
+                        await bot.send_message(deliver_chat_id, text)
+                        logger.info(
+                            "Delivered SSL update to chat %s for %s", deliver_chat_id, domain
+                        )
+            except Exception as dexc:
+                logger.warning("Failed SSL deliver to %s: %s", deliver_chat_id, dexc)
 
     diff = compute_ssl_diff(old_cert, new_cert)
     # Guard на «первая проверка»: даже если в old_cache была заглушка

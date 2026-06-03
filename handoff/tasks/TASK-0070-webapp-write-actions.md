@@ -1,12 +1,12 @@
 ---
 id: TASK-0070
 title: WebApp — write-действия (тогглы/add/remove/массовые/настройки/импорт/wishlist)
-status: open
+status: in_review
 milestone: v0.16.0
 adr: 043
 area: code
 depends_on: [TASK-0068, TASK-0069]
-branch: ""
+branch: task/0070-webapp-write-actions
 owner: ""
 session: ""
 pr: ""

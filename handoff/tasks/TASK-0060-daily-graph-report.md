@@ -1,17 +1,22 @@
 ---
 id: TASK-0060
 title: Дневной графический отчёт 21:00 МСК (matplotlib) + сохранить 06:00
-status: open
+status: done
 milestone: v0.15.0
 adr: 042
 area: code
 depends_on: []
-branch: ""
-owner: ""
-session: ""
-pr: ""
+branch: task/0060-daily-graph-report
+owner: grok-4.3
+session: docs/sessions/2026-06-09_task-0060-daily-graph-report.md
+pr: 42
 created: 2026-06-08
+completed: 2026-06-09
 ---
+
+> ✅ Ревью архитектора (2026-06-09) — merged. matplotlib Agg (use до pyplot),
+> пустые данные → placeholder, рендер через `to_thread`, cron 18:00 UTC (=21:00
+> МСК), 06:00-сводка сохранена. Merge-конфликт `arq_config` (cron) разрешён union.
 
 # TASK-0060 — Дневной графический отчёт (ADR 042)
 

@@ -1,12 +1,12 @@
 ---
 id: TASK-0069
 title: WebApp экраны — дашборд + календарь + алерты + «Ещё»
-status: open
+status: in_review
 milestone: v0.16.0
 adr: 043
 area: code
 depends_on: [TASK-0066, TASK-0067]
-branch: ""
+branch: task/0069-webapp-screens-dashboard-calendar-alerts-more
 owner: ""
 session: ""
 pr: ""

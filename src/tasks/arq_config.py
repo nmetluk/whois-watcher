@@ -96,6 +96,7 @@ async def _on_shutdown(ctx: dict[str, Any]) -> None:
 
 def _build_functions() -> list[Any]:
     """Импорты задач отложены — это разбивает цикл tasks → arq_config → tasks."""
+    from src.tasks.backup_postgres import backup_postgres
     from src.tasks.check_dns import check_dns
     from src.tasks.check_domain import check_domain
     from src.tasks.check_email_deep import check_email_deep
@@ -123,6 +124,7 @@ def _build_functions() -> list[Any]:
     from src.tasks.ssl_scheduler import ssl_scheduler_tick
 
     return [
+        backup_postgres,
         check_domain,
         check_email_deep,
         scheduler_tick,
@@ -159,6 +161,7 @@ def _build_functions() -> list[Any]:
 
 
 def _build_cron_jobs() -> list[Any]:
+    from src.tasks.backup_postgres import backup_postgres
     from src.tasks.cleanup import cleanup_old_events, cleanup_orphan_cache
     from src.tasks.daily_stats import send_daily_summary
     from src.tasks.dns_scheduler import dns_scheduler_tick
@@ -231,6 +234,12 @@ def _build_cron_jobs() -> list[Any]:
         cron(
             ssl_reminders_scheduler,
             name="ssl_reminders_scheduler",
+            minute={0},
+        ),
+        # ADR 042: ежечасный бекап Postgres (в scheduler-контейнере).
+        cron(
+            backup_postgres,
+            name="backup_postgres",
             minute={0},
         ),
         # Раз в сутки в 03:00 UTC = 06:00 по Москве — сразу после ночного окна.

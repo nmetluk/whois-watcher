@@ -1,15 +1,15 @@
 ---
 id: TASK-0058
 title: Ежечасный бекап Postgres (pg_dump, ротация 36, verify)
-status: open
+status: in_review
 milestone: v0.15.0
 adr: 042
 area: code
 depends_on: []
-branch: ""
-owner: ""
-session: ""
-pr: ""
+branch: task/0058-postgres-hourly-backup
+owner: grok-4.3
+session: docs/sessions/2026-06-09_task-0058-postgres-hourly-backup.md
+pr: 40
 created: 2026-06-08
 ---
 

@@ -93,6 +93,9 @@ services:
     # ADR 028: см. комментарий в сервисе bot.
     extra_hosts:
       - "host.docker.internal:172.28.0.1"
+    # ADR 042: том для pg_dump бекапов (монтируется на BACKUP_DIR=/backups)
+    volumes:
+      - backups:/backups
     healthcheck:
       test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
       interval: 30s
@@ -123,6 +126,10 @@ services:
     # ADR 028: см. комментарий в сервисе bot.
     extra_hosts:
       - "host.docker.internal:172.28.0.1"
+    # ADR 042: том для pg_dump бекапов (монтируется на BACKUP_DIR=/backups).
+    # Бекапы пишет именно scheduler (cron'ы в нём).
+    volumes:
+      - backups:/backups
     healthcheck:
       test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
       interval: 30s
@@ -135,6 +142,8 @@ volumes:
     name: ww_postgres_data
   redis_data:
     name: ww_redis_data
+  backups:
+    name: ww_backups
 
 networks:
   internal:

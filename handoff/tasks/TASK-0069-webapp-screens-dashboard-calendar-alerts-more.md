@@ -1,7 +1,8 @@
 ---
 id: TASK-0069
 title: WebApp экраны — дашборд + календарь + алерты + «Ещё»
-status: open
+status: blocked
+blocked_reason: "снимки не складываются (параллельные ветки) → консолидация в TASK-0074"
 milestone: v0.16.0
 adr: 043
 area: code

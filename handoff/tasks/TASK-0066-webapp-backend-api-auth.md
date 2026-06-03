@@ -1,7 +1,8 @@
 ---
 id: TASK-0066
 title: WebApp backend — initData auth + read JSON API (/api/webapp)
-status: open
+status: blocked
+blocked_reason: "снимки не складываются (параллельные ветки) → консолидация в TASK-0074"
 milestone: v0.16.0
 adr: 043
 area: code

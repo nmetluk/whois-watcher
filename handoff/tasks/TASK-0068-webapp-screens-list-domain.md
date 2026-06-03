@@ -1,12 +1,12 @@
 ---
 id: TASK-0068
 title: WebApp экраны — список доменов + карточка домена
-status: open
+status: in_review
 milestone: v0.16.0
 adr: 043
 area: code
 depends_on: [TASK-0066, TASK-0067]
-branch: ""
+branch: task/0068-webapp-screens-list-domain
 owner: ""
 session: ""
 pr: ""

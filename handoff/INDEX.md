@@ -2,7 +2,7 @@
 
 > АВТО-генерируется `python scripts/handoff.py board`. Не править руками.
 
-Всего задач: 74
+Всего задач: 78
 
 | ID | Статус | Майлстоун | ADR | Область | Тема | Ветка |
 |----|--------|-----------|-----|---------|------|-------|
@@ -12,6 +12,10 @@
 | TASK-0072 | open | v0.16.0 | 043 | docs | Релиз v0.16.0 — Telegram WebApp (mini-app) | — |
 | TASK-0073 | open | v0.16.0 | 043 | code | Группы/теги доменов — схема + репозиторий + API/привязка (для WebApp) | — |
 | TASK-0074 | open | v0.16.0 | 043 | code | WebApp — консолидация 0066–0070 в одну сборочную ветку (v0.16) | — |
+| TASK-0075 | open | v0.15.1 | 040 | code | 🔴 Фикс — on-demand кнопки не досылают результат (поддомены, глубокий e-mail) | — |
+| TASK-0076 | open | v0.15.1 | 040 | code | 🔴 Фикс — инлайн MX в первом /whois не появляется (карточка не доставляет фоновые данные) | — |
+| TASK-0077 | open | v0.15.1 | 040 | code | 🔴 Диагностика+фикс — глубокий e-mail всегда пустой | — |
+| TASK-0078 | open | v0.15.1 | 040 | docs | Хотфикс-релиз v0.15.1 (доставка on-demand/карточка + глубокий e-mail) | — |
 | TASK-0066 | blocked | v0.16.0 | 043 | code | WebApp backend — initData auth + read JSON API (/api/webapp) | — |
 | TASK-0067 | blocked | v0.16.0 | 043 | code | WebApp frontend — foundation (Vite+React, токены PIN Voice, Telegram SDK, сборка+nginx) | — |
 | TASK-0068 | blocked | v0.16.0 | 043 | code | WebApp экраны — список доменов + карточка домена | — |

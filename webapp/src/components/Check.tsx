@@ -1,0 +1,2 @@
+import React from 'react'; import { Icon } from './Icon';
+export const Check: React.FC<{ok?:boolean; warn?:boolean; children?:React.ReactNode}> = ({ok,warn,children}) => <span className="tg-pill" style={{background: warn?'rgba(244,185,33,0.16)':ok?'rgba(41,180,115,0.12)':'rgba(230,64,58,0.12)', color: warn?'#b07d00':ok?'var(--pv-green-2)':'var(--pv-red)'}}><Icon name={warn?'warning':ok?'check_circle':'cancel'} style={{fontSize:13}}/>{children}</span>;

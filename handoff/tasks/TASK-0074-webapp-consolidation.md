@@ -1,15 +1,15 @@
 ---
 id: TASK-0074
 title: WebApp — консолидация 0066–0070 в одну сборочную ветку (v0.16)
-status: open
+status: in_review
 milestone: v0.16.0
 adr: 043
 area: code
 depends_on: [TASK-0073]
-branch: ""
-owner: ""
-session: ""
-pr: ""
+branch: task/0074-webapp-consolidation
+owner: grok-4.3
+session: docs/sessions/2026-06-09_task-0074-webapp-consolidation.md
+pr: https://github.com/nmetluk/whois-watcher/pull/49
 created: 2026-06-09
 ---
 

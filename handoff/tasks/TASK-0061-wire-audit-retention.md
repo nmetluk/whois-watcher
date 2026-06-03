@@ -9,7 +9,7 @@ depends_on: [TASK-0057]
 branch: task/0061-wire-audit-retention
 owner: grok-4.3
 session: docs/sessions/2026-06-09_task-0061-wire-audit-retention.md
-pr: ""
+pr: 43
 created: 2026-06-08
 ---
 

@@ -1,17 +1,23 @@
 ---
 id: TASK-0064
 title: ADR 043 — WebApp-слой бота (дизайн-спайк, следующий этап)
-status: open
+status: done
 milestone: v0.16.0
 adr: 043
 area: docs
 depends_on: [TASK-0063]
 branch: ""
-owner: ""
-session: ""
+owner: architect
+session: docs/decisions.md
 pr: ""
 created: 2026-06-08
+completed: 2026-06-09
 ---
+
+> **Итог (2026-06-09):** дизайн импортирован в репо (`design/webapp/v1/`),
+> **ADR 043 написан** (docs/decisions.md), заведены исполнительские таски
+> 0066…0072 (backend auth+API → frontend foundation → экраны → write-действия →
+> аудит → релиз). Дизайн-спайк закрыт.
 
 # TASK-0064 — ADR 043: WebApp-слой (дизайн-спайк)
 

@@ -69,12 +69,17 @@ DNS (A/AAAA/NS) с ASN-фильтрацией, email-инфраструктур�
 - [ ] Вписать `audit()` в инцидент-точки + retention-cron (TASK-0061)
 - [ ] Аудит v0.15 (TASK-0062) → релиз v0.15.0 (TASK-0063)
 
-## v0.16 — WebApp-слой (следующий этап, ADR 043)
+## v0.16 — WebApp-слой (ADR 043)
 
-Telegram WebApp / mini-app для бота. Дизайн от дизайнера (ссылка в TASK-0064).
+Telegram WebApp / mini-app. Дизайн в репо: `design/webapp/v1/` (PIN Voice, 6 экранов, RU).
 
-- [ ] ADR 043 — дизайн-спайк: забрать дизайн, спроектировать, разбить (TASK-0064)
-- [ ] (далее) схема/эндпоинты → фронт → интеграция → аудит → релиз
+- [x] ADR 043 + импорт дизайна в `design/webapp/v1/` (TASK-0064)
+- [ ] Backend: initData auth + read API `/api/webapp` (TASK-0066)
+- [ ] Frontend foundation: Vite+React, токены PIN Voice, Telegram SDK, nginx (TASK-0067)
+- [ ] Экраны: список доменов + карточка домена (TASK-0068)
+- [ ] Экраны: дашборд + календарь + алерты + «Ещё» (TASK-0069)
+- [ ] Write-действия (тогглы/add/remove/массовые/настройки/импорт) (TASK-0070)
+- [ ] Аудит v0.16 (TASK-0071) → релиз v0.16.0 (TASK-0072)
 
 ## v1.0 — Public stable
 

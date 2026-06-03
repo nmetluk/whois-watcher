@@ -261,10 +261,19 @@ v0.13.0 в проде (задеплоен ранее). Деплой v0.14.0 — 
 ✅ **Релиз v0.15.0 выпущен** (2026-06-09, TASK-0063, архитектором): bump
 0.14.0→0.15.0, CHANGELOG `[0.15.0]`, тег `v0.15.0`.
 
-**Следующий шаг:** **деплой v0.15.0** — ⚠️ пересобрать образ
-(`postgresql-client-16`), создать том `ww_backups`, выставить
-BACKUP_*/AUDIT_RETENTION_DAYS; подтвердить зелёный CI. Опц. TASK-0065 (офсайт
-бекапы). После v0.15 — **WebApp (ADR 043, TASK-0064)**. Дальше — v1.0
+✅ **WebApp спроектирован — v0.16, ADR 043** (2026-06-09). Дизайн дизайнера
+импортирован в `design/webapp/v1/` (Telegram mini-app, PIN Voice, 6 экранов, RU).
+Решения: расширяем aiohttp-webhook под-роутером `/api/webapp`; auth через
+Telegram `initData` (HMAC + auth_date TTL, stateless); фронт React+Vite (токены
+PIN Voice as-is), nginx (static + proxy); health-score на бэке; PII-скоуп.
+Таски: **0066** (backend auth+read API) → **0067** (frontend foundation) →
+**0068** (список+карточка) → **0069** (дашборд/календарь/алерты/«Ещё») →
+**0070** (write-действия) → **0071** (аудит, security-heavy) → **0072** (релиз).
+Можно отгрузить read-only (0066–0069) первой вехой, действия (0070) — следом.
+
+**Следующий шаг:** **деплой v0.15.0** (⚠️ пересобрать образ +
+`postgresql-client-16`, том `ww_backups`, env) + опц. TASK-0065. Затем — старт
+v0.16: первый таск **0066** (backend auth+API). Дальше — v1.0
 (web-дашборд,
 публичный API, орг-аккаунты, Prometheus).
 

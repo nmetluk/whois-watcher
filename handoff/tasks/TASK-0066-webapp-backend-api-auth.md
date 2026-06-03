@@ -24,12 +24,35 @@ created: 2026-06-08
 Расширить существующий aiohttp-app (`src/bot/webhook.py`) под-роутером
 `/api/webapp/*` (JSON) с auth через Telegram `initData` и read-эндпойнтами.
 
+## Готовые факты (сверено архитектором)
+
+- `settings.bot_token` — `SecretStr` (`.get_secret_value()`).
+- `create_app(*, bot, dp, settings, redis)` (`src/bot/webhook.py`) — расширять
+  тут: добавить роуты в `app` до `return`. Webapp-хэндлеры берут БД через
+  `get_session()` (как ARQ-задачи) и существующие репозитории/сервисы.
+- ⚠️ **Модели «групп/тегов» в БД НЕТ** (`domain.groups[]` из дизайна не на чём
+  строить). Это **отдельная схема** → **TASK-0073** (groups/tags). Здесь:
+  `/groups` отдаёт пусто, `/portfolio?group=` без группировки, пока 0073 не
+  влит. Не делать суррогат.
+
+## Точный алгоритм валидации initData (RFC Telegram — не перепутать ключ/сообщение)
+
+```
+1. Разобрать initData (querystring) в пары; извлечь и убрать поле `hash`.
+2. data_check_string = пары `key=value`, отсортированные по ключу, склеенные '\n'.
+3. secret_key = HMAC_SHA256(key=b"WebAppData", msg=bot_token)   # КЛЮЧ = "WebAppData"!
+4. calc = hexdigest( HMAC_SHA256(key=secret_key, msg=data_check_string) )
+5. hmac.compare_digest(calc, hash)  # constant-time
+6. auth_date: now - auth_date <= webapp_initdata_ttl (иначе 401, защита от replay)
+```
+Порядок key/msg в шаге 3 критичен (перепутать = байпас или тотальный отказ).
+Тест — на известном векторе Telegram (валидный + подделанный + просроченный).
+
 ## Изменения по файлам
 
-- `src/bot/webapp/auth.py` — валидатор `initData`: HMAC-SHA256, ключ
-  `HMAC_SHA256(bot_token, "WebAppData")`; проверка `auth_date` свежести
-  (`webapp_initdata_ttl`, дефолт 24ч). Парсит `user.id` → наш `users`.
-  aiohttp-middleware/декоратор: невалидно/просрочено → 401.
+- `src/bot/webapp/auth.py` — валидатор `initData` по алгоритму выше; парсит
+  `user.id` → наш `users`. aiohttp-middleware/декоратор: невалидно/просрочено
+  → 401. Чистая функция валидации (для теста).
 - `src/bot/webapp/api.py` — read-эндпойнты (тонкие, через сервисы/репозитории):
   `GET /api/webapp/portfolio` (серверная пагинация/поиск/фильтр/сортировка/
   группировка — фильтры из `design/webapp/v1/app/screen-list.jsx` `FILTERS`),

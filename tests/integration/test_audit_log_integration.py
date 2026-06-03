@@ -18,14 +18,8 @@ pytestmark = pytest.mark.arq  # переиспользуем маркер, чт�
 @pytest.mark.asyncio
 async def test_audit_log_record_and_delete_real_pg(real_db_session):
     """На реальном PG: record + выборка + delete_older_than (retention)."""
-    # Пропускаем если нет реальной БД (локально без docker)
-    if (
-        os.getenv("CI") != "1"
-        and "localhost" not in str(real_db_session.bind.url)
-        and "127.0.0.1" not in str(real_db_session.bind.url)
-    ):
-        # В CI всегда есть; локально fixture уже ждёт docker
-        pass
+    if os.getenv("CI") != "1":
+        pytest.skip("integration requires docker postgres (pytest-docker) or CI=1 with services")
 
     repo = AuditLogRepository(real_db_session)
 

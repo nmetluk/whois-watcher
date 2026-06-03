@@ -1,0 +1,70 @@
+/* App entry CSS */
+@import "./tokens.css";
+@import "./tg-chrome.css";
+
+/* App container for mini-app (full viewport) */
+#root {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--pv-bg);
+}
+
+/* Screen container */
+.screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.screen-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Small utilities matching design */
+.pv-btn {
+  background: var(--pv-cta);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+.pv-btn.secondary {
+  background: var(--pv-muted);
+  color: var(--pv-fg);
+}
+.pv-toggle {
+  /* basic toggle style for settings stubs */
+  appearance: none;
+  width: 44px;
+  height: 24px;
+  background: var(--pv-muted);
+  border-radius: 99px;
+  position: relative;
+  cursor: pointer;
+  border: 1px solid var(--pv-border);
+}
+.pv-toggle:checked {
+  background: var(--pv-cta);
+}
+.pv-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.15s;
+}
+.pv-toggle:checked::after {
+  transform: translateX(20px);
+}

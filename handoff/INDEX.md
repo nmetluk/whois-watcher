@@ -11,7 +11,7 @@
 | TASK-0071 | open | v0.16.0 | 043 | audit | Аудит v0.16 (WebApp — security-heavy: initData/CORS/CSP/PII) | — |
 | TASK-0072 | open | v0.16.0 | 043 | docs | Релиз v0.16.0 — Telegram WebApp (mini-app) | — |
 | TASK-0073 | open | v0.16.0 | 043 | code | Группы/теги доменов — схема + репозиторий + API/привязка (для WebApp) | — |
-| TASK-0074 | open | v0.16.0 | 043 | code | WebApp — консолидация 0066–0070 в одну сборочную ветку (v0.16) | — |
+| TASK-0074 | claimed | v0.16.0 | 043 | code | WebApp — консолидация 0066–0070 в одну сборочную ветку (v0.16) | task/0074-webapp-consolidation |
 | TASK-0066 | blocked | v0.16.0 | 043 | code | WebApp backend — initData auth + read JSON API (/api/webapp) | — |
 | TASK-0067 | blocked | v0.16.0 | 043 | code | WebApp frontend — foundation (Vite+React, токены PIN Voice, Telegram SDK, сборка+nginx) | — |
 | TASK-0068 | blocked | v0.16.0 | 043 | code | WebApp экраны — список доменов + карточка домена | — |

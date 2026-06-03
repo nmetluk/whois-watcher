@@ -9,7 +9,7 @@ depends_on: []
 branch: task/0060-daily-graph-report
 owner: grok-4.3
 session: docs/sessions/2026-06-09_task-0060-daily-graph-report.md
-pr: ""
+pr: 42
 created: 2026-06-08
 ---
 

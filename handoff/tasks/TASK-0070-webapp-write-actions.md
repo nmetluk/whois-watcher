@@ -1,15 +1,15 @@
 ---
 id: TASK-0070
 title: WebApp — write-действия (тогглы/add/remove/массовые/настройки/импорт/wishlist)
-status: blocked
-blocked_reason: "снимки не складываются (параллельные ветки) → консолидация в TASK-0074"
+status: done
+blocked_reason: "консолидировано и влито через TASK-0074 (PR #49)"
 milestone: v0.16.0
 adr: 043
 area: code
 depends_on: [TASK-0068, TASK-0069]
 branch: ""
 owner: ""
-session: ""
+session: docs/sessions/2026-06-09_task-0074-webapp-consolidation.md
 pr: ""
 created: 2026-06-08
 ---

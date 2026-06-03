@@ -1,7 +1,7 @@
 ---
 id: TASK-0074
 title: WebApp — консолидация 0066–0070 в одну сборочную ветку (v0.16)
-status: in_review
+status: done
 milestone: v0.16.0
 adr: 043
 area: code

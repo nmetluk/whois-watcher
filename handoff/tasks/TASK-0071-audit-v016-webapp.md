@@ -5,7 +5,7 @@ status: open
 milestone: v0.16.0
 adr: 043
 area: audit
-depends_on: [TASK-0066, TASK-0067, TASK-0068, TASK-0069, TASK-0070, TASK-0073]
+depends_on: [TASK-0074, TASK-0073]
 branch: ""
 owner: ""
 session: ""

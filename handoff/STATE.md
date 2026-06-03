@@ -286,6 +286,24 @@ PIN Voice as-is), nginx (static + proxy); health-score на бэке; PII-ско
 Урок процесса: webapp надо было вести стеком (один таск = ветка от свежего
 main/предыдущего), а не параллельными снимками.
 
+✅ **TASK-0074 консолидация смержена** (2026-06-09, PR #49 → `fa83c87`).
+Одна сборочная ветка от свежего main: backend `src/bot/webapp/` (auth.py —
+точный initData HMAC + TTL replay-guard; api.py — read-роуты + write
+toggle/add/remove/wishlist/settings с **ownership-скоупом по `user_id`** и
+`audit()` на мутациях; `add` через `DomainService` для лимитов; health_score;
+mount в webhook), полный фронт `webapp/` (Vite+React, 6 экранов, компоненты,
+токены PIN Voice + TG chrome, `lib/{telegram,api,domain}`). `vite build` ✓,
+`pytest test_webapp_auth` 5/5 ✓, ruff/mypy(api.py) ✓. **0066–0070 → done**
+(superseded by 0074). Ревью-нити вынесены в аудит 0071: dev query-param
+`initData` fallback (leak-surface), raw `sa_delete` в хэндлере (мимо репозитория),
+`getattr(result,...)` drift, **демо-fallback данные в экранах** (`.catch(()=>{42 доменов…})`
+покажет фейк при сбое API — убрать до релиза), bulk/import/alerts-read = stubs.
+**0071 depends → [0074, 0073].**
+
+🔴 **Приоритет — хотфикс v0.15.1 (прод-баги) ВПЕРЕДИ webapp.** Стек 0075–0077
+отдан исполнителю; 0078 — релиз. Webapp-цепочка (0073 группы → 0071 security-аудит
+→ 0072 релиз v0.16) идёт после хотфикса.
+
 🔴 **ХОТФИКС v0.15.1 — прод-фидбек по 4 багам (2026-06-09, ПРИОРИТЕТ выше webapp).**
 После деплоя v0.15.0 пользователи сообщили: (1) кнопка «Поддомены» пишет «⏳ ищу»,
 но результат не приходит — только повторное нажатие выводит список; (2) то же с

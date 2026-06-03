@@ -10,12 +10,12 @@
 | TASK-0065 | open | v0.15.1 | 042 | code | Бекапы — офсайт-копия + шифрование (durability) + мелочи аудита v0.15 | — |
 | TASK-0066 | open | v0.16.0 | 043 | code | WebApp backend — initData auth + read JSON API (/api/webapp) | — |
 | TASK-0067 | open | v0.16.0 | 043 | code | WebApp frontend — foundation (Vite+React, токены PIN Voice, Telegram SDK, сборка+nginx) | — |
-| TASK-0068 | open | v0.16.0 | 043 | code | WebApp экраны — список доменов + карточка домена | — |
 | TASK-0069 | open | v0.16.0 | 043 | code | WebApp экраны — дашборд + календарь + алерты + «Ещё» | — |
 | TASK-0070 | open | v0.16.0 | 043 | code | WebApp — write-действия (тогглы/add/remove/массовые/настройки/импорт/wishlist) | — |
 | TASK-0071 | open | v0.16.0 | 043 | audit | Аудит v0.16 (WebApp — security-heavy: initData/CORS/CSP/PII) | — |
 | TASK-0072 | open | v0.16.0 | 043 | docs | Релиз v0.16.0 — Telegram WebApp (mini-app) | — |
 | TASK-0073 | open | v0.16.0 | 043 | code | Группы/теги доменов — схема + репозиторий + API/привязка (для WebApp) | — |
+| TASK-0068 | in_review | v0.16.0 | 043 | code | WebApp экраны — список доменов + карточка домена | task/0068-webapp-screens-list-domain |
 | TASK-0001 | done | v0.8.1 | 034 | code | Багфикс wishlist ↔ tracked (авто-промоут) | task/0001-wishlist-tracked-fix |
 | TASK-0002 | done | v0.9.0 | 035 | code | PSL — зависимость tldextract + src/utils/domains.py | task/0002-psl-utils-domains |
 | TASK-0003 | done | v0.9.0 | 035 | code | Схема user_domains (registrable_domain, is_subdomain) + WHOIS-джойны | task/0003-subdomain-schema-whois-joins |

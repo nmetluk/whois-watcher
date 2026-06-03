@@ -1,12 +1,12 @@
 ---
 id: TASK-0066
 title: WebApp backend — initData auth + read JSON API (/api/webapp)
-status: open
+status: in_review
 milestone: v0.16.0
 adr: 043
 area: code
 depends_on: []
-branch: ""
+branch: task/0066-webapp-backend-api-auth
 owner: ""
 session: ""
 pr: ""

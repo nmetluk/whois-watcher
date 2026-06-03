@@ -164,6 +164,24 @@ class Settings(BaseSettings):
     bot_username: str = Field("", description="Username без '@'. Опционально.")
 
     # ------------------------------------------------------------------
+    # WebApp (Telegram mini-app, ADR 043, TASK-0066)
+    # ------------------------------------------------------------------
+    webapp_origin: str = Field(
+        "",
+        description=(
+            "Allowed Origin for CORS on /api/webapp endpoints (e.g. https://web.telegram.org). "
+            "If set, only this origin is allowed (plus no-origin for server-side). "
+            "Empty = no extra CORS restriction (or same-origin)."
+        ),
+    )
+    webapp_initdata_ttl: int = Field(
+        86400,
+        ge=60,
+        le=604800,
+        description="Max age (seconds) of Telegram initData 'auth_date' for replay protection. Default 24h.",
+    )
+
+    # ------------------------------------------------------------------
     # WHOIS proxy gateway (Этап 10, ADR 028) — primary lookup path
     # ------------------------------------------------------------------
     # При ``whois_proxy_enabled=True`` бот ходит за WHOIS-данными через

@@ -1,15 +1,15 @@
 ---
 id: TASK-0078
 title: Хотфикс-релиз v0.15.1 (доставка on-demand/карточка + глубокий e-mail)
-status: claimed
+status: done
 milestone: v0.15.1
 adr: 040
 area: docs
 depends_on: [TASK-0075, TASK-0076, TASK-0077]
 branch: task/0078-hotfix-release-v0.15.1
 owner: grok-4.3
-session: ""
-pr: ""
+session: docs/sessions/2026-06-09_task-0078-hotfix-release-v0.15.1.md
+pr: (release commit + tag v0.15.1)
 created: 2026-06-09
 ---
 

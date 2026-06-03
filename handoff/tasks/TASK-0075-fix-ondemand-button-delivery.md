@@ -1,7 +1,7 @@
 ---
 id: TASK-0075
 title: 🔴 Фикс — on-demand кнопки не досылают результат (поддомены, глубокий e-mail)
-status: in_review
+status: done
 milestone: v0.15.1
 adr: 040
 area: code

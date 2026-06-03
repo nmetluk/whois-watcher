@@ -77,6 +77,9 @@ async def check_email_deep(ctx: dict[str, Any], domain: str) -> dict[str, Any]:
             if intel and intel.mx_records:
                 mx_hosts = [h for m in intel.mx_records if (h := m.get("host")) is not None]
 
+        # TASK-0077: диагностика — какие mx_hosts пришли (пусто → DANE пустой)
+        logger.info("check_email_deep mx_hosts=%s for %s", mx_hosts, domain)
+
         # Передаём mx_hosts → DANE будет работать (закрыт долг из 0039)
         result = await fetch_deep_email(domain, mx_hosts=mx_hosts)
 

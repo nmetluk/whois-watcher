@@ -1,14 +1,14 @@
 ---
 id: TASK-0077
 title: 🔴 Диагностика+фикс — глубокий e-mail всегда пустой
-status: open
+status: claimed
 milestone: v0.15.1
 adr: 040
 area: code
 depends_on: []
-branch: ""
-owner: ""
-session: ""
+branch: task/0077-fix-deep-email-empty
+owner: grok-4.3
+session: docs/sessions/2026-06-09_task-0077-fix-deep-email-empty.md
 pr: ""
 created: 2026-06-09
 ---

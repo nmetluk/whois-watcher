@@ -106,3 +106,24 @@ async def test_error_from_collector_calls_update_fail() -> None:
 async def test_deep_email_ttl_constant_is_reasonable() -> None:
     """TTL экспортирован и имеет разумное значение (5-30 минут)."""
     assert 5 * 60 <= DEEP_EMAIL_TTL_SECONDS <= 30 * 60
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_deep_email_on_real_domain_google_has_spf_and_more() -> None:
+    """TASK-0077: интеграционный тест на реальном домене — deep не должен быть полностью пустым."""
+    from src.email_intel.deep_client import fetch_deep_email
+
+    result = await fetch_deep_email("google.com")
+    assert not isinstance(result, DeepEmailError), f"unexpected error: {result}"
+    # SPF почти всегда есть
+    assert result.spf is not None and result.spf.sources, "SPF sources empty on google.com"
+    # хотя бы одна из MTA-STS / DMARC / etc может быть
+    has_something = any(
+        [
+            result.spf and result.spf.sources,
+            result.mta_sts and result.mta_sts.policy_mode,
+            result.dmarc is not None,  # if parsed
+        ]
+    )
+    assert has_something, "deep result completely empty on google.com (SPF/MTA/DMARC)"

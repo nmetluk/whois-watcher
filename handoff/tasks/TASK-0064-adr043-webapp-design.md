@@ -27,19 +27,18 @@ created: 2026-06-08
 auth через Telegram initData, какие данные read-only показываем, какие действия)
 и завести исполнительские таски.
 
-## Вход от дизайнера (2026-06-08)
+## Дизайн — В РЕПОЗИТОРИИ ✅ (2026-06-03)
 
-> Fetch this design file, read its readme, and implement the relevant aspects
-> of the design.
-> `https://api.anthropic.com/v1/design/h/QQppZ07KPWTVsPPorafRTQ?open_file=app%2FWhois+Watcher+WebApp.html`
-> Implement: `app/Whois Watcher WebApp.html`
+Дизайн-ссылки `api.anthropic.com/v1/design/...` оказались недоступны (404/auth).
+Дизайнер прислал handoff-пакет; **импортирован в репозиторий**:
+**`design/webapp/v1/`** (README + `app/` прототип). Источник правды по дизайну —
+`design/webapp/v1/README.md` (токены PIN Voice, 6 экранов, поведение, модель
+данных). Индекс — `design/README.md`. **Ссылку больше не фетчить — читать из репо.**
 
 ## Шаги (при старте)
 
-1. Забрать дизайн-файл по ссылке (web_fetch; если страница client-rendered/
-   за авторизацией и вернётся пустой shell — эскалировать на Claude in Chrome
-   `navigate` + `get_page_text`, по правилам окружения). Прочитать readme
-   дизайна и `app/Whois Watcher WebApp.html`.
+1. Прочитать `design/webapp/v1/README.md` (полная спецификация) + прототип в
+   `design/webapp/v1/app/` (экраны `screen-*.jsx`, токены `ds/`, `tg.css`).
 2. Зафиксировать требования/экраны/компоненты в ADR 043.
 3. Принять архитектурные решения: Telegram WebApp (mini-app) vs внешний веб;
    auth через `initData` (валидация подписи бот-токеном); бэкенд — расширить
@@ -49,7 +48,7 @@ auth через Telegram initData, какие данные read-only показ�
 
 ## Definition of Done (для этого спайка)
 
-- [ ] Дизайн забран и зафиксирован (скриншоты/HTML/readme — в репо или ADR)
+- [x] Дизайн забран и зафиксирован в репо — `design/webapp/v1/` (2026-06-03)
 - [ ] ADR 043 написан (объём v0.16, архитектура, auth, безопасность, альтернативы)
 - [ ] Заведены исполнительские таски следующего этапа
 - [ ] `handoff.py validate`; PR (docs)

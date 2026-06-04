@@ -137,6 +137,16 @@ class DomainRepository(BaseRepository):
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none() is not None
 
+    async def remove_by_id(self, user_id: int, ud_id: int) -> bool:
+        """Удаляет по PK user_domains.id (scoped). Возвращает True если удалено."""
+        stmt = (
+            delete(UserDomain)
+            .where(UserDomain.id == ud_id, UserDomain.user_id == user_id)
+            .returning(UserDomain.id)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none() is not None
+
     async def exists(self, user_id: int, domain: str) -> bool:
         """True, если домен уже отслеживается пользователем."""
         stmt = select(UserDomain.id).where(

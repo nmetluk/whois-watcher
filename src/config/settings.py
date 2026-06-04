@@ -175,10 +175,10 @@ class Settings(BaseSettings):
         ),
     )
     webapp_initdata_ttl: int = Field(
-        86400,
+        3600,
         ge=60,
         le=604800,
-        description="Max age (seconds) of Telegram initData 'auth_date' for replay protection. Default 24h.",
+        description="Max age (seconds) of Telegram initData 'auth_date' for replay protection. Default 1h (replay window).",
     )
 
     # ------------------------------------------------------------------

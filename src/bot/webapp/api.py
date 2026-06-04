@@ -914,26 +914,20 @@ async def remove_domain(request: web.Request) -> web.Response:
     except ValueError:
         return web.json_response({"error": "bad id"}, status=400)
     async with get_session() as session:
-        _dom_repo = DomainRepository(session)
+        dom_repo = DomainRepository(session)
         stmt = select(UserDomain).where(UserDomain.id == did, UserDomain.user_id == user.id)
         res = await session.execute(stmt)
         ud = res.scalar_one_or_none()
         if not ud:
             return web.json_response({"error": "not found or no permission"}, status=404)
         domain = ud.domain
-        # delete (scoped)
-        from sqlalchemy import delete as sa_delete
-
-        await session.execute(
-            sa_delete(UserDomain).where(UserDomain.id == did, UserDomain.user_id == user.id)
-        )
-        await session.commit()
+        removed = await dom_repo.remove_by_id(user.id, did)
         await audit(
             level="info",
             category="webapp",
             message="domain removed via webapp",
             actor=str(user.id),
-            context={"domain": domain},
+            context={"domain": domain, "removed": removed},
         )
         return web.json_response({"ok": True, "removed": did, "domain": domain})
 

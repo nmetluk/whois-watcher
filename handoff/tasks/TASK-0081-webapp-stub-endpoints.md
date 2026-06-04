@@ -1,7 +1,7 @@
 ---
 id: TASK-0081
 title: 🔴 WebApp — эндпойнты-заглушки врут об успехе (bulk/alerts-read/import)
-status: in_review
+status: done
 milestone: v0.16.0
 adr: 043
 area: code

@@ -1,7 +1,7 @@
 ---
 id: TASK-0082
 title: 🔴 WebApp — убрать фейковые demo-данные на фронте (error/empty-state)
-status: in_review
+status: done
 milestone: v0.16.0
 adr: 043
 area: code

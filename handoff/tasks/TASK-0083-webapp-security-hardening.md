@@ -1,7 +1,7 @@
 ---
 id: TASK-0083
 title: 🟠 WebApp security — initData TTL, dev-initData-в-URL, CORS-preflight, raw SQL, CSP
-status: in_review
+status: done
 milestone: v0.16.0
 adr: 043
 area: code

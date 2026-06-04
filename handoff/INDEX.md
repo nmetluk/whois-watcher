@@ -10,9 +10,6 @@
 | TASK-0065 | open | v0.15.1 | 042 | code | Бекапы — офсайт-копия + шифрование (durability) + мелочи аудита v0.15 | — |
 | TASK-0072 | open | v0.16.0 | 043 | docs | Релиз v0.16.0 — Telegram WebApp (mini-app) | — |
 | TASK-0084 | open | v0.16.1 | 043 | code | 🟢 WebApp — ниты (длины полей группы, CORS Allow-Headers, доки replay-риска) | — |
-| TASK-0081 | in_review | v0.16.0 | 043 | code | 🔴 WebApp — эндпойнты-заглушки врут об успехе (bulk/alerts-read/import) | task/0081-webapp-stub-endpoints |
-| TASK-0082 | in_review | v0.16.0 | 043 | code | 🔴 WebApp — убрать фейковые demo-данные на фронте (error/empty-state) | task/0082-webapp-remove-demo-fallback |
-| TASK-0083 | in_review | v0.16.0 | 043 | code | 🟠 WebApp security — initData TTL, dev-initData-в-URL, CORS-preflight, raw SQL, CSP | task/0083-webapp-security-hardening |
 | TASK-0001 | done | v0.8.1 | 034 | code | Багфикс wishlist ↔ tracked (авто-промоут) | task/0001-wishlist-tracked-fix |
 | TASK-0002 | done | v0.9.0 | 035 | code | PSL — зависимость tldextract + src/utils/domains.py | task/0002-psl-utils-domains |
 | TASK-0003 | done | v0.9.0 | 035 | code | Схема user_domains (registrable_domain, is_subdomain) + WHOIS-джойны | task/0003-subdomain-schema-whois-joins |
@@ -90,3 +87,6 @@
 | TASK-0078 | done | v0.15.1 | 040 | docs | Хотфикс-релиз v0.15.1 (доставка on-demand/карточка + глубокий e-mail) | task/0078-hotfix-release-v0.15.1 |
 | TASK-0079 | done | v0.15.2 | 040 | code | 🔴 Email-слой — DNS-сбой молча трактуется как «нет записей» (MX/deep пусты) | task/0079-email-dns-failure-vs-norecords |
 | TASK-0080 | done | v0.15.2 | 040 | docs | Хотфикс-релиз v0.15.2 (DNS-сбой ≠ «нет записей» в email-слое) | — |
+| TASK-0081 | done | v0.16.0 | 043 | code | 🔴 WebApp — эндпойнты-заглушки врут об успехе (bulk/alerts-read/import) | task/0081-webapp-stub-endpoints |
+| TASK-0082 | done | v0.16.0 | 043 | code | 🔴 WebApp — убрать фейковые demo-данные на фронте (error/empty-state) | task/0082-webapp-remove-demo-fallback |
+| TASK-0083 | done | v0.16.0 | 043 | code | 🟠 WebApp security — initData TTL, dev-initData-в-URL, CORS-preflight, raw SQL, CSP | task/0083-webapp-security-hardening |

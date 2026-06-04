@@ -109,13 +109,13 @@ def validate_init_data(init_data: str | None, bot_token: str, ttl_seconds: int) 
     )
 
 
-def _extract_init_data(request: web.Request) -> str | None:
+def _extract_init_data(request: web.Request, *, allow_dev_fallback: bool = False) -> str | None:
     """Extract raw initData string from common headers used by Telegram WebApps.
 
     Priority:
     - X-Telegram-Init-Data / X-Init-Data / X-Telegram-Web-App-Init-Data
     - Authorization: tma <data>  (or TMA)
-    - Fallback (dev only): query param initData=...
+    - Fallback (dev only, gated): query param initData=...
     """
     for h in ("X-Telegram-Init-Data", "X-Init-Data", "X-Telegram-Web-App-Init-Data"):
         val = request.headers.get(h)
@@ -129,10 +129,11 @@ def _extract_init_data(request: web.Request) -> str | None:
         if len(parts) == 2 and parts[0].lower() == "tma":
             return parts[1].strip()
 
-    # Dev convenience only (never rely in prod; easy to log/spoof in browser)
-    q = request.query.get("initData") or request.query.get("_initData")
-    if q:
-        return q.strip()
+    # Dev convenience ONLY if explicitly allowed (env=development). Never in prod.
+    if allow_dev_fallback:
+        q = request.query.get("initData") or request.query.get("_initData")
+        if q:
+            return q.strip()
 
     return None
 
@@ -146,7 +147,11 @@ def create_webapp_auth_middleware(settings: Settings) -> Any:
 
     @web.middleware
     async def _auth_mw(request: web.Request, handler: Any) -> Any:
-        init_data = _extract_init_data(request)
+        # Preflight must pass before auth (F5): OPTIONS has no initData, cors_mw will answer 204.
+        if request.method == "OPTIONS":
+            return await handler(request)
+        is_dev = getattr(settings, "environment", "production") == "development"
+        init_data = _extract_init_data(request, allow_dev_fallback=is_dev)
         try:
             bot_token = settings.bot_token.get_secret_value()
             ttl = settings.webapp_initdata_ttl

@@ -1,14 +1,14 @@
 ---
 id: TASK-0083
 title: 🟠 WebApp security — initData TTL, dev-initData-в-URL, CORS-preflight, raw SQL, CSP
-status: open
+status: in_review
 milestone: v0.16.0
 adr: 043
 area: code
 depends_on: []
-branch: ""
+branch: task/0083-webapp-security-hardening
 owner: ""
-session: ""
+session: docs/sessions/2026-06-11_task-0083-webapp-security-hardening.md
 pr: ""
 created: 2026-06-10
 ---

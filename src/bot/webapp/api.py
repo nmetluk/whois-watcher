@@ -11,11 +11,12 @@ No raw SQL in handlers.
 from __future__ import annotations
 
 import logging
+from contextlib import suppress
 from datetime import UTC, date, datetime
 from typing import Any
 
 from aiohttp import web
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.bot.webapp.auth import create_webapp_auth_middleware
@@ -36,6 +37,7 @@ from src.db.repositories import (
 from src.db.repositories.notifications import NotificationRepository
 from src.db.session import get_session
 from src.services.audit import audit
+from src.services.csv_io import parse_domain_file
 from src.services.domains import DomainService
 from src.services.health_score import HealthInputs, compute_health_score
 from src.services.whois_facade import WhoisFacade
@@ -934,20 +936,56 @@ async def remove_domain(request: web.Request) -> web.Response:
 
 @routes.post("/bulk")
 async def bulk_actions(request: web.Request) -> web.Response:
-    """POST /api/webapp/bulk — массовые действия (toggle/add to group/export etc). Stub for now, extend in followups."""
+    """POST /api/webapp/bulk — массовые действия (delete/add_to_group и др). Реализовано (TASK-0081)."""
     user: User = request["user"]
     data = await request.json()
-    action = data.get("action")
-    ids = data.get("ids", [])
-    # TODO: implement real bulk using DomainService / repos + audit
+    action = (data.get("action") or "").strip()
+    raw_ids = data.get("ids") or []
+    ids: list[int] = []
+    for x in raw_ids:
+        with suppress(TypeError, ValueError):
+            ids.append(int(x))
+    extra = {k: v for k, v in data.items() if k not in ("action", "ids")}
+
+    processed = 0
+    errors: list[str] = []
+
+    async with get_session() as session:
+        if action == "delete":
+            if ids:
+                stmt = (
+                    delete(UserDomain)
+                    .where(UserDomain.id.in_(ids), UserDomain.user_id == user.id)
+                )
+                res = await session.execute(stmt)
+                processed = getattr(res, "rowcount", len(ids)) or len(ids)
+        elif action == "add_to_group":
+            gid = extra.get("group_id")
+            try:
+                gid = int(gid) if gid is not None else None
+            except (TypeError, ValueError):
+                gid = None
+            if gid is None:
+                return web.json_response({"error": "group_id required"}, status=400)
+            grepo = GroupRepository(session)
+            for did in ids:
+                try:
+                    attached = await grepo.attach(user.id, gid, did)
+                    if attached:
+                        processed += 1
+                except Exception as e:
+                    errors.append(f"{did}:{e}")
+        else:
+            return web.json_response({"error": f"unsupported action: {action}"}, status=400)
+
     await audit(
         level="info",
         category="webapp",
         message="bulk action",
         actor=str(user.id),
-        context={"action": action, "count": len(ids)},
+        context={"action": action, "processed": processed, "count": len(ids)},
     )
-    return web.json_response({"ok": True, "action": action, "count": len(ids)})
+    return web.json_response({"ok": True, "action": action, "processed": processed, "errors": errors[:5]})
 
 
 @routes.post("/settings")
@@ -976,11 +1014,12 @@ async def update_settings(request: web.Request) -> web.Response:
 
 @routes.post("/alerts/read")
 async def mark_alerts_read(request: web.Request) -> web.Response:
-    """POST /api/webapp/alerts/read — mark alerts read (stub; real table may be notifications)."""
+    """POST /api/webapp/alerts/read — acknowledge alerts (scoped; no read-flag in model yet)."""
     user: User = request["user"]
     data = await request.json()
     ids = data.get("ids", [])
-    # TODO: update via NotificationRepository or audit_log
+    # No persistent read flag on SentNotification yet (F2 follow-up); we audit + return ok
+    # so UI can clear badges. Ownership implicit (alerts come from get_recent for user).
     await audit(
         level="info",
         category="webapp",
@@ -1016,27 +1055,68 @@ async def remove_wishlist(request: web.Request) -> web.Response:
     user: User = request["user"]
     domain = normalize_domain(request.match_info.get("domain", ""))
     async with get_session() as session:
-        _wish_repo = WishlistRepository(session)
+        wish_repo = WishlistRepository(session)
+        removed = await wish_repo.remove(user.id, domain)
         await audit(
             level="info",
             category="webapp",
             message="wishlist remove via webapp",
             actor=str(user.id),
-            context={"domain": domain},
+            context={"domain": domain, "removed": removed},
         )
-        return web.json_response({"ok": True, "domain": domain})
+        return web.json_response({"ok": True, "domain": domain, "removed": removed})
 
 
 @routes.post("/import")
 async def import_domains(request: web.Request) -> web.Response:
-    """POST /api/webapp/import — CSV import (preview+apply). Uses csv_io + DomainService (graceful)."""
+    """POST /api/webapp/import — CSV/TXT import (real via csv_io + DomainService, TASK-0081)."""
     user: User = request["user"]
-    _data = await request.json()
-    # TODO: integrate src/services/csv_io + bulk via DomainService; for now stub
-    await audit(level="info", category="webapp", message="import via webapp", actor=str(user.id))
-    return web.json_response(
-        {"ok": True, "imported": 0, "note": "csv_io + DomainService integration pending full 0070"}
-    )
+    data = await request.json()
+    text = data.get("text") or data.get("content") or ""
+    if isinstance(text, (bytes, bytearray)):
+        text = text.decode("utf-8", errors="ignore")
+    elif not isinstance(text, str):
+        text = str(text)
+
+    limits = get_limits()
+    async with get_session() as session:
+        dom_repo = DomainRepository(session)
+        cache_repo = WhoisCacheRepository(session)
+        facade = WhoisFacade(cache_repo, None, limits)  # type: ignore[arg-type]
+        service = DomainService(
+            domain_repo=dom_repo, cache_repo=cache_repo, facade=facade, limits=limits
+        )
+        parsed = parse_domain_file(text.encode("utf-8") if text else b"", limits.max_domains_per_user)
+        imported = 0
+        errs: list[dict[str, Any]] = []
+        for dom in parsed.valid_domains[: limits.max_domains_per_user]:
+            try:
+                res = await service.add_for_user(
+                    user_id=user.id,
+                    notify_days=user.notify_days or [30, 7, 1],
+                    domain_input=dom,
+                )
+                st = getattr(res, "status", "ok")
+                if st in ("ok", "already_tracked", "promoted"):
+                    imported += 1
+                else:
+                    errs.append({"domain": dom, "status": st})
+            except Exception as e:
+                errs.append({"domain": dom, "error": str(e)[:100]})
+        await audit(
+            level="info",
+            category="webapp",
+            message="import via webapp",
+            actor=str(user.id),
+            context={"imported": imported, "valid": len(parsed.valid_domains), "invalid": len(parsed.invalid_lines)},
+        )
+        return web.json_response({
+            "ok": True,
+            "imported": imported,
+            "invalid": len(parsed.invalid_lines),
+            "truncated": bool(parsed.truncated),
+            "errors": errs[:5],
+        })
 
 
 # --- Setup ---
@@ -1091,4 +1171,4 @@ def setup_webapp_on_main(app: web.Application, *, settings: Settings) -> None:
     )
 
 
-__all__ = ["setup_webapp_on_main", "create_webapp_app", "routes"]
+__all__ = ["create_webapp_app", "routes", "setup_webapp_on_main"]

@@ -5,7 +5,7 @@
 > архитектором — после merge крупных кусков; исполнителем — раздел
 > «Последняя сессия». Дата последнего обновления — обязательна.
 
-**Обновлено:** 2026-06-10 (✅ хотфикс v0.15.2: DNS-сбой ≠ «нет записей» в email-слое, TASK-0079/0080 — настоящая причина «MX не видно») · **Релиз на main:** v0.15.2 · **Последний ADR:** 043
+**Обновлено:** 2026-06-10 (✅ TASK-0073 группы/теги смержены, тесты дописал архитектор; webapp разблокирован до аудита 0071) · **Релиз на main:** v0.15.2 · **Последний ADR:** 043
 
 ## Где мы сейчас
 
@@ -355,10 +355,22 @@ print(dns.resolver.resolve('pinspb.ru','MX'))"`). Если падает — вы
 `DNS_NAMESERVERS=1.1.1.1,8.8.8.8` + ufw-allow 53. Код теперь честный; реальный
 показ MX зависит от рабочего DNS в воркере.
 
+✅ **TASK-0073 группы/теги смержены** (2026-06-10, PR #54). `domain_group` +
+`user_domain_group` (составной PK, cascade-FK, миграция `20260610_domain_group`
+от `20260609_audit_log`). `GroupRepository`: ownership-скоуп на attach (и группа,
+и домен — нет cross-user), idempotent через `ON CONFLICT DO NOTHING`,
+`list_with_counts` одним outerjoin+group_by (без N+1). API `/groups` (GET/POST/
+DELETE) + `/domain/{id}/groups` (attach), scoped по `user.id`, `audit()` на
+мутациях. **Тесты исполнитель не приложил — архитектор дописал** (unit: валидация
+`kind`, прогнал локально 3/3; интеграц на Postgres: idempotent/ownership/cascade/
+counts, CI-gated; round-trip миграции — уже в `test_migrations.py`). Разблокирует
+аудит 0071.
+
 **Следующий шаг:** деплой v0.15.2 (+ при необходимости `DNS_NAMESERVERS`); затем
-webapp-цепочка (0073 группы → 0071 security-аудит, включает нити из 0074 → 0072
-релиз v0.16) + опц. TASK-0065. Дальше — v1.0 (web-дашборд, публичный API,
-орг-аккаунты, Prometheus).
+**TASK-0071** (security-аудит v0.16, включает нити из 0074: dev query-param
+initData, raw sa_delete, getattr-drift, демо-fallback в экранах, stubs
+bulk/import/alerts-read) → **0072** (релиз v0.16) + опц. TASK-0065. Дальше —
+v1.0 (web-дашборд, публичный API, орг-аккаунты, Prometheus).
 
 ---
 

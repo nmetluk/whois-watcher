@@ -1,15 +1,15 @@
 ---
 id: TASK-0080
 title: Хотфикс-релиз v0.15.2 (DNS-сбой ≠ «нет записей» в email-слое)
-status: open
+status: done
 milestone: v0.15.2
 adr: 040
 area: docs
 depends_on: [TASK-0079]
 branch: ""
-owner: ""
-session: ""
-pr: ""
+owner: architect
+session: docs/sessions/2026-06-10_task-0080-release-v0.15.2.md
+pr: "(release commit + tag v0.15.2)"
 created: 2026-06-09
 ---
 

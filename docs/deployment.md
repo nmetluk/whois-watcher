@@ -721,6 +721,32 @@ docker compose up -d
    # 8443/tcp должен быть ALLOW
    ```
 
+### MX / email-блок пуст, «глубокий e-mail» ничего не находит
+
+Симптомы: в карточке `/whois` нет MX (или «MX: не настроен») для домена, у
+которого MX точно есть; deep-email пуст. С v0.15.2 при реальном сбое DNS
+карточка покажет «⚠️ не отвечает» (а не ложное «MX нет») — это сигнал, что
+**воркер не резолвит DNS**.
+
+Диагностика (резолв изнутри контейнера воркера):
+
+```bash
+docker exec ww-worker python -c "import dns.resolver; print([str(r) for r in dns.resolver.resolve('pinspb.ru','MX')])"
+```
+
+- Выводит `['10 emx.mail.ru.']` → DNS в воркере работает (проблема не здесь).
+- Падает (`Timeout` / `NoNameservers` / `Temporary failure`) → системный
+  resolver контейнера ограничен. Решение — задать публичные DNS в `.env`:
+
+  ```dotenv
+  DNS_NAMESERVERS=1.1.1.1,8.8.8.8
+  ```
+
+  и убедиться, что egress на порт 53 к этим адресам из подсети
+  `172.28.0.0/16` разрешён ufw (ADR 028). Затем пересоздать воркер:
+  `docker compose up -d worker`. Пусто `DNS_NAMESERVERS` = системный resolver
+  (поведение по умолчанию).
+
 ### `/whois` для `.ru` / `.рф` не работает
 
 Симптомы: ответ `network_error` или `timeout`.

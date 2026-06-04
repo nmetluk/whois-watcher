@@ -21,6 +21,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    PrimaryKeyConstraint,
     String,
     Text,
     UniqueConstraint,
@@ -89,6 +90,12 @@ class User(Base):
     )
     wishlist_items: Mapped[list[Wishlist]] = relationship(
         "Wishlist",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    domain_groups: Mapped[list[DomainGroup]] = relationship(
+        "DomainGroup",
         back_populates="user",
         cascade="all, delete-orphan",
         passive_deletes=True,
@@ -211,8 +218,77 @@ class UserDomain(Base):
 
     user: Mapped[User] = relationship("User", back_populates="domains")
 
+    groups: Mapped[list[DomainGroup]] = relationship(
+        "DomainGroup",
+        secondary="user_domain_group",
+        back_populates="domains",
+    )
+
     def __repr__(self) -> str:  # pragma: no cover
         return f"<UserDomain user={self.user_id} domain={self.domain!r}>"
+
+
+# ---------------------------------------------------------------------------
+# domain_group + membership (TASK-0073, ADR 043)
+# ---------------------------------------------------------------------------
+class DomainGroup(Base):
+    """Группа/тег доменов пользователя (клиентские или личные).
+    Используется для группировки в WebApp (список, дашборд, экран Группы).
+    """
+
+    __tablename__ = "domain_group"
+    __table_args__ = (Index("ix_domain_group_user_id", "user_id"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[str] = mapped_column(Text, nullable=False)  # 'client' | 'personal'
+    color: Mapped[str | None] = mapped_column(Text, nullable=True)  # hue token 'a0'..'a7'
+    icon: Mapped[str | None] = mapped_column(Text, nullable=True)  # e.g. 'folder_special'
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    user: Mapped[User] = relationship("User", back_populates="domain_groups")
+
+    domains: Mapped[list[UserDomain]] = relationship(
+        "UserDomain",
+        secondary="user_domain_group",
+        back_populates="groups",
+    )
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<DomainGroup user={self.user_id} name={self.name!r} kind={self.kind}>"
+
+
+class UserDomainGroup(Base):
+    """Membership: many-to-many связь user_domain <-> domain_group.
+    Составной PK, без дополнительных полей. Каскады на удаление сторон.
+    """
+
+    __tablename__ = "user_domain_group"
+    __table_args__ = (
+        PrimaryKeyConstraint("user_domain_id", "group_id"),
+        Index("ix_user_domain_group_group_id", "group_id"),
+    )
+
+    user_domain_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("user_domains.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    group_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("domain_group.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<UserDomainGroup ud={self.user_domain_id} g={self.group_id}>"
 
 
 # ---------------------------------------------------------------------------

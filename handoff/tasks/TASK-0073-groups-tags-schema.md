@@ -1,15 +1,15 @@
 ---
 id: TASK-0073
 title: Группы/теги доменов — схема + репозиторий + API/привязка (для WebApp)
-status: open
+status: in_review
 milestone: v0.16.0
 adr: 043
 area: code
 depends_on: []
-branch: ""
-owner: ""
-session: ""
-pr: ""
+branch: "task/0073-groups-tags-schema"
+owner: "grok-4.3"
+session: "docs/sessions/2026-06-10_task-0073-groups-tags-schema.md"
+pr: "https://github.com/nmetluk/whois-watcher/pull/54"
 created: 2026-06-09
 ---
 

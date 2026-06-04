@@ -16,6 +16,7 @@ from src.db.repositories.dns_cache import DNSCacheRepository
 from src.db.repositories.domains import DomainRepository
 from src.db.repositories.email_deep_cache import EmailDeepCacheRepository
 from src.db.repositories.email_intel_cache import EmailIntelCacheRepository
+from src.db.repositories.groups import GroupRepository
 from src.db.repositories.notifications import NotificationRepository
 from src.db.repositories.ssl_cache import SSLCacheRepository
 from src.db.repositories.subdomain_enum_cache import SubdomainEnumCacheRepository
@@ -30,6 +31,7 @@ __all__ = [
     "DomainRepository",
     "EmailDeepCacheRepository",
     "EmailIntelCacheRepository",
+    "GroupRepository",
     "NotificationRepository",
     "SSLCacheRepository",
     "SubdomainEnumCacheRepository",

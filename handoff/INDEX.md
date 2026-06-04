@@ -9,10 +9,10 @@
 | TASK-0056 | open | v0.14.1 | — | code | v0.14 cleanup — подключить no_expiry_tlds + sweep getattr-на-ORM | — |
 | TASK-0065 | open | v0.15.1 | 042 | code | Бекапы — офсайт-копия + шифрование (durability) + мелочи аудита v0.15 | — |
 | TASK-0072 | open | v0.16.0 | 043 | docs | Релиз v0.16.0 — Telegram WebApp (mini-app) | — |
-| TASK-0081 | open | v0.16.0 | 043 | code | 🔴 WebApp — эндпойнты-заглушки врут об успехе (bulk/alerts-read/import) | — |
-| TASK-0082 | open | v0.16.0 | 043 | code | 🔴 WebApp — убрать фейковые demo-данные на фронте (error/empty-state) | — |
-| TASK-0083 | open | v0.16.0 | 043 | code | 🟠 WebApp security — initData TTL, dev-initData-в-URL, CORS-preflight, raw SQL, CSP | — |
 | TASK-0084 | open | v0.16.1 | 043 | code | 🟢 WebApp — ниты (длины полей группы, CORS Allow-Headers, доки replay-риска) | — |
+| TASK-0081 | in_review | v0.16.0 | 043 | code | 🔴 WebApp — эндпойнты-заглушки врут об успехе (bulk/alerts-read/import) | task/0081-webapp-stub-endpoints |
+| TASK-0082 | in_review | v0.16.0 | 043 | code | 🔴 WebApp — убрать фейковые demo-данные на фронте (error/empty-state) | task/0082-webapp-remove-demo-fallback |
+| TASK-0083 | in_review | v0.16.0 | 043 | code | 🟠 WebApp security — initData TTL, dev-initData-в-URL, CORS-preflight, raw SQL, CSP | task/0083-webapp-security-hardening |
 | TASK-0001 | done | v0.8.1 | 034 | code | Багфикс wishlist ↔ tracked (авто-промоут) | task/0001-wishlist-tracked-fix |
 | TASK-0002 | done | v0.9.0 | 035 | code | PSL — зависимость tldextract + src/utils/domains.py | task/0002-psl-utils-domains |
 | TASK-0003 | done | v0.9.0 | 035 | code | Схема user_domains (registrable_domain, is_subdomain) + WHOIS-джойны | task/0003-subdomain-schema-whois-joins |

@@ -1,15 +1,15 @@
 ---
 id: TASK-0083
 title: 🟠 WebApp security — initData TTL, dev-initData-в-URL, CORS-preflight, raw SQL, CSP
-status: open
+status: in_review
 milestone: v0.16.0
 adr: 043
 area: code
 depends_on: []
-branch: ""
-owner: ""
-session: ""
-pr: ""
+branch: "task/0083-webapp-security-hardening"
+owner: "grok"
+session: "docs/sessions/2026-06-11_task-0083-webapp-security-hardening.md"
+pr: "https://github.com/nmetluk/whois-watcher/pull/57"
 created: 2026-06-10
 ---
 

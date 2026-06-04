@@ -1,15 +1,15 @@
 ---
 id: TASK-0082
 title: 🔴 WebApp — убрать фейковые demo-данные на фронте (error/empty-state)
-status: open
+status: in_review
 milestone: v0.16.0
 adr: 043
 area: code
 depends_on: []
-branch: ""
-owner: ""
-session: ""
-pr: ""
+branch: "task/0082-webapp-remove-demo-fallback"
+owner: "grok"
+session: "docs/sessions/2026-06-11_task-0082-webapp-remove-demo-fallback.md"
+pr: "https://github.com/nmetluk/whois-watcher/pull/56"
 created: 2026-06-10
 ---
 

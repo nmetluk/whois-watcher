@@ -1,6 +1,6 @@
 [project]
 name = "whois-watcher"
-version = "0.15.2"
+version = "0.16.0"
 description = "Telegram-бот для проверки WHOIS-данных доменов и напоминаний об их истечении."
 readme = "README.md"
 requires-python = ">=3.11,<4.0"

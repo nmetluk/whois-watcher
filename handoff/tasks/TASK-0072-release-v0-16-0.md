@@ -1,15 +1,15 @@
 ---
 id: TASK-0072
 title: Релиз v0.16.0 — Telegram WebApp (mini-app)
-status: open
+status: done
 milestone: v0.16.0
 adr: 043
 area: docs
 depends_on: [TASK-0071, TASK-0081, TASK-0082, TASK-0083]
 branch: ""
-owner: ""
-session: ""
-pr: ""
+owner: architect
+session: docs/sessions/2026-06-11_task-0072-release-v0.16.0.md
+pr: "(release commit + tag v0.16.0)"
 created: 2026-06-08
 ---
 

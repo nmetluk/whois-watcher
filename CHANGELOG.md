@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] — 2026-06-11
+
+Telegram WebApp (mini-app) — веб-интерфейс портфеля поверх бота (ADR 043).
+
+### Added
+
+- **WebApp / mini-app**: интерфейс портфеля доменов в Telegram WebApp — дашборд (здоровье портфеля, KPI, распределение по сроку, бюджет продления, топ-риски), список доменов, карточка домена, календарь истечений, алерты, экран «Ещё» (группы, wishlist, импорт/экспорт, настройки).
+- **Backend `/api/webapp/*`** (aiohttp под-роутер): auth через Telegram `initData` (HMAC + TTL replay-guard, stateless), read-эндпойнты (portfolio/dashboard/calendar/alerts/settings/groups/wishlist) и write-действия (toggle/add/remove/bulk/import/settings/wishlist) — все скоупятся по пользователю, `audit()` на мутациях.
+- **Группы/теги доменов** (ADR 043): таблицы `domain_group` + `user_domain_group` (many-to-many, ownership-скоуп), группировка списка по клиентам/проектам, счётчики и бюджет по группам.
+- **CSV/TXT-импорт** доменов через WebApp (лимит 50k, валидация).
+- Конфиг: `WEBAPP_ORIGIN` (CORS), `WEBAPP_INITDATA_TTL` (replay-окно, дефолт 1ч); CSP для статики mini-app (nginx).
+
+### Security
+
+- initData: точный алгоритм Telegram (HMAC + constant-time), TTL replay-protection (1ч), dev query-param fallback только при `ENVIRONMENT=development`.
+- Ownership-скоупинг по `user_id` на всех read/write; запись через сервисы/репозитории (без сырого SQL в хэндлерах); валидация полей групп; PII-скоуп (пользователь видит только свои домены).
+- Аудит безопасности (TASK-0071, отчёт `handoff/audits/AUDIT-2026-06-10-v0-16-webapp-security.md`): закрыты F1–F10.
+
+### Internal
+
+- ADR 043; цепочка TASK-0066…0074 (консолидация), 0081–0084 (фиксы аудита). Тесты: initData-валидатор, GroupRepository (unit + интеграц на Postgres).
+
 ## [0.15.2] — 2026-06-10
 
 Хотфикс v0.15.2: DNS-сбой больше не маскируется под «нет записей» в email-слое

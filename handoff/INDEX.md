@@ -8,7 +8,6 @@
 |----|--------|-----------|-----|---------|------|-------|
 | TASK-0056 | open | v0.14.1 | — | code | v0.14 cleanup — подключить no_expiry_tlds + sweep getattr-на-ORM | — |
 | TASK-0065 | open | v0.15.1 | 042 | code | Бекапы — офсайт-копия + шифрование (durability) + мелочи аудита v0.15 | — |
-| TASK-0072 | open | v0.16.0 | 043 | docs | Релиз v0.16.0 — Telegram WebApp (mini-app) | — |
 | TASK-0001 | done | v0.8.1 | 034 | code | Багфикс wishlist ↔ tracked (авто-промоут) | task/0001-wishlist-tracked-fix |
 | TASK-0002 | done | v0.9.0 | 035 | code | PSL — зависимость tldextract + src/utils/domains.py | task/0002-psl-utils-domains |
 | TASK-0003 | done | v0.9.0 | 035 | code | Схема user_domains (registrable_domain, is_subdomain) + WHOIS-джойны | task/0003-subdomain-schema-whois-joins |
@@ -78,6 +77,7 @@
 | TASK-0069 | done | v0.16.0 | 043 | code | WebApp экраны — дашборд + календарь + алерты + «Ещё» | — |
 | TASK-0070 | done | v0.16.0 | 043 | code | WebApp — write-действия (тогглы/add/remove/массовые/настройки/импорт/wishlist) | — |
 | TASK-0071 | done | v0.16.0 | 043 | audit | Аудит v0.16 (WebApp — security-heavy: initData/CORS/CSP/PII) | — |
+| TASK-0072 | done | v0.16.0 | 043 | docs | Релиз v0.16.0 — Telegram WebApp (mini-app) | — |
 | TASK-0073 | done | v0.16.0 | 043 | code | Группы/теги доменов — схема + репозиторий + API/привязка (для WebApp) | task/0073-groups-tags-schema |
 | TASK-0074 | done | v0.16.0 | 043 | code | WebApp — консолидация 0066–0070 в одну сборочную ветку (v0.16) | task/0074-webapp-consolidation |
 | TASK-0075 | done | v0.15.1 | 040 | code | 🔴 Фикс — on-demand кнопки не досылают результат (поддомены, глубокий e-mail) | task/0075-fix-ondemand-button-delivery |

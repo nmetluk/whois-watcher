@@ -75,6 +75,7 @@ LOCALE: dict[str, str] = {
         "/list — список ваших доменов\n"
         "/csv — экспорт в CSV\n"
         "/download — массовый импорт\n"
+        "/webapp — дашборд портфеля (WebApp)\n"
         "/settings — настройки\n"
         "/help — полная справка\n"
         "\n"
@@ -102,6 +103,7 @@ LOCALE: dict[str, str] = {
         "/download — массовый импорт из TXT/CSV\n"
         "\n"
         "<b>Прочее</b>\n"
+        "/webapp — дашборд портфеля (WebApp в Telegram)\n"
         "/settings — часовой пояс, время напоминаний, язык\n"
         "/stats — статистика по портфелю\n"
         "/cancel — отменить текущее действие\n"
@@ -134,6 +136,7 @@ LOCALE: dict[str, str] = {
     "button.check_domain": "🌐 Проверить домен",
     "button.my_domains": "📋 Мои домены",
     "button.settings": "⚙️ Настройки",
+    "button.webapp": "📱 Дашборд (WebApp)",
     "button.follow": "👁 Следить",
     "button.unfollow": "🗑 Снять со слежения",
     "button.refresh": "🔄 Обновить",
@@ -804,5 +807,12 @@ LOCALE: dict[str, str] = {
     "start.check_prompt": (
         "🌐 Пришлите домен сообщением — покажу WHOIS.\n"
         "Или используйте команду: /whois example.com"
+    ),
+    # ------------------------------------------------------------------
+    # WebApp (mini-app, ADR 043)
+    # ------------------------------------------------------------------
+    "webapp.open_prompt": (
+        "📱 Дашборд портфеля: здоровье доменов, календарь истечений, "
+        "алерты и группы — по кнопке ниже."
     ),
 }

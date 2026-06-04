@@ -2,7 +2,7 @@
 
 > АВТО-генерируется `python scripts/handoff.py board`. Не править руками.
 
-Всего задач: 84
+Всего задач: 85
 
 | ID | Статус | Майлстоун | ADR | Область | Тема | Ветка |
 |----|--------|-----------|-----|---------|------|-------|
@@ -90,3 +90,4 @@
 | TASK-0082 | done | v0.16.0 | 043 | code | 🔴 WebApp — убрать фейковые demo-данные на фронте (error/empty-state) | task/0082-webapp-remove-demo-fallback |
 | TASK-0083 | done | v0.16.0 | 043 | code | 🟠 WebApp security — initData TTL, dev-initData-в-URL, CORS-preflight, raw SQL, CSP | task/0083-webapp-security-hardening |
 | TASK-0084 | done | v0.16.1 | 043 | code | 🟢 WebApp — ниты (длины полей группы, CORS Allow-Headers, доки replay-риска) | task/0084-webapp-security-nits |
+| TASK-0085 | done | v0.16.1 | 043 | code | 🟢 WebApp — кнопка запуска в /start + команды /webapp + vite base '/app/' | main (прямой hotfix архитектора, по решению владельца) |

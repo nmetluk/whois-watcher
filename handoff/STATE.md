@@ -5,7 +5,7 @@
 > архитектором — после merge крупных кусков; исполнителем — раздел
 > «Последняя сессия». Дата последнего обновления — обязательна.
 
-**Обновлено:** 2026-06-05 (🔧 hotfix №2: 500 на /api/webapp/{portfolio,domain,dashboard} — дрейф полей EmailIntelCache в _shape_domain, demo-fallback маскировал; нужен редеплой. Также: кнопка WebApp в /start восстановлена админом из сташа — код всё ещё НЕ в main) · **Релиз на main:** v0.16.0 + 2 hotfix'а (прод отстаёт на hotfix №2 и опережает по кнопке) · **Последний ADR:** 043
+**Обновлено:** 2026-06-05 (✅ TASK-0085: кнопка WebApp в /start + /webapp + vite base '/app/' — в main; дрейф main↔прод закрыт кодом. Осталось: редеплой из чистого main = hotfix №2 (500 portfolio) + кнопка одним заходом, после — дропнуть stash на прод-машине) · **Релиз на main:** v0.16.0 + hotfix'ы + TASK-0085 (прод ждёт редеплоя) · **Последний ADR:** 043
 
 ## Где мы сейчас
 
@@ -456,6 +456,18 @@ ADR 029); subdomain enumeration вынесен в **v0.11** (источник �
 последовательная (каждый depends на предыдущем). После 0018 — релиз v0.10.0.
 
 ## Последняя сессия
+
+**2026-06-05 (архитектор, №3) — TASK-0085: кнопка WebApp в /start + /webapp + vite base '/app/'**
+
+Upstream кода кнопки запуска WebApp, который жил только в локальном stash
+на прод-машине (отчёт админа `2026-06-05_prod-webapp-button-missing-after-hotfix.md`).
+`Settings.webapp_url`, `start_keyboard(…, webapp_url=…)` с `WebAppInfo`,
+`cmd_webapp` (`/webapp` `/app` `/dashboard`), локали ru/en, `vite base '/app/'`,
+тесты клавиатуры 3/4 кнопки. Smoke совпал с прод-верификацией админа 1:1.
+После контрольного редеплоя из чистого main — дропнуть stash на проде.
+Отчёт: `docs/sessions/2026-06-05_task-0085-webapp-launch-button.md`.
+
+---
 
 **2026-06-05 (архитектор, hotfix в main, №2) — webapp: 500 на portfolio/dashboard из-за дрейфа полей EmailIntelCache**
 

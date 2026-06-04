@@ -15,7 +15,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from aiogram.filters.callback_data import CallbackData
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from src.locales import t
@@ -168,8 +168,14 @@ class SubdomainAction(CallbackData, prefix="sub"):
 # ---------------------------------------------------------------------------
 
 
-def start_keyboard(lang: str) -> InlineKeyboardMarkup:
-    """Приветственное меню."""
+def start_keyboard(lang: str, *, webapp_url: str | None = None) -> InlineKeyboardMarkup:
+    """Приветственное меню.
+
+    :param webapp_url: публичный URL mini-app (``Settings.webapp_url``);
+        если задан — добавляется кнопка запуска WebApp (нативный
+        ``WebAppInfo``: открывается внутри клиента Telegram и передаёт
+        ``initData`` автоматически, ADR 043).
+    """
     builder = InlineKeyboardBuilder()
     builder.button(
         text=t("button.check_domain", lang),
@@ -182,6 +188,22 @@ def start_keyboard(lang: str) -> InlineKeyboardMarkup:
     builder.button(
         text=t("button.settings", lang),
         callback_data=StartAction(action="settings").pack(),
+    )
+    if webapp_url:
+        builder.button(
+            text=t("button.webapp", lang),
+            web_app=WebAppInfo(url=webapp_url),
+        )
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def webapp_open_keyboard(lang: str, webapp_url: str) -> InlineKeyboardMarkup:
+    """Одна кнопка запуска WebApp — для команд ``/webapp`` / ``/app`` / ``/dashboard``."""
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text=t("button.webapp", lang),
+        web_app=WebAppInfo(url=webapp_url),
     )
     builder.adjust(1)
     return builder.as_markup()

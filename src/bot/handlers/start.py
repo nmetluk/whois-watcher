@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from aiogram import Router
-from aiogram.filters import CommandStart
+from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from arq import ArqRedis
@@ -14,8 +14,9 @@ from redis.asyncio import Redis
 
 from src.bot.handlers.list_domains import cmd_list
 from src.bot.handlers.settings import cmd_settings
-from src.bot.keyboards import StartAction, start_keyboard
+from src.bot.keyboards import StartAction, start_keyboard, webapp_open_keyboard
 from src.config.limits import Limits
+from src.config.settings import Settings
 from src.db.models import User
 from src.locales import t
 
@@ -23,12 +24,21 @@ router = Router(name="start")
 
 
 @router.message(CommandStart())
-async def cmd_start(message: Message, state: FSMContext, lang: str) -> None:
-    """``/start`` — приветствие с inline-меню."""
+async def cmd_start(message: Message, state: FSMContext, lang: str, settings: Settings) -> None:
+    """``/start`` — приветствие с inline-меню (+ кнопка WebApp, ADR 043)."""
     await state.clear()
     await message.answer(
         t("start.greeting", lang),
-        reply_markup=start_keyboard(lang),
+        reply_markup=start_keyboard(lang, webapp_url=settings.webapp_url),
+    )
+
+
+@router.message(Command("webapp", "app", "dashboard"))
+async def cmd_webapp(message: Message, lang: str, settings: Settings) -> None:
+    """``/webapp`` / ``/app`` / ``/dashboard`` — кнопка запуска mini-app (ADR 043)."""
+    await message.answer(
+        t("webapp.open_prompt", lang),
+        reply_markup=webapp_open_keyboard(lang, settings.webapp_url),
     )
 
 

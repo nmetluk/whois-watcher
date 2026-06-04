@@ -362,6 +362,17 @@ class Settings(BaseSettings):
 
     @computed_field  # type: ignore[prop-decorator]
     @property
+    def webapp_url(self) -> str:
+        """Публичный URL Telegram WebApp (mini-app, ADR 043).
+
+        Статика собирается в ``webapp/dist`` (vite ``base: '/app/'``) и
+        отдаётся nginx из ``location /app/``. Единая точка вычисления —
+        как ``webhook_url``.
+        """
+        return f"{self.webhook_base_url.rstrip('/')}/app/"
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
     def instance_domain(self) -> str:
         """Извлекает домен из webhook_base_url для instance-тега (ADR 019, TASK-0019)."""
         # Парсим URL и берём только хост (без схемы и пути)

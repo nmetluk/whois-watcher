@@ -61,6 +61,7 @@ LOCALE: dict[str, str] = {
         "/list — your domains\n"
         "/csv — export to CSV\n"
         "/download — bulk import\n"
+        "/webapp — portfolio dashboard (WebApp)\n"
         "/settings — settings\n"
         "/help — full help\n"
         "\n"
@@ -88,6 +89,7 @@ LOCALE: dict[str, str] = {
         "/download — bulk import from TXT/CSV\n"
         "\n"
         "<b>Other</b>\n"
+        "/webapp — portfolio dashboard (WebApp inside Telegram)\n"
         "/settings — timezone, reminder time, language\n"
         "/stats — portfolio statistics\n"
         "/cancel — cancel current action\n"
@@ -120,6 +122,7 @@ LOCALE: dict[str, str] = {
     "button.check_domain": "🌐 Check domain",
     "button.my_domains": "📋 My domains",
     "button.settings": "⚙️ Settings",
+    "button.webapp": "📱 Dashboard (WebApp)",
     "button.follow": "👁 Track",
     "button.unfollow": "🗑 Stop tracking",
     "button.refresh": "🔄 Refresh",
@@ -782,5 +785,12 @@ LOCALE: dict[str, str] = {
     "start.check_prompt": (
         "🌐 Send a domain as a message — I'll show its WHOIS.\n"
         "Or use the command: /whois example.com"
+    ),
+    # ------------------------------------------------------------------
+    # WebApp (mini-app, ADR 043)
+    # ------------------------------------------------------------------
+    "webapp.open_prompt": (
+        "📱 Portfolio dashboard: domain health, expiry calendar, "
+        "alerts and groups — via the button below."
     ),
 }

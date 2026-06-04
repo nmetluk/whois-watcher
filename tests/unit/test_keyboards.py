@@ -24,6 +24,7 @@ from src.bot.keyboards import (
     settings_time,
     settings_timezone,
     start_keyboard,
+    webapp_open_keyboard,
     whois_actions,
 )
 
@@ -59,9 +60,27 @@ class TestCallbackDataRoundTrip:
 class TestKeyboards:
     def test_start_keyboard_has_three_buttons(self) -> None:
         kb = start_keyboard("ru")
-        # 3 ряда по 1 кнопке (см. adjust(1))
+        # 3 ряда по 1 кнопке (см. adjust(1)); без webapp_url кнопки WebApp нет
         assert len(kb.inline_keyboard) == 3
         assert all(len(row) == 1 for row in kb.inline_keyboard)
+        assert all(row[0].web_app is None for row in kb.inline_keyboard)
+
+    def test_start_keyboard_with_webapp_url_adds_button(self) -> None:
+        """ADR 043: с webapp_url — 4-я кнопка с нативным WebAppInfo."""
+        url = "https://bot.example.com/app/"
+        kb = start_keyboard("ru", webapp_url=url)
+        assert len(kb.inline_keyboard) == 4
+        btn = kb.inline_keyboard[3][0]
+        assert btn.web_app is not None
+        assert btn.web_app.url == url
+        assert btn.callback_data is None
+
+    def test_webapp_open_keyboard(self) -> None:
+        url = "https://bot.example.com/app/"
+        kb = webapp_open_keyboard("en", url)
+        assert len(kb.inline_keyboard) == 1
+        assert kb.inline_keyboard[0][0].web_app is not None
+        assert kb.inline_keyboard[0][0].web_app.url == url
 
     def test_whois_actions_tracked_vs_untracked(self) -> None:
         tracked = whois_actions("example.com", is_tracked=True, lang="ru")

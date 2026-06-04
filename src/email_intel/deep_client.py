@@ -23,6 +23,7 @@ import dns.asyncresolver
 import dns.exception
 from aiohttp.abc import AbstractResolver, ResolveResult
 
+from src.config.settings import Settings
 from src.email_intel.deep_parser import (
     parse_bimi,
     parse_mta_sts_policy,
@@ -38,14 +39,21 @@ from src.email_intel.deep_types import (
     SpfResolution,
     TlsRptResult,
 )
+from src.email_intel.resolver import (
+    QUERY_TIMEOUT as DNS_QUERY_TIMEOUT,
+)
+from src.email_intel.resolver import (
+    TOTAL_TIMEOUT as DNS_TOTAL_TIMEOUT,
+)
+from src.email_intel.resolver import (
+    build_resolver,
+    classify_dns_exc,
+)
 from src.email_intel.spf_resolver import resolve_spf
 from src.utils.idn import normalize_domain
 
 logger = logging.getLogger(__name__)
 
-# Таймауты (seconds)
-DNS_QUERY_TIMEOUT = 5
-DNS_TOTAL_TIMEOUT = 10
 HTTP_TOTAL_TIMEOUT = 10
 MTA_STS_MAX_BODY = 16384  # 16KB — более чем достаточно для policy
 
@@ -60,6 +68,7 @@ async def fetch_deep_email(
     domain: str,
     *,
     mx_hosts: list[str] | None = None,
+    settings: Settings | None = None,
 ) -> DeepEmailResultOrError:
     """Собирает полный deep email профиль домена (on-demand).
 
@@ -88,12 +97,7 @@ async def fetch_deep_email(
             message=f"Invalid domain syntax: {exc}",
         )
 
-    # Используем системный resolver (как email_intel/client.py, который в проде
-    # успешно резолвит MX/TXT). НЕ форсим публичные nameservers: на хосте есть
-    # ufw-egress-правила, и форс 1.1.1.1/8.8.8.8 мог бы сломать deep-DNS (TASK-0077).
-    resolver = dns.asyncresolver.Resolver()
-    resolver.timeout = DNS_QUERY_TIMEOUT
-    resolver.lifetime = DNS_TOTAL_TIMEOUT
+    resolver = build_resolver(settings)
     logger.info("fetch_deep_email starting collection for %s (mx_hosts=%s)", normalized, mx_hosts)
 
     # Создаём injectable resolve_txt для SPF (использует resolver)
@@ -101,9 +105,12 @@ async def fetch_deep_email(
         try:
             ans = await resolver.resolve(d, "TXT", lifetime=DNS_TOTAL_TIMEOUT)
             return [r.to_unicode() for r in ans]  # dnspython rdata dynamic
-        except dns.exception.DNSException:
+        except dns.exception.DNSException as exc:
+            if classify_dns_exc(exc) == "unreachable":
+                logger.warning("deep SPF TXT dns_unreachable for %s: %s", d, exc)
             return None
-        except Exception:
+        except Exception as exc:
+            logger.debug("deep SPF TXT unexpected for %s: %s", d, exc)
             return None
 
     # Параллельные fetch'и (DANE зависит от mx_hosts)
@@ -444,45 +451,37 @@ __all__ = [
 # Task requires fetch_mta_sts etc as public; we implement via internals but expose.
 
 
-async def fetch_mta_sts(domain: str) -> MtaStsResult:
+async def fetch_mta_sts(domain: str, *, settings: Settings | None = None) -> MtaStsResult:
     """Публичный fetch только MTA-STS (для тестов/композиции)."""
     try:
         normalized = normalize_domain(domain)
     except Exception:
         return MtaStsResult(txt_present=False, reachable=False)
 
-    resolver = dns.asyncresolver.Resolver()
-    resolver.timeout = DNS_QUERY_TIMEOUT
-    resolver.lifetime = DNS_TOTAL_TIMEOUT
+    resolver = build_resolver(settings)
     return await _fetch_mta_sts(normalized, resolver)
 
 
-async def fetch_tls_rpt(domain: str) -> TlsRptResult:
+async def fetch_tls_rpt(domain: str, *, settings: Settings | None = None) -> TlsRptResult:
     try:
         normalized = normalize_domain(domain)
     except Exception:
         return TlsRptResult(present=False)
-    resolver = dns.asyncresolver.Resolver()
-    resolver.timeout = DNS_QUERY_TIMEOUT
-    resolver.lifetime = DNS_TOTAL_TIMEOUT
+    resolver = build_resolver(settings)
     return await _fetch_tls_rpt(normalized, resolver)
 
 
-async def fetch_dane(mx_hosts: list[str]) -> DaneResult:
+async def fetch_dane(mx_hosts: list[str], *, settings: Settings | None = None) -> DaneResult:
     if not mx_hosts:
         return DaneResult(host_tlsa={})
-    resolver = dns.asyncresolver.Resolver()
-    resolver.timeout = DNS_QUERY_TIMEOUT
-    resolver.lifetime = DNS_TOTAL_TIMEOUT
+    resolver = build_resolver(settings)
     return await _fetch_dane(mx_hosts, resolver)
 
 
-async def fetch_bimi(domain: str) -> BimiResult:
+async def fetch_bimi(domain: str, *, settings: Settings | None = None) -> BimiResult:
     try:
         normalized = normalize_domain(domain)
     except Exception:
         return BimiResult(present=False)
-    resolver = dns.asyncresolver.Resolver()
-    resolver.timeout = DNS_QUERY_TIMEOUT
-    resolver.lifetime = DNS_TOTAL_TIMEOUT
+    resolver = build_resolver(settings)
     return await _fetch_bimi(normalized, resolver)

@@ -22,6 +22,7 @@ from typing import Any
 from aiogram import Bot
 from redis.asyncio import Redis as AsyncRedis
 
+from src.config.settings import Settings  # for passing dns_nameservers override (TASK-0079)
 from src.db.repositories import EmailDeepCacheRepository, EmailIntelCacheRepository
 from src.db.session import get_session
 from src.email_intel.deep_client import fetch_deep_email
@@ -93,7 +94,8 @@ async def check_email_deep(
         logger.info("check_email_deep mx_hosts=%s for %s", mx_hosts, domain)
 
         # Передаём mx_hosts → DANE будет работать (закрыт долг из 0039)
-        result = await fetch_deep_email(domain, mx_hosts=mx_hosts)
+        settings: Settings | None = ctx.get("settings")
+        result = await fetch_deep_email(domain, mx_hosts=mx_hosts, settings=settings)
 
         async with get_session() as session:
             repo = EmailDeepCacheRepository(session)

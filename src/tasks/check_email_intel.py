@@ -21,6 +21,7 @@ from aiogram import Bot
 from arq import ArqRedis
 from redis.asyncio import Redis as AsyncRedis
 
+from src.config.settings import Settings  # for type in ctx pass-through
 from src.db.models import EmailIntelCache, UserDomain
 from src.db.repositories import DomainRepository, EmailIntelCacheRepository
 from src.db.session import get_session
@@ -116,7 +117,8 @@ async def check_email_intel(
                 existing = await cache_repo.get(domain)
                 old_result = _cache_to_result(existing) if existing is not None else None
 
-            result = await fetch_email_intel(domain)
+            settings: Settings | None = ctx.get("settings")
+            result = await fetch_email_intel(domain, settings=settings)
 
             if isinstance(result, EmailIntelError):
                 await _handle_failure(domain, result, ctx)

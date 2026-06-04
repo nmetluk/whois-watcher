@@ -714,9 +714,20 @@ async def create_group(request: web.Request) -> web.Response:
     icon = data.get("icon")
     if not name:
         return web.json_response({"error": "name required"}, status=400)
+    if len(name) > 100:
+        return web.json_response({"error": "name too long (max 100 chars)"}, status=400)
+    if color is not None:
+        if not isinstance(color, str) or len(color) > 2 or color not in {f"a{i}" for i in range(8)}:
+            return web.json_response({"error": "invalid color (use a0..a7 or omit)"}, status=400)
+    if icon is not None:
+        if not isinstance(icon, str) or len(icon) > 32:
+            return web.json_response({"error": "icon too long (max 32 chars)"}, status=400)
     async with get_session() as session:
         grepo = GroupRepository(session)
-        g = await grepo.create(user.id, name=name, kind=kind, color=color, icon=icon)
+        try:
+            g = await grepo.create(user.id, name=name, kind=kind, color=color, icon=icon)
+        except ValueError as e:
+            return web.json_response({"error": str(e)}, status=400)
         await audit(
             level="info",
             category="webapp",
@@ -1144,7 +1155,7 @@ def create_webapp_app(*, settings: Settings, limits: Limits | None = None) -> we
             if origin == allowed or not origin:
                 resp.headers["Access-Control-Allow-Origin"] = allowed if allowed else origin
                 resp.headers["Access-Control-Allow-Headers"] = (
-                    "*, X-Telegram-Init-Data, Authorization, Content-Type"
+                    "X-Telegram-Init-Data, Authorization, Content-Type"
                 )
                 resp.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS"
                 resp.headers["Access-Control-Allow-Credentials"] = "true"

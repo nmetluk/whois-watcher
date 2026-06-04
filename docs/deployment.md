@@ -469,6 +469,9 @@ server {
     add_header X-Content-Type-Options nosniff always;
     # CSP for Telegram WebApp static (F7 аудита v0.16). Adjust connect-src если API на другом origin.
     add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://telegram.org https://web.telegram.org 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self';" always;
+    # Примечание по replay (F10 аудита v0.16): защита initData от replay — только
+    # короткий TTL (webapp_initdata_ttl, дефолт 1ч). Отдельный nonce-store не
+    # используется (принятый риск).
 
     client_max_body_size 10M;
 

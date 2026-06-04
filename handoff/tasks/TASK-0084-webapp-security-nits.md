@@ -7,7 +7,7 @@ adr: 043
 area: code
 depends_on: []
 branch: task/0084-webapp-security-nits
-owner: grok
+owner: "grok"
 session: "docs/sessions/2026-06-11_task-0084-webapp-security-nits.md"
 pr: https://github.com/nmetluk/whois-watcher/pull/58
 created: 2026-06-10

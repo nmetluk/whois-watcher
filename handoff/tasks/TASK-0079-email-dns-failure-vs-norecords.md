@@ -1,7 +1,7 @@
 ---
 id: TASK-0079
 title: 🔴 Email-слой — DNS-сбой молча трактуется как «нет записей» (MX/deep пусты)
-status: in_review
+status: done
 milestone: v0.15.2
 adr: 040
 area: code

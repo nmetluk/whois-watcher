@@ -12,7 +12,6 @@
 | TASK-0072 | open | v0.16.0 | 043 | docs | Релиз v0.16.0 — Telegram WebApp (mini-app) | — |
 | TASK-0073 | open | v0.16.0 | 043 | code | Группы/теги доменов — схема + репозиторий + API/привязка (для WebApp) | — |
 | TASK-0080 | open | v0.15.2 | 040 | docs | Хотфикс-релиз v0.15.2 (DNS-сбой ≠ «нет записей» в email-слое) | — |
-| TASK-0079 | in_review | v0.15.2 | 040 | code | 🔴 Email-слой — DNS-сбой молча трактуется как «нет записей» (MX/deep пусты) | task/0079-email-dns-failure-vs-norecords |
 | TASK-0001 | done | v0.8.1 | 034 | code | Багфикс wishlist ↔ tracked (авто-промоут) | task/0001-wishlist-tracked-fix |
 | TASK-0002 | done | v0.9.0 | 035 | code | PSL — зависимость tldextract + src/utils/domains.py | task/0002-psl-utils-domains |
 | TASK-0003 | done | v0.9.0 | 035 | code | Схема user_domains (registrable_domain, is_subdomain) + WHOIS-джойны | task/0003-subdomain-schema-whois-joins |
@@ -86,3 +85,4 @@
 | TASK-0076 | done | v0.15.1 | 040 | code | 🔴 Фикс — инлайн MX в первом /whois не появляется (карточка не доставляет фоновые данные) | task/0076-fix-whois-card-mx-freshness |
 | TASK-0077 | done | v0.15.1 | 040 | code | 🔴 Диагностика+фикс — глубокий e-mail всегда пустой | task/0077-fix-deep-email-empty |
 | TASK-0078 | done | v0.15.1 | 040 | docs | Хотфикс-релиз v0.15.1 (доставка on-demand/карточка + глубокий e-mail) | task/0078-hotfix-release-v0.15.1 |
+| TASK-0079 | done | v0.15.2 | 040 | code | 🔴 Email-слой — DNS-сбой молча трактуется как «нет записей» (MX/deep пусты) | task/0079-email-dns-failure-vs-norecords |

@@ -28,9 +28,16 @@ class GroupRepository(BaseRepository):
         """Создаёт новую группу для пользователя."""
         if kind not in ("client", "personal"):
             raise ValueError("kind must be 'client' or 'personal'")
+        name = name.strip()
+        if not name or len(name) > 100:
+            raise ValueError("name must be 1-100 chars")
+        if color is not None and (not isinstance(color, str) or len(color) > 2 or color not in {f"a{i}" for i in range(8)}):
+            raise ValueError("color must be a0..a7 or None")
+        if icon is not None and (not isinstance(icon, str) or len(icon) > 32):
+            raise ValueError("icon must be <=32 chars or None")
         row = DomainGroup(
             user_id=user_id,
-            name=name.strip(),
+            name=name,
             kind=kind,
             color=color,
             icon=icon,
@@ -82,10 +89,17 @@ class GroupRepository(BaseRepository):
         if not grp:
             return None
         if name is not None:
-            grp.name = name.strip()
+            name = name.strip()
+            if not name or len(name) > 100:
+                raise ValueError("name must be 1-100 chars")
+            grp.name = name
         if color is not None:
+            if not isinstance(color, str) or len(color) > 2 or color not in {f"a{i}" for i in range(8)}:
+                raise ValueError("color must be a0..a7 or None")
             grp.color = color
         if icon is not None:
+            if not isinstance(icon, str) or len(icon) > 32:
+                raise ValueError("icon must be <=32 chars or None")
             grp.icon = icon
         await self.session.flush()
         return grp

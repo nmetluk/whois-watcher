@@ -467,6 +467,9 @@ server {
 
     add_header Strict-Transport-Security "max-age=31536000" always;
     add_header X-Content-Type-Options nosniff always;
+    # Примечание по replay (F10 аудита v0.16): защита initData от replay — только
+    # короткий TTL (webapp_initdata_ttl, дефолт 1ч). Отдельный nonce-store не
+    # используется (принятый риск).
 
     client_max_body_size 10M;
 

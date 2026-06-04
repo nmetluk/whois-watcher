@@ -27,32 +27,57 @@ created: 2026-06-09
 
 ## Контекст
 
-В дизайне у домена есть `groups: [groupId...]`, список группируется «по
-клиентам», дашборд даёт бюджет/риски по группам. В моделях (`src/db/models.py`)
-группы отсутствуют — нужна новая таблица + связь many-to-many с `user_domains`
-(домен может быть в нескольких группах), привязка к пользователю.
+В дизайне (`screen-more.jsx` → `GroupsScreen`) у домена есть
+`groups: [groupId...]`, список группируется «по клиентам», дашборд даёт
+бюджет/риски по группам. Объект группы в дизайне:
+`{ id, kind: 'client'|'personal', name, color: <hue-токен 'a0'..'a7'>,
+icon: <Material-Symbol-имя, напр. 'folder_special'> }`; экран делит группы на
+`client` и `personal` (`g.kind`). В моделях (`src/db/models.py`) групп нет —
+нужна новая таблица + связь many-to-many с `user_domains` (домен в нескольких
+группах), привязка к пользователю.
 
 ## Изменения по файлам
 
-- `migrations/versions/<new>.py` — таблицы `domain_group` (id, user_id
-  FK→users ON DELETE CASCADE, name, color/hue, created_at) и связь
-  `user_domain_group` (user_domain_id FK, group_id FK; PK составной;
-  ON DELETE CASCADE). Индексы по user_id. SQL-литералы в дефолтах; round-trip.
-- `src/db/models.py` — модели `DomainGroup` + связь.
-- `src/db/repositories/groups.py` — CRUD групп, привязка/отвязка домена,
-  список с counts; регистрация в `__init__`.
-- Подключить к WebApp API (TASK-0066/0070): `/groups` (list+counts),
-  `/portfolio?group=`, добавление/удаление группы и членства; ownership-скоуп.
+- `migrations/versions/<new>.py` — **down_revision = `20260609_audit_log`**
+  (текущий single-head; сверь перед autogenerate). Таблицы:
+  - `domain_group`: `id` BigInteger PK autoincrement; `user_id` BigInteger
+    FK→`users.id` ON DELETE CASCADE NOT NULL; `name` Text NOT NULL;
+    `kind` Text NOT NULL (значения `client`/`personal`); `color` Text
+    (hue-токен, напр. `a1`); `icon` Text (Material-Symbol-имя); `created_at`
+    timestamptz NOT NULL server_default `now()`. Индекс `ix_domain_group_user_id`.
+  - `user_domain_group` (membership): `user_domain_id` BigInteger
+    FK→`user_domains.id` ON DELETE CASCADE; `group_id` BigInteger
+    FK→`domain_group.id` ON DELETE CASCADE; **составной PK
+    (user_domain_id, group_id)**. Индекс по `group_id`.
+  - SQL-литералы в server_default (урок TASK-0008/0009); round-trip-smoke на
+    Postgres.
+- `src/db/models.py` — модели `DomainGroup` + membership (relationship'ы как у
+  существующих, см. `UserDomain`).
+- `src/db/repositories/groups.py` — `GroupRepository`: CRUD групп (scoped по
+  `user_id`), attach/detach домена (idempotent), `list_with_counts(user_id)`
+  (group + число доменов одним запросом, без N+1). Регистрация в
+  `src/db/repositories/__init__.py` (импорт + `__all__`).
+- Подключить к WebApp API (расширить `src/bot/webapp/api.py` из 0074):
+  `GET /groups` (list+counts), `GET /portfolio?group=<id>` (фильтр членства),
+  add/remove группы и membership; **ownership-скоуп по `request['user'].id`**
+  на всех роутах; `audit()` на мутациях (как в 0074).
 
 ## Миграции БД
 
-Да — `domain_group` + `user_domain_group`. Postgres, обратима, round-trip-smoke.
+Да — `domain_group` + `user_domain_group`, down_revision `20260609_audit_log`.
+Postgres, обратима, round-trip-smoke. Перед стартом — `MIGRATIONS.md`.
 
 ## Инварианты (защитить тестами)
 
 - Домен в нескольких группах; снятие членства не удаляет домен/группу.
-- Группы скоупятся по пользователю (нет чужих).
-- Миграция round-trip.
+- Повторный attach того же домена в группу — idempotent (нет дубля/краша на
+  составном PK).
+- Удаление домена (`user_domains`) или группы каскадит membership (ON DELETE
+  CASCADE), но не трогает другую сторону.
+- Группы и membership скоупятся по `user_id` (нельзя положить чужой домен в свою
+  группу и наоборот — проверка владения `user_domain` перед attach).
+- `list_with_counts` — один запрос (без N+1).
+- Миграция round-trip на Postgres (upgrade→downgrade→upgrade).
 
 ## Definition of Done
 

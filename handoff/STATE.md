@@ -5,7 +5,7 @@
 > архитектором — после merge крупных кусков; исполнителем — раздел
 > «Последняя сессия». Дата последнего обновления — обязательна.
 
-**Обновлено:** 2026-06-05 (🔧 hotfix webapp: real-world тест провалился — UI не соответствовал дизайну; CSS дизайна портирован, telegram-web-app.js подключён, шрифты самохостятся; нужен редеплой) · **Релиз на main:** v0.16.0 (в проде — БЕЗ этого фикса) · **Последний ADR:** 043
+**Обновлено:** 2026-06-05 (🔧 hotfix webapp design + prod note: после редеплоя 77819f8 пропала кнопка запуска WebApp в /start — восстановлена из локального сташа; см. новую сессию и "Последняя сессия") · **Релиз на main:** v0.16.0 + hotfix 77819f8 (в проде) · **Последний ADR:** 043
 
 ## Где мы сейчас
 
@@ -477,6 +477,24 @@ material-symbols), скрипт Telegram подключён, разметка Li
 Открытые хвосты: demo-fallback в ListScreen пережил TASK-0082; иконочный
 шрифт 5,3 МБ (нужен сабсеттинг); eslint webapp давно красный (43 ошибки,
 pre-existing). Урок — реальный smoke в Telegram обязателен перед релизом UI.
+
+**2026-06-05 (прод, после редеплоя hotfix) — WebApp launch button в /start пропала**
+После деплоя 77819f8 (frontend design fidelity) на проде исчезла кнопка «📱 Дашборд (WebApp)» в /start + команды /webapp /app /dashboard (была в локальном dev-стэше, но не в main). В ww.txt после v0.16 прямо: «кнопка запуска в боте — в следующих итерациях».
+
+Восстановлено точечно (только backend, frontend уже был переписан hotfix'ом):
+- webapp_url computed в Settings (из webhook_base_url + /app/)
+- start_keyboard(..., webapp_url=) + условная кнопка с WebAppInfo
+- cmd_start принимает settings + передаёт url; новый cmd_webapp хэндлер
+- локали (button.webapp + open_prompt + упоминания в greeting/help)
+- тесты
+
+Также применён base: '/app/' в vite.config (деплоймент-конфиг для nginx).
+
+Верификация в контейнере + прод: 4 кнопки с web_app (или 3 без), health/monitor/webhook OK, /app/ отдаётся.
+
+Сессия-отчёт: `docs/sessions/2026-06-05_prod-webapp-button-missing-after-hotfix.md`
+
+Рекомендация: завести follow-up таск (или включить в v1 prep), сделать нормальный PR от свежего main. Код сейчас только на прод-машине (в образе), не в git main.
 
 ---
 

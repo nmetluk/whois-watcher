@@ -1,14 +1,14 @@
 ---
 id: TASK-0071
 title: Аудит v0.16 (WebApp — security-heavy: initData/CORS/CSP/PII)
-status: open
+status: done
 milestone: v0.16.0
 adr: 043
 area: audit
 depends_on: [TASK-0074, TASK-0073]
 branch: ""
-owner: ""
-session: ""
+owner: architect
+session: handoff/audits/AUDIT-2026-06-10-v0-16-webapp-security.md
 pr: ""
 created: 2026-06-08
 ---

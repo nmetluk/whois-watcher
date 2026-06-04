@@ -5,7 +5,7 @@
 > архитектором — после merge крупных кусков; исполнителем — раздел
 > «Последняя сессия». Дата последнего обновления — обязательна.
 
-**Обновлено:** 2026-06-10 (✅ TASK-0073 группы/теги смержены, тесты дописал архитектор; webapp разблокирован до аудита 0071) · **Релиз на main:** v0.15.2 · **Последний ADR:** 043
+**Обновлено:** 2026-06-10 (✅ security-аудит v0.16 webapp (0071): FIX-THEN-GO, 2🔴+5🟠 → таски 0081–0084) · **Релиз на main:** v0.15.2 · **Последний ADR:** 043
 
 ## Где мы сейчас
 
@@ -366,11 +366,26 @@ DELETE) + `/domain/{id}/groups` (attach), scoped по `user.id`, `audit()` на
 counts, CI-gated; round-trip миграции — уже в `test_migrations.py`). Разблокирует
 аудит 0071.
 
-**Следующий шаг:** деплой v0.15.2 (+ при необходимости `DNS_NAMESERVERS`); затем
-**TASK-0071** (security-аудит v0.16, включает нити из 0074: dev query-param
-initData, raw sa_delete, getattr-drift, демо-fallback в экранах, stubs
-bulk/import/alerts-read) → **0072** (релиз v0.16) + опц. TASK-0065. Дальше —
-v1.0 (web-дашборд, публичный API, орг-аккаунты, Prometheus).
+✅ **TASK-0071 — security-аудит v0.16 проведён** (2026-06-10, архитектор, отчёт
+`handoff/audits/AUDIT-2026-06-10-v0-16-webapp-security.md`). Вердикт **FIX-THEN-GO**.
+Здорово: initData-HMAC корректен, ownership на всех write-роутах, audit на
+мутациях, фронт без XSS, initData идёт заголовком (не URL). Заведены фиксы:
+- 🔴 **TASK-0081** — эндпойнты-заглушки (`/bulk`, `/alerts/read`, `/import`)
+  возвращают `{"ok":true}`, **врут об успехе** → реализовать или 501+hide.
+- 🔴 **TASK-0082** — фейковые demo-данные на фронте (`Dashboard`=«42 домена»,
+  `Alerts`=«demo.ru») при сбое API → убрать, error/empty-state.
+- 🟠 **TASK-0083** — security: initData TTL 24ч→1ч (F3), dev-initData-в-URL
+  гейтить за environment (F4), CORS-preflight ломается при cross-origin
+  (auth-mw отдаёт 401 на OPTIONS, F5), raw `sa_delete` в хэндлере → репозиторий
+  (F6), нет CSP в nginx (F7).
+- 🟢 **TASK-0084** — ниты (длины полей группы, CORS Allow-Headers, доки
+  replay-риска), fast-follow v0.16.1.
+**0072 (релиз v0.16) depends → [0071, 0081, 0082, 0083].**
+
+**Следующий шаг:** деплой v0.15.2 (+ при необходимости `DNS_NAMESERVERS`); отдать
+исполнителю фиксы 0081/0082/0083 (можно параллельно — независимы) → быстрый
+повторный проход → **0072** (релиз v0.16) + опц. 0084/0065. Дальше — v1.0
+(web-дашборд, публичный API, орг-аккаунты, Prometheus).
 
 ---
 

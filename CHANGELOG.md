@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **WebApp: восстановлено соответствие дизайну** (`design/webapp/v1/`). Исполнитель v0.16 не перенёс CSS дизайн-системы (42 из 55 классов без правил, 5 неопределённых переменных) — теперь tokens/ds/tg-chrome портированы вербатим. Подключён `telegram-web-app.js` (без него не работали тема, BackButton, MainButton и initData-авторизация). Шрифты PT Sans и Material Symbols самохостятся (`@fontsource/pt-sans`, `material-symbols`) — Google Fonts резался собственным CSP. Разметка списка доменов приведена к канону дизайна; починен `npm run build` (tsc); удалены остатки Vite-шаблона.
+
 ## [0.16.0] — 2026-06-11
 
 Telegram WebApp (mini-app) — веб-интерфейс портфеля поверх бота (ADR 043).

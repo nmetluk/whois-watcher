@@ -64,12 +64,12 @@ export default function App() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
+    <div className="tg-screen">
       <div className="tg-header">
         {showBack ? <button className="tg-hbtn" onClick={back}><Icon name="arrow_back" /></button> : <button className="tg-hbtn" onClick={() => toast('Меню')}><Icon name="menu" /></button>}
         <div className="tg-htitle"><b>{headerTitle}</b></div>
       </div>
-      <div ref={bodyRef} style={{ flex: 1, overflow: 'auto' }}>{renderScreen()}</div>
+      <div ref={bodyRef} className="tg-body">{renderScreen()}</div>
       {showTabbar && <div className="tg-tabbar">{TABS.map(t => <button key={t.id} className={`tg-tab ${tab === t.id ? 'active' : ''}`} onClick={() => goTab(t.id)}><Icon name={t.icon} /><span>{t.label}</span></button>)}</div>}
       {toastMsg && <div className="tg-toast"><Icon name={toastMsg.icon || 'info'} />{toastMsg.msg}</div>}
     </div>

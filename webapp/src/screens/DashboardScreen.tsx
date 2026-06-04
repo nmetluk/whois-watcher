@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Icon } from '../components/Icon';
 import { Ring } from '../components/Ring';
 import { fetchDashboard } from '../lib/api';
 import { DomainRow } from '../components/DomainRow';
 export const DashboardScreen: React.FC<any> = ({ onOpenDomain, goToListWithFilter, toast: _toast }) => {
   const [data, setData] = useState<any>(null); const [loading, setLoading] = useState(true); const [err, setErr] = useState<string|null>(null);
-  const load = React.useCallback(() => { setLoading(true); setErr(null); fetchDashboard().then(d=>{setData(d); setErr(null);}).catch(e=>{setErr('Не удалось загрузить дашборд'); setData(null);}).finally(()=>setLoading(false)); }, []);
+  const load = React.useCallback(() => { setLoading(true); setErr(null); fetchDashboard().then(d=>{setData(d); setErr(null);}).catch(()=>{setErr('Не удалось загрузить дашборд'); setData(null);}).finally(()=>setLoading(false)); }, []);
   React.useEffect(() => { load(); }, [load]);
   if (loading) return <div className="tg-pad">Загрузка...</div>;
   if (err) return <div className="tg-pad"><div className="tg-card">⚠️ {err}<button className="pv-btn" style={{marginTop:8}} onClick={load}>Повторить</button></div></div>;

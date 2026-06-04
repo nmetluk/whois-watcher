@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource/pt-sans": "^5.2.8",
+    "material-symbols": "^0.44.12",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
   },

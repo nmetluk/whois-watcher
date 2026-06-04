@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Icon } from '../components/Icon';
 import { fetchAlerts, markAlertsRead } from '../lib/api';
 export const AlertsScreen: React.FC<any> = ({ onOpenDomain, toast }) => {

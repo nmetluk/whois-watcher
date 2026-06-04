@@ -26,6 +26,7 @@ from src.db.repositories import (
     DNSCacheRepository,
     DomainRepository,
     EmailIntelCacheRepository,
+    GroupRepository,
     SSLCacheRepository,
     SubdomainEnumCacheRepository,
     UserRepository,
@@ -88,6 +89,7 @@ def _shape_domain(
     sub_count: int,
     *,
     now: datetime | None = None,
+    groups: list[int] | None = None,
 ) -> dict[str, Any]:
     """Shape one domain to the exact model from design/webapp/v1/README.md «Структура объекта домена»."""
     no_data = whois is None or whois.expires_at is None
@@ -186,8 +188,7 @@ def _shape_domain(
         "status": bool(ud.notify_status_change),
     }
 
-    # groups: empty until TASK-0073
-    groups: list[str] = []
+    groups_list: list[int] = groups or []
 
     return {
         "id": ud.id,
@@ -206,7 +207,7 @@ def _shape_domain(
         "dns": dns_obj,
         "email": email_obj,
         "subCount": sub_count,
-        "groups": groups,
+        "groups": groups_list,
         "health": health,
         "notify": notify,
         "cost": 0,  # prices not tracked in DB yet (future billing/wishlist cost est.)
@@ -251,6 +252,14 @@ async def _batch_caches(
     return ssl_map, dns_map, email_map, sub_map
 
 
+async def _batch_groups(session: AsyncSession, ud_ids: list[int]) -> dict[int, list[int]]:
+    """Batch fetch group ids for user_domain ids. Returns ud_id -> [group_id, ...]."""
+    if not ud_ids:
+        return {}
+    grepo = GroupRepository(session)
+    return await grepo.groups_by_user_domain_ids(ud_ids)
+
+
 # --- Routes ---
 
 routes = web.RouteTableDef()
@@ -280,10 +289,19 @@ async def portfolio(request: web.Request) -> web.Response:
     except ValueError:
         limit, offset = 50, 0
 
+    group_id: int | None = None
+    gparam = request.query.get("group")
+    if gparam:
+        try:
+            group_id = int(gparam)
+        except ValueError:
+            group_id = None
+
     now = datetime.now(UTC)
 
     async with get_session() as session:
         dom_repo = DomainRepository(session)
+        grepo = GroupRepository(session)
         # Use existing filtered (maps 'soon'->'expiring' etc internally)
         # For webapp filters we map + post-filter for some (problem, silent, wish)
         # To keep thin + reuse: fetch wider page then filter in mem for complex ones.
@@ -342,6 +360,24 @@ async def portfolio(request: web.Request) -> web.Response:
                 {"items": shaped, "total": total, "filter": f, "sort": sort, "q": q}
             )
 
+        # group membership filter (TASK-0073): restrict to domains in group
+        member_ids: set[int] | None = None
+        if group_id is not None:
+            member_ids = set(await grepo.list_user_domain_ids_in_group(user.id, group_id))
+            if not member_ids:
+                return web.json_response(
+                    {
+                        "items": [],
+                        "total": 0,
+                        "limit": limit,
+                        "offset": offset,
+                        "filter": f,
+                        "sort": sort,
+                        "q": q,
+                        "group": group_id,
+                    }
+                )
+
         rows, total = await dom_repo.list_with_whois_filtered(
             user.id,
             filter_type=internal_f,
@@ -374,14 +410,20 @@ async def portfolio(request: web.Request) -> web.Response:
                 and not ud.notify_status_change
             )
             keep = True
-            if f == "crit" and not is_crit:
+            if member_ids is not None and ud.id not in member_ids:
                 keep = False
-            if f == "problem" and not is_problem:
+            if keep and f == "crit" and not is_crit:
                 keep = False
-            if f == "silent" and not is_silent:
+            if keep and f == "problem" and not is_problem:
+                keep = False
+            if keep and f == "silent" and not is_silent:
                 keep = False
             if keep:
                 filtered_rows.append((ud, wh))
+
+        if member_ids is not None:
+            # exact count for group+filters combo (portfolios small)
+            total = len(filtered_rows)
 
         # trim to limit after post filter
         page_rows = filtered_rows[offset : offset + limit] if offset else filtered_rows[:limit]
@@ -391,6 +433,11 @@ async def portfolio(request: web.Request) -> web.Response:
 
         doms = [ud.domain for ud, _ in page_rows]
         ssl_m, dns_m, email_m, sub_m = await _batch_caches(session, doms)
+
+        g_map: dict[int, list[int]] = {}
+        if page_rows:
+            udids = [ud.id for ud, _ in page_rows]
+            g_map = await _batch_groups(session, udids)
 
         shaped = []
         for ud, wh in page_rows:
@@ -405,6 +452,7 @@ async def portfolio(request: web.Request) -> web.Response:
                     email_m.get(ud.domain),
                     sub_c,
                     now=now,
+                    groups=g_map.get(ud.id),
                 )
             )
 
@@ -456,6 +504,7 @@ async def domain_detail(request: web.Request) -> web.Response:
         reg = ud.registrable_domain or get_registrable(ud.domain)
         sub_c = sub_m.get(reg, 0)
 
+        g_map = await _batch_groups(session, [ud.id])
         obj = _shape_domain(
             ud,
             whois,
@@ -464,6 +513,7 @@ async def domain_detail(request: web.Request) -> web.Response:
             email_m.get(ud.domain),
             sub_c,
             now=now,
+            groups=g_map.get(ud.id),
         )
         # extra for detail: raw whois snippet if wanted
         if whois and whois.raw_data:
@@ -487,6 +537,8 @@ async def dashboard(request: web.Request) -> web.Response:
 
         healths = []
         risks = []
+        sample_uds = [ud for ud, _ in rows[:100]]  # type: ignore[misc]
+        g_map = await _batch_groups(session, [ud.id for ud in sample_uds])
         for ud, wh in rows[:100]:  # type: ignore[misc]
             reg = ud.registrable_domain or get_registrable(ud.domain)
             shaped = _shape_domain(
@@ -497,6 +549,7 @@ async def dashboard(request: web.Request) -> web.Response:
                 email_m.get(ud.domain),
                 sub_m.get(reg, 0),
                 now=now,
+                groups=g_map.get(ud.id),
             )
             healths.append(shaped["health"])
             if shaped["health"] < 70:
@@ -625,9 +678,137 @@ async def settings(request: web.Request) -> web.Response:
 
 @routes.get("/groups")
 async def groups(request: web.Request) -> web.Response:
-    """GET /api/webapp/groups — empty until TASK-0073 groups/tags schema."""
-    # Per task spec: отдаёт пусто
-    return web.json_response({"groups": [], "note": "groups/tags schema is TASK-0073"})
+    """GET /api/webapp/groups — list groups with counts (for WebApp GroupsScreen + filters)."""
+    user: User = request["user"]
+    async with get_session() as session:
+        grepo = GroupRepository(session)
+        pairs = await grepo.list_with_counts(user.id)
+        items = []
+        for g, cnt in pairs:
+            items.append(
+                {
+                    "id": g.id,
+                    "kind": g.kind,
+                    "name": g.name,
+                    "color": g.color,
+                    "icon": g.icon,
+                    "count": cnt,
+                }
+            )
+        return web.json_response({"groups": items})
+
+
+# --- Groups write (TASK-0073) ---
+@routes.post("/groups")
+async def create_group(request: web.Request) -> web.Response:
+    """POST /api/webapp/groups — create group (client/personal)."""
+    user: User = request["user"]
+    data = await request.json()
+    name = (data.get("name") or "").strip()
+    kind = (data.get("kind") or "client").lower()
+    if kind not in ("client", "personal"):
+        kind = "client"
+    color = data.get("color")
+    icon = data.get("icon")
+    if not name:
+        return web.json_response({"error": "name required"}, status=400)
+    async with get_session() as session:
+        grepo = GroupRepository(session)
+        g = await grepo.create(user.id, name=name, kind=kind, color=color, icon=icon)
+        await audit(
+            level="info",
+            category="webapp",
+            message="group created",
+            actor=str(user.id),
+            context={"group_id": g.id, "name": name, "kind": kind},
+        )
+        return web.json_response(
+            {
+                "ok": True,
+                "group": {
+                    "id": g.id,
+                    "kind": g.kind,
+                    "name": g.name,
+                    "color": g.color,
+                    "icon": g.icon,
+                },
+            }
+        )
+
+
+@routes.delete("/groups/{group_id:\\d+}")
+async def delete_group(request: web.Request) -> web.Response:
+    """DELETE /api/webapp/groups/{id} — delete group (cascades membership)."""
+    user: User = request["user"]
+    try:
+        gid = int(request.match_info["group_id"])
+    except ValueError:
+        return web.json_response({"error": "bad id"}, status=400)
+    async with get_session() as session:
+        grepo = GroupRepository(session)
+        existed = await grepo.delete(user.id, gid)
+        if not existed:
+            return web.json_response({"error": "not found or no permission"}, status=404)
+        await audit(
+            level="info",
+            category="webapp",
+            message="group deleted",
+            actor=str(user.id),
+            context={"group_id": gid},
+        )
+        return web.json_response({"ok": True, "deleted": gid})
+
+
+@routes.post("/domain/{domain_id:\\d+}/groups")
+async def attach_domain_group(request: web.Request) -> web.Response:
+    """POST /api/webapp/domain/{id}/groups — attach domain to group (idempotent)."""
+    user: User = request["user"]
+    try:
+        did = int(request.match_info["domain_id"])
+    except ValueError:
+        return web.json_response({"error": "bad id"}, status=400)
+    data = await request.json()
+    try:
+        gid = int(data.get("group_id"))
+    except Exception:
+        return web.json_response({"error": "bad group_id"}, status=400)
+    async with get_session() as session:
+        grepo = GroupRepository(session)
+        attached = await grepo.attach(user.id, gid, did)
+        await audit(
+            level="info",
+            category="webapp",
+            message="domain attached to group",
+            actor=str(user.id),
+            context={"domain_id": did, "group_id": gid, "attached": attached},
+        )
+        return web.json_response(
+            {"ok": True, "domain_id": did, "group_id": gid, "attached": attached}
+        )
+
+
+@routes.delete("/domain/{domain_id:\\d+}/groups/{group_id:\\d+}")
+async def detach_domain_group(request: web.Request) -> web.Response:
+    """DELETE /api/webapp/domain/{id}/groups/{gid} — detach domain from group."""
+    user: User = request["user"]
+    try:
+        did = int(request.match_info["domain_id"])
+        gid = int(request.match_info["group_id"])
+    except ValueError:
+        return web.json_response({"error": "bad id"}, status=400)
+    async with get_session() as session:
+        grepo = GroupRepository(session)
+        detached = await grepo.detach(user.id, gid, did)
+        await audit(
+            level="info",
+            category="webapp",
+            message="domain detached from group",
+            actor=str(user.id),
+            context={"domain_id": did, "group_id": gid, "detached": detached},
+        )
+        return web.json_response(
+            {"ok": True, "domain_id": did, "group_id": gid, "detached": detached}
+        )
 
 
 @routes.get("/wishlist")
@@ -648,6 +829,7 @@ async def wishlist(request: web.Request) -> web.Response:
                     "noData": True,
                     "daysLeft": None,
                     "health": 0,
+                    "groups": [],
                     "addedAt": _fmt_date(getattr(w, "added_at", None)),
                 }
             )

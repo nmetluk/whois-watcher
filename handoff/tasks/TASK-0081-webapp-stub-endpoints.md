@@ -1,14 +1,14 @@
 ---
 id: TASK-0081
 title: 🔴 WebApp — эндпойнты-заглушки врут об успехе (bulk/alerts-read/import)
-status: open
+status: in_review
 milestone: v0.16.0
 adr: 043
 area: code
 depends_on: []
-branch: ""
+branch: task/0081-webapp-stub-endpoints
 owner: ""
-session: ""
+session: docs/sessions/2026-06-11_task-0081-webapp-stub-endpoints.md
 pr: ""
 created: 2026-06-10
 ---

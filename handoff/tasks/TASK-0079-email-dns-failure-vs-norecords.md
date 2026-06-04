@@ -1,14 +1,14 @@
 ---
 id: TASK-0079
 title: 🔴 Email-слой — DNS-сбой молча трактуется как «нет записей» (MX/deep пусты)
-status: open
+status: in_review
 milestone: v0.15.2
 adr: 040
 area: code
 depends_on: []
-branch: ""
+branch: task/0079-email-dns-failure-vs-norecords
 owner: ""
-session: ""
+session: docs/sessions/2026-06-10_task-0079-email-dns-failure-vs-norecords.md
 pr: ""
 created: 2026-06-09
 ---

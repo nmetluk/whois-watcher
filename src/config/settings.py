@@ -285,6 +285,32 @@ class Settings(BaseSettings):
     )
 
     # ------------------------------------------------------------------
+    # Email / deep DNS resolver override (TASK-0079)
+    # ------------------------------------------------------------------
+    # Кастомные DNS nameservers для резолва MX/SPF/DMARC/DKIM + deep (MTA-STS etc).
+    # Пустой список = системный resolver (поведение до TASK-0079, никаких регрессий).
+    # Если в контейнере воркера системный DNS падает (Docker/ufw), оператор
+    # ставит DNS_NAMESERVERS=1.1.1.1,8.8.8.8 (+ufw allow egress 53) — без правки кода.
+    # Парсинг CSV как у admin_user_ids (NoDecode + before-validator).
+    dns_nameservers: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description=(
+            "CSV-список DNS-серверов для email-intel/deep (MX/SPF/DMARC/DKIM + MTA-STS/DANE). "
+            "Пусто = системный resolver (как раньше). Пример: 1.1.1.1,8.8.8.8"
+        ),
+    )
+
+    @field_validator("dns_nameservers", mode="before")
+    @classmethod
+    def _parse_dns_nameservers(cls, value: object) -> object:
+        """Разбирает строку '1.1.1.1,8.8.8.8' в список str (env обычно строка)."""
+        if value is None or value == "":
+            return []
+        if isinstance(value, str):
+            return [part.strip() for part in value.split(",") if part.strip()]
+        return value
+
+    # ------------------------------------------------------------------
     # Backups (ADR 042, TASK-0058) — ежечасный pg_dump в scheduler
     # ------------------------------------------------------------------
     backup_dir: str = Field(

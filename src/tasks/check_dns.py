@@ -89,14 +89,19 @@ async def check_dns(
             return
 
         try:
-            await _check_dns_locked(domain, ctx)
+            await _check_dns_locked(domain, ctx, deliver_chat_id, deliver_lang)
         finally:
             await redis.delete(_in_progress_key(domain))
     finally:
         clear_log_context()
 
 
-async def _check_dns_locked(domain: str, ctx: dict[str, Any]) -> None:
+async def _check_dns_locked(
+    domain: str,
+    ctx: dict[str, Any],
+    deliver_chat_id: int | None = None,
+    deliver_lang: str | None = None,
+) -> None:
     """Основная логика проверки (внутри Redis lock)."""
     now = datetime.now(tz=UTC)
 
@@ -192,7 +197,9 @@ async def _check_dns_locked(domain: str, ctx: dict[str, Any]) -> None:
                             cr = DNSCacheRepository(session)
                             cache = await cr.get(domain)
                         if cache:
-                            block = format_dns_block(cache, lang=deliver_lang or "ru")
+                            block = format_dns_block(
+                                cache, whois_ns=whois_ns, lang=deliver_lang or "ru"
+                            )
                             if block:
                                 header = t(
                                     "tasks.deliver.dns_update",

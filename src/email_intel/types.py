@@ -22,6 +22,7 @@ from typing import Literal
 # Категории ошибок DNS-резолва.
 EmailIntelErrorType = Literal[
     "nxdomain",
+    "dns_unreachable",  # TASK-0079: реальный DNS-сбой (timeout/NoNameservers/...) ≠ «записей нет»
     "timeout",
     "dns_error",
     "parser_error",

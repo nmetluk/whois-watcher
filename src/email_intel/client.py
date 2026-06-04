@@ -13,15 +13,23 @@ import asyncio
 import logging
 from typing import Any
 
-import dns.asyncresolver
+import dns.asyncresolver  # type annotations only (postponed via __future__.annotations)
 import dns.exception
+import dns.resolver  # for NXDOMAIN/NoAnswer in _is_nxdomain_like and classify
 
+from src.config.settings import Settings
 from src.email_intel.parser import (
     DKIM_SELECTORS,
     parse_dkim_selectors,
     parse_dmarc,
     parse_mx_records,
     parse_spf,
+)
+from src.email_intel.resolver import (
+    QUERY_TIMEOUT,
+    TOTAL_TIMEOUT,
+    build_resolver,
+    classify_dns_exc,
 )
 from src.email_intel.types import (
     DKIMInfo,
@@ -35,12 +43,10 @@ from src.utils.idn import normalize_domain
 
 logger = logging.getLogger(__name__)
 
-# Таймауты DNS-резолва (seconds)
-QUERY_TIMEOUT = 5
-TOTAL_TIMEOUT = 10
 
-
-async def fetch_email_intel(domain: str) -> EmailIntelResultOrError:
+async def fetch_email_intel(
+    domain: str, *, settings: Settings | None = None
+) -> EmailIntelResultOrError:
     """Собирает все email/policy записи для домена.
 
     Резолвит:
@@ -51,6 +57,8 @@ async def fetch_email_intel(domain: str) -> EmailIntelResultOrError:
 
     Args:
         domain: Домен (может быть IDN, будет нормализован в punycode)
+        settings: Опционально — настройки (для dns_nameservers override).
+                  Если None — build_resolver использует get_settings() fallback.
 
     Returns:
         EmailIntelResult при успехе, EmailIntelError при ошибке
@@ -64,9 +72,7 @@ async def fetch_email_intel(domain: str) -> EmailIntelResultOrError:
             message=f"Invalid domain syntax: {exc}",
         )
 
-    resolver = dns.asyncresolver.Resolver()
-    resolver.timeout = QUERY_TIMEOUT
-    resolver.lifetime = TOTAL_TIMEOUT
+    resolver = build_resolver(settings)
 
     try:
         # Параллельный резолв всех типов записей
@@ -90,8 +96,9 @@ async def fetch_email_intel(domain: str) -> EmailIntelResultOrError:
         if isinstance(dkim_selectors, Exception):
             dkim_selectors = {}
 
-        # MX-ошибка: либо nxdomain (критично), либо нет MX (валидно)
-        mx_records = []
+        # MX-ошибка: NXDOMAIN → nxdomain error; NoAnswer/отсутствие → пустой MX (ok);
+        # любой другой DNS-сбой (timeout/NoNameservers/...) → dns_unreachable (НЕ ложное «MX нет»)
+        mx_records: list[Any] = []
         if isinstance(mx_answers, Exception):
             if _is_nxdomain_like(mx_answers):
                 return EmailIntelError(
@@ -99,14 +106,33 @@ async def fetch_email_intel(domain: str) -> EmailIntelResultOrError:
                     error_type="nxdomain",
                     message=f"Domain does not exist: {mx_answers}",
                 )
-            # Нет MX — валидно, просто пустой список
+            cls = classify_dns_exc(mx_answers)
+            if cls == "no_records":
+                # Легитимное «MX-записей нет» (NoAnswer) — валидно, пустой список
+                logger.debug("MX no_records (NoAnswer) for %s", normalized)
+            else:
+                logger.warning(
+                    "email_intel MX dns_unreachable for %s: %s (type=%s)",
+                    normalized,
+                    mx_answers,
+                    type(mx_answers).__name__,
+                )
+                return EmailIntelError(
+                    domain=normalized,
+                    error_type="dns_unreachable",
+                    message=f"DNS unreachable resolving MX: {mx_answers}",
+                )
         else:
             mx_records = parse_mx_records(list(mx_answers))  # type: ignore
 
         # TXT для SPF
         spf_record: SPFRecord | None = None
         if isinstance(txt_answers, Exception):
-            # TXT error — не критично, нет SPF
+            if classify_dns_exc(txt_answers) == "unreachable":
+                logger.warning(
+                    "email_intel TXT dns_unreachable for %s: %s", normalized, txt_answers
+                )
+            # TXT error — не критично, нет SPF (даже при сбое; graceful)
             txt_records = []
         else:
             txt_records = [r.to_unicode() for r in list(txt_answers)]  # type: ignore

@@ -9,7 +9,7 @@ depends_on: []
 branch: task/0083-webapp-security-hardening
 owner: ""
 session: docs/sessions/2026-06-11_task-0083-webapp-security-hardening.md
-pr: ""
+pr: https://github.com/nmetluk/whois-watcher/pull/57
 created: 2026-06-10
 ---
 

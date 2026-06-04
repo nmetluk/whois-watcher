@@ -1,15 +1,15 @@
 ---
 id: TASK-0084
 title: 🟢 WebApp — ниты (длины полей группы, CORS Allow-Headers, доки replay-риска)
-status: open
+status: in_review
 milestone: v0.16.1
 adr: 043
 area: code
 depends_on: []
-branch: ""
-owner: ""
-session: ""
-pr: ""
+branch: task/0084-webapp-security-nits
+owner: grok
+session: "docs/sessions/2026-06-11_task-0084-webapp-security-nits.md"
+pr: https://github.com/nmetluk/whois-watcher/pull/58
 created: 2026-06-10
 ---
 

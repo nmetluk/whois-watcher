@@ -427,3 +427,91 @@ class TestCheckSubdomainsSuccessEnqueue:
                 await check_subdomains(ctx, "example.com")  # без deliver
 
                 bot_mock.send_message.assert_not_called()
+
+
+class TestCheckSubdomainsFailureDelivery:
+    """TASK-0086: при фейле с deliver_chat_id — сообщение об ошибке, не молчание."""
+
+    @pytest.mark.asyncio
+    async def test_error_with_deliver_chat_id_sends_failure_notice(
+        self, mock_sync_redis: AsyncMock, mock_arq_redis: AsyncMock
+    ) -> None:
+        from src.tasks.check_subdomains import check_subdomains
+
+        ctx = _ctx(sync_redis=mock_sync_redis, arq_redis=mock_arq_redis)
+        bot_mock = ctx["bot"]
+        mock_sync_redis.set = AsyncMock(return_value=True)
+
+        error_result = SubdomainEnumError(
+            registrable_domain="example.com",
+            error_type="unavailable",
+            message="crt.sh unavailable",
+        )
+
+        mock_repo = MagicMock()
+
+        async def get_none(*_):
+            return None
+
+        mock_repo.get = get_none
+        mock_repo.update_fail = AsyncMock()
+
+        mock_session = AsyncMock()
+        with (
+            patch("src.tasks.check_subdomains.get_session") as mock_get_session,
+            patch(
+                "src.tasks.check_subdomains.SubdomainEnumCacheRepository",
+                return_value=mock_repo,
+            ),
+            patch("src.tasks.check_subdomains.fetch_subdomains", return_value=error_result),
+        ):
+            mock_get_session.return_value.__aenter__.return_value = mock_session
+            result = await check_subdomains(
+                ctx, "example.com", deliver_chat_id=777, deliver_lang="ru"
+            )
+
+        assert result["status"] == "error"
+        bot_mock.send_message.assert_awaited_once()
+        chat_id, text = bot_mock.send_message.await_args.args
+        assert chat_id == 777
+        assert "example.com" in text
+        assert "crt.sh" in text  # реальный t() — текст ошибки, не успеха
+
+    @pytest.mark.asyncio
+    async def test_error_without_deliver_chat_id_stays_silent(
+        self, mock_sync_redis: AsyncMock, mock_arq_redis: AsyncMock
+    ) -> None:
+        """Периодический запуск (scheduler) — никаких сообщений, как раньше."""
+        from src.tasks.check_subdomains import check_subdomains
+
+        ctx = _ctx(sync_redis=mock_sync_redis, arq_redis=mock_arq_redis)
+        bot_mock = ctx["bot"]
+        mock_sync_redis.set = AsyncMock(return_value=True)
+
+        error_result = SubdomainEnumError(
+            registrable_domain="example.com",
+            error_type="unavailable",
+            message="crt.sh unavailable",
+        )
+
+        mock_repo = MagicMock()
+
+        async def get_none(*_):
+            return None
+
+        mock_repo.get = get_none
+        mock_repo.update_fail = AsyncMock()
+
+        mock_session = AsyncMock()
+        with (
+            patch("src.tasks.check_subdomains.get_session") as mock_get_session,
+            patch(
+                "src.tasks.check_subdomains.SubdomainEnumCacheRepository",
+                return_value=mock_repo,
+            ),
+            patch("src.tasks.check_subdomains.fetch_subdomains", return_value=error_result),
+        ):
+            mock_get_session.return_value.__aenter__.return_value = mock_session
+            await check_subdomains(ctx, "example.com")
+
+        bot_mock.send_message.assert_not_awaited()

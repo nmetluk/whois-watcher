@@ -31,6 +31,7 @@ from src.subdomains.client import fetch_subdomains
 from src.subdomains.diff import compute_subdomain_diff
 from src.subdomains.scheduler import calculate_next_subdomain_check
 from src.subdomains.types import SubdomainEnumError
+from src.tasks._ondemand import deliver_ondemand_failure
 from src.utils.formatting import format_date
 from src.utils.idn import from_punycode
 
@@ -105,6 +106,15 @@ async def check_subdomains(
                     registrable_domain=registrable_domain,
                     error=result.message,
                     next_check_at=next_check_at,
+                )
+
+                # TASK-0086: on-demand (с кнопки) — сообщить о фейле, а не молчать
+                await deliver_ondemand_failure(
+                    ctx,
+                    deliver_chat_id,
+                    deliver_lang,
+                    kind="subdomains",
+                    domain=registrable_domain,
                 )
 
                 return {
@@ -225,6 +235,10 @@ async def check_subdomains(
                     "error": str(exc),
                 },
             )
+        # TASK-0086: и при неожиданном падении тоже сообщаем кликнувшему
+        await deliver_ondemand_failure(
+            ctx, deliver_chat_id, deliver_lang, kind="subdomains", domain=registrable_domain
+        )
         return {
             "status": "internal_error",
             "registrable_domain": registrable_domain,

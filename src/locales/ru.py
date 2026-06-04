@@ -427,6 +427,24 @@ LOCALE: dict[str, str] = {
     "tasks.deliver.dns_update": "🌐 <b>DNS · {domain}</b> (обновление):",
     "tasks.deliver.ssl_update": "🔒 <b>SSL · {domain}</b> (обновление):",
     "tasks.deliver.email_update": "📧 <b>Email · {domain}</b> (обновление):",
+    # Доставка ошибки on-demand проверки (TASK-0086) — не молчим при фейле
+    "tasks.deliver.failed.subdomains": (
+        "⚠️ Не удалось получить поддомены для <b>{domain}</b> — "
+        "источник данных (crt.sh) недоступен. Попробуйте позже."
+    ),
+    "tasks.deliver.failed.email_deep": (
+        "⚠️ Не удалось выполнить глубокий e-mail-разбор для <b>{domain}</b> — "
+        "DNS-запросы не прошли. Попробуйте позже."
+    ),
+    "tasks.deliver.failed.email": (
+        "⚠️ Не удалось обновить email-записи для <b>{domain}</b>. Попробуйте позже."
+    ),
+    "tasks.deliver.failed.dns": (
+        "⚠️ Не удалось обновить DNS для <b>{domain}</b>. Попробуйте позже."
+    ),
+    "tasks.deliver.failed.ssl": (
+        "⚠️ Не удалось проверить SSL-сертификат <b>{domain}</b>. Попробуйте позже."
+    ),
     # Email-intel (TASK-0018, ADR 036)
     "commands.whois.email_section": "📧 <b>Email</b>",
     "commands.whois.email_unreachable": "📧 <b>Email</b>: ⚠️ не отвечает",

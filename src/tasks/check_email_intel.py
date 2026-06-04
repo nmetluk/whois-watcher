@@ -32,6 +32,7 @@ from src.email_intel.types import EmailIntelError, EmailIntelResult
 from src.locales import t
 from src.observability import bind_log_context, clear_log_context
 from src.services.formatters import format_email_block
+from src.tasks._ondemand import deliver_ondemand_failure
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +123,10 @@ async def check_email_intel(
 
             if isinstance(result, EmailIntelError):
                 await _handle_failure(domain, result, ctx)
+                # TASK-0086: on-demand (с кнопки) — сообщить о фейле, а не молчать
+                await deliver_ondemand_failure(
+                    ctx, deliver_chat_id, deliver_lang, kind="email", domain=domain
+                )
                 return
 
             await _handle_success(
@@ -297,4 +302,4 @@ def _sub_is_email_active(sub: UserDomain) -> bool:
     return not sub.is_muted and bool(sub.track_email)
 
 
-__all__ = ["check_email_intel", "_sub_is_email_active"]
+__all__ = ["_sub_is_email_active", "check_email_intel"]

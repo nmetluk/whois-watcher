@@ -59,6 +59,7 @@ from src.dns_monitor import (
 from src.locales import t
 from src.observability import bind_log_context, clear_log_context
 from src.services.formatters import format_dns_block
+from src.tasks._ondemand import deliver_ondemand_failure
 
 logger = logging.getLogger(__name__)
 
@@ -228,6 +229,11 @@ async def _check_dns_locked(
             if is_unreachable_now:
                 fields["is_reachable"] = False
             await cache_repo.upsert(domain, **fields)
+
+            # TASK-0086: on-demand (с кнопки) — сообщить о фейле, а не молчать
+            await deliver_ondemand_failure(
+                ctx, deliver_chat_id, deliver_lang, kind="dns", domain=domain
+            )
 
     # 8. Enqueue notifications. Собираем change_types из diff'а + NS.
     change_types: list[str] = []

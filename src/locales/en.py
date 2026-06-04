@@ -411,6 +411,24 @@ LOCALE: dict[str, str] = {
     "tasks.deliver.dns_update": "🌐 <b>DNS · {domain}</b> (update):",
     "tasks.deliver.ssl_update": "🔒 <b>SSL · {domain}</b> (update):",
     "tasks.deliver.email_update": "📧 <b>Email · {domain}</b> (update):",
+    # On-demand failure delivery (TASK-0086) — never fail silently
+    "tasks.deliver.failed.subdomains": (
+        "⚠️ Could not fetch subdomains for <b>{domain}</b> — "
+        "the data source (crt.sh) is unavailable. Please try again later."
+    ),
+    "tasks.deliver.failed.email_deep": (
+        "⚠️ Deep e-mail analysis failed for <b>{domain}</b> — "
+        "DNS queries did not go through. Please try again later."
+    ),
+    "tasks.deliver.failed.email": (
+        "⚠️ Could not refresh email records for <b>{domain}</b>. Please try again later."
+    ),
+    "tasks.deliver.failed.dns": (
+        "⚠️ Could not refresh DNS for <b>{domain}</b>. Please try again later."
+    ),
+    "tasks.deliver.failed.ssl": (
+        "⚠️ Could not check the SSL certificate for <b>{domain}</b>. Please try again later."
+    ),
     # Email-intel (TASK-0018, ADR 036)
     "commands.whois.email_section": "📧 <b>Email</b>",
     "commands.whois.email_unreachable": "📧 <b>Email</b>: ⚠️ unreachable",

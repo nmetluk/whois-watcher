@@ -30,6 +30,7 @@ from src.email_intel.deep_types import DeepEmailError, DeepEmailResult
 from src.observability import bind_log_context, clear_log_context
 from src.services.audit import audit
 from src.services.formatters import format_email_deep
+from src.tasks._ondemand import deliver_ondemand_failure
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +110,10 @@ async def check_email_deep(
                     error=result.message,
                     next_check_at=next_check_at,
                 )
+                # TASK-0086: on-demand (с кнопки) — сообщить о фейле, а не молчать
+                await deliver_ondemand_failure(
+                    ctx, deliver_chat_id, deliver_lang, kind="email_deep", domain=domain
+                )
                 return {
                     "status": "error",
                     "domain": domain,
@@ -184,6 +189,10 @@ async def check_email_deep(
                     "error": str(exc),
                 },
             )
+        # TASK-0086: и при неожиданном падении тоже сообщаем кликнувшему
+        await deliver_ondemand_failure(
+            ctx, deliver_chat_id, deliver_lang, kind="email_deep", domain=domain
+        )
         return {
             "status": "internal_error",
             "domain": domain,
@@ -193,4 +202,4 @@ async def check_email_deep(
         clear_log_context()
 
 
-__all__ = ["check_email_deep", "DEEP_EMAIL_TTL_SECONDS"]
+__all__ = ["DEEP_EMAIL_TTL_SECONDS", "check_email_deep"]

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **On-demand проверки сообщают об ошибке** (TASK-0086, ADR 040): если проверка с кнопки (поддомены, глубокий e-mail, email/DNS/SSL-обновление карточки) падает — пользователь получает «⚠️ Не удалось… Попробуйте позже» вместо тишины. Раньше сетевой сбой (crt.sh, DNS) был неотличим от сломанной доставки. Периодические проверки не затронуты.
 - **Кнопка запуска WebApp** (TASK-0085, ADR 043): «📱 Дашборд (WebApp)» в `/start` (нативный `WebAppInfo`) + команды `/webapp`, `/app`, `/dashboard`; `Settings.webapp_url`; `/webapp` упомянут в приветствии и `/help`; `vite base '/app/'` для nginx `location /app/`. Upstream кода, который жил только на прод-машине (закрытие дрейфа main↔прод).
 
 ### Fixed

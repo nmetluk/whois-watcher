@@ -31,6 +31,7 @@ from src.ssl.client import fetch_certificate
 from src.ssl.diff import SSLDiff, compute_ssl_diff
 from src.ssl.scheduler import calculate_next_ssl_check
 from src.ssl.types import SSLCertificate, SSLError
+from src.tasks._ondemand import deliver_ondemand_failure
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +95,10 @@ async def check_ssl(
 
             if isinstance(result, SSLError):
                 await _handle_failure(domain, result, ctx)
+                # TASK-0086: on-demand (с кнопки) — сообщить о фейле, а не молчать
+                await deliver_ondemand_failure(
+                    ctx, deliver_chat_id, deliver_lang, kind="ssl", domain=domain
+                )
                 return
 
             await _handle_success(
@@ -157,9 +162,7 @@ async def _handle_success(
                 if cache:
                     block = format_ssl_block(cache, lang=deliver_lang or "ru")
                     if block:
-                        header = t(
-                            "tasks.deliver.ssl_update", deliver_lang or "ru", domain=domain
-                        )
+                        header = t("tasks.deliver.ssl_update", deliver_lang or "ru", domain=domain)
                         await bot.send_message(deliver_chat_id, f"{header}\n{block}")
                         logger.info(
                             "Delivered SSL update to chat %s for %s", deliver_chat_id, domain

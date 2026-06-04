@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **WebApp: восстановлено соответствие дизайну** (`design/webapp/v1/`). Исполнитель v0.16 не перенёс CSS дизайн-системы (42 из 55 классов без правил, 5 неопределённых переменных) — теперь tokens/ds/tg-chrome портированы вербатим. Подключён `telegram-web-app.js` (без него не работали тема, BackButton, MainButton и initData-авторизация). Шрифты PT Sans и Material Symbols самохостятся (`@fontsource/pt-sans`, `material-symbols`) — Google Fonts резался собственным CSP. Разметка списка доменов приведена к канону дизайна; починен `npm run build` (tsc); удалены остатки Vite-шаблона.
+- **WebApp: 500 на `/api/webapp/portfolio`, `/domain/{id}`, `/dashboard`** — реальные данные не загружались (показывался demo). `_shape_domain` обращался к несуществующим полям `EmailIntelCache` (`email.mx`/`spf`/`dkim`/`dmarc` вместо `mx_records`/`spf_record`/`dkim_selectors`/`dmarc_policy`) → `AttributeError` для любого домена со строкой email-кэша. Тот же класс бага, что TASK-0017 (anti-drift). Добавлены тесты `_shape_domain` на реальных ORM-моделях без моков (`tests/unit/test_webapp_shape_domain.py`). Удалён demo-fallback в ListScreen, маскировавший 500 (хвост TASK-0082) — теперь честный error-state с «Повторить»; карточка домена получает реальный объект вместо хардкода `demoD`.
 
 ## [0.16.0] — 2026-06-11
 

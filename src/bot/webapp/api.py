@@ -138,34 +138,22 @@ def _shape_domain(
             "dnssec": False,  # not tracked in current DNSCache; placeholder
         }
 
-    # Email (from intel cache)
+    # Email (from intel cache; поля модели EmailIntelCache — ADR 036:
+    # mx_records / spf_record+spf_mode / dmarc_policy+dmarc_subpolicy / dkim_selectors.
+    # НЕ использовать getattr с дефолтом — маскирует дрейф схемы (CLAUDE.md anti-drift).
     email_obj: dict[str, Any] | None = None
     if email:
-        # email_intel has mx, spf, dkim, dmarc parsed
-        mx = None
-        if email.mx:
-            try:
-                mx = (
-                    email.mx[0]["host"]
-                    if isinstance(email.mx, list) and email.mx
-                    else str(email.mx)
-                )
-            except Exception:
-                mx = str(email.mx)[:64]
-        dmarc = None
-        if email.dmarc:
-            try:
-                dmarc = email.dmarc.get("p") or email.dmarc.get("policy")
-            except Exception:
-                dmarc = str(email.dmarc)[:16]
+        mx: str | None = None
+        if email.mx_records:
+            first = email.mx_records[0]
+            # defensive: legacy/raw shape → str
+            mx = first.get("host") if isinstance(first, dict) else str(first)[:64]
+        dmarc = email.dmarc_policy or email.dmarc_subpolicy
         email_obj = {
             "mx": mx,
-            "hasMX": bool(mx),
-            "spf": bool(
-                getattr(email, "spf", None)
-                or (email.spf_all is not None if hasattr(email, "spf_all") else False)
-            ),
-            "dkim": bool(getattr(email, "dkim", None)),
+            "hasMX": bool(email.mx_records),
+            "spf": bool(email.spf_record),
+            "dkim": bool(email.dkim_selectors),
             "dmarc": dmarc,
         }
 

@@ -5,7 +5,7 @@
 > архитектором — после merge крупных кусков; исполнителем — раздел
 > «Последняя сессия». Дата последнего обновления — обязательна.
 
-**Обновлено:** 2026-06-05 (🔧 hotfix webapp design + prod note: после редеплоя 77819f8 пропала кнопка запуска WebApp в /start — восстановлена из локального сташа; см. новую сессию и "Последняя сессия") · **Релиз на main:** v0.16.0 + hotfix 77819f8 (в проде) · **Последний ADR:** 043
+**Обновлено:** 2026-06-05 (🔧 hotfix №2: 500 на /api/webapp/{portfolio,domain,dashboard} — дрейф полей EmailIntelCache в _shape_domain, demo-fallback маскировал; нужен редеплой. Также: кнопка WebApp в /start восстановлена админом из сташа — код всё ещё НЕ в main) · **Релиз на main:** v0.16.0 + 2 hotfix'а (прод отстаёт на hotfix №2 и опережает по кнопке) · **Последний ADR:** 043
 
 ## Где мы сейчас
 
@@ -456,6 +456,22 @@ ADR 029); subdomain enumeration вынесен в **v0.11** (источник �
 последовательная (каждый depends на предыдущем). После 0018 — релиз v0.10.0.
 
 ## Последняя сессия
+
+**2026-06-05 (архитектор, hotfix в main, №2) — webapp: 500 на portfolio/dashboard из-за дрейфа полей EmailIntelCache**
+
+Прод-баг: домены есть в `/list`, но WebApp показывал demo; реальные данные —
+только на «Алертах». Корень: `_shape_domain` обращался к несуществующим
+полям `EmailIntelCache` (`email.mx`/`spf`/`dkim`/`dmarc` вместо
+`mx_records`/`spf_record`/`dkim_selectors`/`dmarc_policy`) → AttributeError
+→ 500 на `/portfolio`, `/domain/{id}`, `/dashboard`; `/alerts` email-кэш
+не трогает, потому работал. Demo-fallback в ListScreen (хвост TASK-0082)
+маскировал 500 под «Демо». **Третий инцидент anti-drift-класса**
+(после TASK-0017, TASK-0020). Фикс: шейпер на реальные поля, 4 теста на
+реальных ORM-моделях (red→green подтверждён), demo-fallback и demoD
+удалены → честные error/empty-state. Нужен редеплой (миграций нет).
+Отчёт: `docs/sessions/2026-06-05_hotfix-webapp-500-email-intel-drift.md`.
+
+---
 
 **2026-06-05 (архитектор, hotfix в main) — webapp: восстановлено соответствие дизайну**
 

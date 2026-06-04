@@ -37,18 +37,16 @@ export default function App() {
   const goTab = (t: TabId) => { setStack([]); setTab(t); };
   const go = (opts: any) => { setStack([]); if (opts.tab) setTab(opts.tab); if (opts.screen) { setTab('more'); push({ type: opts.screen }); } if (opts.filter) { goTab('list'); toast('Фильтр: ' + opts.filter); } };
 
-  const openDomain = (d: WebAppDomain) => push({ type: 'domain', id: d.id });
+  const openDomain = (d: WebAppDomain) => push({ type: 'domain', id: d.id, d });
 
   useEffect(() => { if (top && top.type === 'domain') { setupMainButton({ text: 'Обновить', onClick: () => toast('Обновить (stub)'), visible: true }); } else { getTg()?.MainButton?.hide(); } }, [top, toast]);
 
   const showTabbar = !top;
   let headerTitle: string = TABS.find(t => t.id === tab)!.label;
-  if (top) headerTitle = top.type === 'domain' ? 'Домен' : (top.type || 'Экран');
-
-  const demoD = { id: 1, name: 'demo.ru', unicode: 'demo.ru', noData: false, isWishlist: false, daysLeft: 12, health: 81, subCount: 3, groups: [], notify: { expiry: true, ns: false, registrar: true, status: true }, flags: [], cost: 0, registrar: 'Demo' } as WebAppDomain;
+  if (top) headerTitle = top.type === 'domain' ? (top.d?.unicode || 'Домен') : (top.type || 'Экран');
 
   const renderScreen = () => {
-    if (top && top.type === 'domain') return <DomainScreen d={demoD} onBack={back} toast={toast} />;
+    if (top && top.type === 'domain') return <DomainScreen d={top.d} onBack={back} toast={toast} />;
     if (top && top.type === 'groups') return <GroupsScreen go={go} />;
     if (top && top.type === 'wishlist') return <WishlistScreen toast={toast} />;
     if (top && top.type === 'stats') return <StatsScreen />;

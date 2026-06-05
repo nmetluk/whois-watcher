@@ -1,14 +1,14 @@
 ---
 id: TASK-0088
 title: 🔴 Прод-диагностика — email-intel/deep/поддомены не работают (worker: образ или egress)
-status: open
+status: done
 milestone: v0.16.1
 adr: 040
 area: infra
 depends_on: []
 branch: — (диагностика на прод-машине; в git идёт только отчёт)
 owner: —
-session: docs/sessions/<дата>_task-0088-prod-diagnose-email-egress.md
+session: docs/sessions/2026-06-05_task-0088-prod-diagnose-email-egress.md
 pr: —
 created: 2026-06-05
 ---

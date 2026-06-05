@@ -212,13 +212,20 @@ async def test_spf_exceeds_limit_sets_flag() -> None:
 # ---------------------------------------------------------------------
 
 
+def _txt_rdata(text: str):
+    """Настоящий dnspython TXT-rdata (TASK-0089: не мокать несуществующий API)."""
+    import dns.rdata as _dnsrdata
+
+    escaped = text.replace("\\", "\\\\").replace('"', '\\"')
+    return _dnsrdata.from_text("IN", "TXT", f'"{escaped}"')
+
+
 def _make_dns_answer(records: list[str]) -> MagicMock:
     """Простая имитация dns Answer (для будущих/оставшихся тестов)."""
     ans = MagicMock(spec=dns.resolver.Answer)
     ans.__iter__.return_value = iter(records)
     if records:
-        rdata = MagicMock()
-        rdata.to_unicode.return_value = records[0]
+        rdata = _txt_rdata(records[0])
         ans.__getitem__.return_value = rdata  # type: ignore[attr-defined]
     return ans
 
@@ -302,9 +309,9 @@ async def test_fetch_mta_sts_strict_txt_match():
             if rdtype == "TXT" and name.startswith("_mta-sts."):
                 # Возвращаем разные TXT в зависимости от домена для теста
                 if "good" in name:
-                    return [MagicMock(to_unicode=lambda: "  v=STSv1; id=12345")]
+                    return [_txt_rdata("  v=STSv1; id=12345")]
                 if "bad-substring" in name:
-                    return [MagicMock(to_unicode=lambda: "random costs sts text")]
+                    return [_txt_rdata("random costs sts text")]
                 return []
             return []
 
@@ -331,7 +338,7 @@ async def test_fetch_mta_sts_rejects_private_ip_no_get():
 
         async def fake_resolve(name, rdtype, **kw):
             if rdtype == "TXT":
-                return [MagicMock(to_unicode=lambda: "v=STSv1; id=abc")]
+                return [_txt_rdata("v=STSv1; id=abc")]
             if rdtype == "A":
                 # Приватный IP
                 return [MagicMock(to_text=lambda: "10.0.0.5")]
@@ -371,7 +378,7 @@ async def test_fetch_mta_sts_happy_path_public_ip():
 
         async def fake_resolve(name, rdtype, **kw):
             if rdtype == "TXT":
-                return [MagicMock(to_unicode=lambda: "v=STSv1; id=xyz")]
+                return [_txt_rdata("v=STSv1; id=xyz")]
             if rdtype in ("A", "AAAA"):
                 return [MagicMock(to_text=lambda: "1.2.3.4")]  # публичный
             return []

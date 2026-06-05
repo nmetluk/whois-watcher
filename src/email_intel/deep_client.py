@@ -50,6 +50,7 @@ from src.email_intel.resolver import (
     classify_dns_exc,
 )
 from src.email_intel.spf_resolver import resolve_spf
+from src.email_intel.txt import txt_to_str
 from src.utils.idn import normalize_domain
 
 logger = logging.getLogger(__name__)
@@ -104,7 +105,7 @@ async def fetch_deep_email(
     async def _resolve_txt_for_spf(d: str) -> list[str] | None:
         try:
             ans = await resolver.resolve(d, "TXT", lifetime=DNS_TOTAL_TIMEOUT)
-            return [r.to_unicode() for r in ans]  # dnspython rdata dynamic
+            return [txt_to_str(r) for r in ans]
         except dns.exception.DNSException as exc:
             if classify_dns_exc(exc) == "unreachable":
                 logger.warning("deep SPF TXT dns_unreachable for %s: %s", d, exc)
@@ -225,7 +226,7 @@ async def _fetch_mta_sts(domain: str, resolver: dns.asyncresolver.Resolver) -> M
     try:
         ans = await resolver.resolve(mta_sts_domain, "TXT", lifetime=DNS_TOTAL_TIMEOUT)
         for r in ans:
-            txt = r.to_unicode().strip()
+            txt = txt_to_str(r).strip()
             if txt.lower().startswith("v=stsv1"):
                 txt_present = True
                 break
@@ -378,7 +379,7 @@ async def _fetch_tls_rpt(domain: str, resolver: dns.asyncresolver.Resolver) -> T
         ans = await resolver.resolve(tls_domain, "TXT", lifetime=DNS_TOTAL_TIMEOUT)
         if ans:
             # Берём первую TXT
-            txt = ans[0].to_unicode()  # dnspython dynamic attr
+            txt = txt_to_str(ans[0])
             return parse_tls_rpt(txt)
         return TlsRptResult(present=False)
     except dns.exception.DNSException:
@@ -394,7 +395,7 @@ async def _fetch_bimi(domain: str, resolver: dns.asyncresolver.Resolver) -> Bimi
     try:
         ans = await resolver.resolve(bimi_domain, "TXT", lifetime=DNS_TOTAL_TIMEOUT)
         if ans:
-            txt = ans[0].to_unicode()  # dnspython dynamic attr
+            txt = txt_to_str(ans[0])
             return parse_bimi(txt)
         return BimiResult(present=False)
     except dns.exception.DNSException:

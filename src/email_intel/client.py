@@ -31,6 +31,7 @@ from src.email_intel.resolver import (
     build_resolver,
     classify_dns_exc,
 )
+from src.email_intel.txt import txt_to_str
 from src.email_intel.types import (
     DKIMInfo,
     DMARCRecord,
@@ -135,7 +136,7 @@ async def fetch_email_intel(
             # TXT error — не критично, нет SPF (даже при сбое; graceful)
             txt_records = []
         else:
-            txt_records = [r.to_unicode() for r in list(txt_answers)]  # type: ignore
+            txt_records = [txt_to_str(r) for r in list(txt_answers)]
             spf_record = parse_spf(txt_records)
 
         # DMARC
@@ -200,7 +201,7 @@ async def _resolve_dmarc(
     try:
         answer = await resolver.resolve(dmarc_domain, "TXT", lifetime=TOTAL_TIMEOUT)
         if answer:
-            return answer[0].to_unicode()
+            return txt_to_str(answer[0])
         return None
     except dns.exception.DNSException as exc:
         return exc
@@ -243,7 +244,7 @@ async def _resolve_dkim_selector(
     try:
         answer = await resolver.resolve(dkim_domain, "TXT", lifetime=TOTAL_TIMEOUT)
         if answer:
-            return answer[0].to_unicode()
+            return txt_to_str(answer[0])
         return ""
     except dns.exception.DNSException:
         # Нет DKIM-записи — нормально

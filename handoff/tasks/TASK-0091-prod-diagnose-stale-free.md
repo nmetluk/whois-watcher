@@ -1,14 +1,14 @@
 ---
 id: TASK-0091
 title: 🔴 Прод-диагностика — зарегистрированный домен 2 суток показывается «свободен» (discozavr.ru)
-status: open
+status: done
 milestone: v0.16.1
 adr: 028
 area: infra
 depends_on: []
-branch: — (диагностика; в git идёт только отчёт)
+branch: task/0091-prod-diagnose-stale-free
 owner: —
-session: docs/sessions/<дата>_task-0091-prod-diagnose-stale-free.md
+session: docs/sessions/2026-06-07_task-0091-prod-diagnose-stale-free.md
 pr: —
 created: 2026-06-07
 ---

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Icon } from './components/Icon';
-import { initTelegram, syncTheme, setupBackButton, setupMainButton, getTg } from './lib/telegram';
+import { initTelegram, syncTheme, setupBackButton, getTg } from './lib/telegram';
 import { ListScreen } from './screens/ListScreen';
 import { DomainScreen } from './screens/DomainScreen';
 import { DashboardScreen } from './screens/DashboardScreen';
@@ -39,7 +39,8 @@ export default function App() {
 
   const openDomain = (d: WebAppDomain) => push({ type: 'domain', id: d.id, d });
 
-  useEffect(() => { if (top && top.type === 'domain') { setupMainButton({ text: 'Обновить', onClick: () => toast('Обновить (stub)'), visible: true }); } else { getTg()?.MainButton?.hide(); } }, [top, toast]);
+  // MainButton не используем: карточка домена имеет собственные quick-actions (TASK-0087)
+  useEffect(() => { getTg()?.MainButton?.hide(); }, [top]);
 
   const showTabbar = !top;
   let headerTitle: string = TABS.find(t => t.id === tab)!.label;

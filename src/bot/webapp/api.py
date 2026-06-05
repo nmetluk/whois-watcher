@@ -508,6 +508,22 @@ async def domain_detail(request: web.Request) -> web.Response:
         # extra for detail: raw whois snippet if wanted
         if whois and whois.raw_data:
             obj["rawWhoisSample"] = str(whois.raw_data)[:2000]
+
+        # TASK-0087: реальные имена поддоменов для вкладки «Поддомены»
+        # (из subdomain_enum_cache) + признак «уже отслеживается».
+        sub_cache = await SubdomainEnumCacheRepository(session).get(reg)
+        sub_names: list[str] = list(sub_cache.subdomains or []) if sub_cache else []
+        tracked: set[str] = set()
+        if sub_names:
+            tr_stmt = select(UserDomain.domain).where(
+                UserDomain.user_id == user.id, UserDomain.domain.in_(sub_names)
+            )
+            tr_res = await session.execute(tr_stmt)
+            tracked = {row[0] for row in tr_res.all()}
+        obj["subdomains"] = [
+            {"name": n, "unicode": from_punycode(n), "tracked": n in tracked}
+            for n in sub_names[:100]
+        ]
         return web.json_response(obj)
 
 
@@ -527,6 +543,8 @@ async def dashboard(request: web.Request) -> web.Response:
 
         healths = []
         risks = []
+        ssl_near = 0
+        no_dmarc = 0
         sample_uds = [ud for ud, _ in rows[:100]]  # type: ignore[misc]
         g_map = await _batch_groups(session, [ud.id for ud in sample_uds])
         for ud, wh in rows[:100]:  # type: ignore[misc]
@@ -547,10 +565,21 @@ async def dashboard(request: web.Request) -> web.Response:
                     {
                         "id": shaped["id"],
                         "name": shaped["name"],
+                        "unicode": shaped["unicode"],
+                        "registrar": shaped["registrar"],
+                        "noData": shaped["noData"],
+                        "isWishlist": shaped["isWishlist"],
                         "health": shaped["health"],
                         "daysLeft": shaped["daysLeft"],
                     }
                 )
+            # TASK-0087: KPI считаем по тому же сэмплу (раньше хардкод 0)
+            ssl_obj = shaped.get("ssl")
+            if ssl_obj and ssl_obj["daysLeft"] is not None and ssl_obj["daysLeft"] < 90:
+                ssl_near += 1
+            email_obj = shaped.get("email")
+            if email_obj is not None and not email_obj.get("dmarc"):
+                no_dmarc += 1
         avg_health = int(sum(healths) / len(healths)) if healths else 0
         risks.sort(key=lambda r: r["health"])
         top_risks = risks[:5]
@@ -560,8 +589,8 @@ async def dashboard(request: web.Request) -> web.Response:
             {
                 "totalDomains": stats.total,
                 "expiring30": stats.expiring_30,
-                "sslNear": 0,  # would need ssl join
-                "noDmarc": 0,
+                "sslNear": ssl_near,
+                "noDmarc": no_dmarc,
                 "avgHealth": avg_health,
                 "topRisks": top_risks,
                 "renewalBudget": 0,
@@ -851,6 +880,17 @@ async def toggle_notifications(request: web.Request) -> web.Response:
 
     data = await request.json()
     enabled = bool(data.get("enabled", True))
+    # TASK-0087: опциональный точечный toggle одного типа уведомлений
+    # (карточка домена в WebApp). Без key — прежнее поведение (всё сразу).
+    key = data.get("key")
+    key_to_field = {
+        "expiry": "notify_expiry",
+        "ns": "notify_ns_change",
+        "registrar": "notify_registrar_change",
+        "status": "notify_status_change",
+    }
+    if key is not None and key not in key_to_field:
+        return web.json_response({"error": "bad key"}, status=400)
 
     async with get_session() as session:
         dom_repo = DomainRepository(session)
@@ -860,16 +900,20 @@ async def toggle_notifications(request: web.Request) -> web.Response:
         if not ud:
             return web.json_response({"error": "not found or no permission"}, status=404)
         domain = ud.domain
-        await dom_repo.toggle_notifications(user.id, domain, enabled=enabled)
+        if key is not None:
+            setattr(ud, key_to_field[key], enabled)
+            await session.commit()
+        else:
+            await dom_repo.toggle_notifications(user.id, domain, enabled=enabled)
         await audit(
             level="info",
             category="webapp",
             message="notify toggled",
             actor=str(user.id),
-            context={"domain": domain, "enabled": enabled},
+            context={"domain": domain, "enabled": enabled, "key": key},
         )
         return web.json_response(
-            {"ok": True, "domain_id": did, "enabled": enabled, "domain": domain}
+            {"ok": True, "domain_id": did, "enabled": enabled, "domain": domain, "key": key}
         )
 
 

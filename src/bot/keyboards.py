@@ -43,7 +43,7 @@ class WhoisAction(CallbackData, prefix="whois"):
     (для Этапа 2 это не критично — заглушки и так не используют).
     """
 
-    action: str  # follow | unfollow | refresh | raw | wishlist | unwishlist (ADR 039)
+    action: str  # follow|unfollow|refresh|raw|subdomains|deep_email|dnsrep|wishlist|unwishlist
     domain: str
 
 
@@ -262,6 +262,14 @@ def whois_actions(
         text=t("button.deep_email", lang),
         callback_data=WhoisAction(action="deep_email", domain=reg).pack(),
     )
+    # ADR 044: on-demand расширенный DNS-отчёт (.txt). DNS-запрос на ИСХОДНОЕ
+    # имя (ADR 035), поэтому domain, не reg. callback "dnsrep" (6 симв.)
+    # короче "refresh" (7), поэтому не двигает границу 64б — если клавиатура
+    # вообще собирается (refresh влез), dns_report тоже влезает.
+    builder.button(
+        text=t("button.dns_report", lang),
+        callback_data=WhoisAction(action="dnsrep", domain=domain).pack(),
+    )
     if is_tracked:
         builder.button(
             text=t("notify_config.button", lang),
@@ -280,7 +288,7 @@ def whois_actions(
             )
     # Раскладка: первая кнопка (follow/unfollow) одна, потом по 2 в ряд.
     rows: list[int] = [1]
-    extras = 4  # refresh + raw + subdomains + deep_email (TASK-0041/0042)
+    extras = 5  # refresh + raw + subdomains + deep_email + dns_report (ADR 044)
     if is_tracked:
         extras += 1
     if show_wishlist:

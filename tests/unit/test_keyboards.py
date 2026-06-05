@@ -133,3 +133,30 @@ class TestKeyboards:
             download_preview(0, has_invalid=False, lang="ru"),
         ):
             assert kb.inline_keyboard
+
+
+class TestDnsReportButton:
+    def test_whois_actions_includes_dns_report(self) -> None:
+        from src.bot.keyboards import whois_actions
+
+        kb = whois_actions("example.com", is_tracked=False, lang="ru")
+        texts = [b.text for row in kb.inline_keyboard for b in row]
+        assert any("DNS" in t for t in texts)
+
+    def test_dns_report_callback_uses_dnsrep_action(self) -> None:
+        from src.bot.keyboards import WhoisAction, whois_actions
+
+        kb = whois_actions("example.com", is_tracked=False, lang="ru")
+        cbs = [b.callback_data for row in kb.inline_keyboard for b in row if b.callback_data]
+        dnsrep = [c for c in cbs if WhoisAction.unpack(c).action == "dnsrep"]
+        assert len(dnsrep) == 1
+        assert WhoisAction.unpack(dnsrep[0]).domain == "example.com"
+
+    def test_dnsrep_not_longer_than_refresh(self) -> None:
+        """dnsrep (6 симв.) ≤ refresh (7) — не двигает границу 64б callback."""
+        from src.bot.keyboards import WhoisAction
+
+        d = "a" * 30 + ".example.com"
+        assert len(WhoisAction(action="dnsrep", domain=d).pack().encode()) <= len(
+            WhoisAction(action="refresh", domain=d).pack().encode()
+        )

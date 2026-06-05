@@ -108,6 +108,7 @@ def _build_functions() -> list[Any]:
     """Импорты задач отложены — это разбивает цикл tasks → arq_config → tasks."""
     from src.tasks.backup_postgres import backup_postgres
     from src.tasks.check_dns import check_dns
+    from src.tasks.check_dns_report import check_dns_report
     from src.tasks.check_domain import check_domain
     from src.tasks.check_email_deep import check_email_deep
     from src.tasks.check_email_intel import check_email_intel
@@ -168,6 +169,8 @@ def _build_functions() -> list[Any]:
         check_dns,
         dns_scheduler_tick,
         send_dns_change_notice,
+        # DNS report — on-demand расширенный анализ (ADR 044)
+        check_dns_report,
         # Email-intel (Этап 17, ADR 036)
         check_email_intel,
         email_intel_scheduler_tick,

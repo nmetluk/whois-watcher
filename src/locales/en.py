@@ -130,6 +130,8 @@ LOCALE: dict[str, str] = {
     "button.subdomains": "🛰 Subdomains",
     "button.deep_email": "✉️ Deep email",
     "deep_email.searching": "⏳ Searching deep email for {domain}…",
+    "button.dns_report": "🧾 DNS report",
+    "dns_report.searching": "⏳ Building full DNS report for {domain} — sending as a file…",
     "deep_email.header": "Deep email for {domain}",
     "deep_email.no_data": "No deep email data.",
     "deep_email.section_spf": "SPF (recursive)",

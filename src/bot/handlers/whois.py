@@ -302,6 +302,14 @@ async def on_whois_action(
             domain=domain,
             arq_redis=arq_redis,
         )
+    elif action == "dnsrep":
+        await _show_dns_report_from_whois_card(
+            query=query,
+            user=user,
+            lang=lang,
+            domain=domain,
+            arq_redis=arq_redis,
+        )
     elif action == "wishlist":
         await _add_to_wishlist_shortcut(
             query.message,
@@ -690,6 +698,41 @@ async def _show_deep_email_from_whois_card(
     )
 
     logger.info("Deep email triggered from whois card for %s (user %s)", registrable, user.id)
+
+
+async def _show_dns_report_from_whois_card(
+    *,
+    query: CallbackQuery,
+    user: User,
+    lang: str,
+    domain: str,
+    arq_redis: ArqRedis,
+) -> None:
+    """Кнопка «🧾 DNS-отчёт» — on-demand расширенный DNS-анализ файлом (ADR 044).
+
+    Без кэша (отчёт одноразовый): всегда ставим задачу, результат
+    доставляется .txt-файлом по готовности (``deliver_chat_id``); при
+    фейле — сообщение об ошибке (TASK-0086). DNS-запрос на ИСХОДНОЕ имя
+    (ADR 035), поэтому передаём ``domain``, не registrable.
+    """
+    try:
+        normalized = normalize_domain(domain)
+    except Exception:
+        await query.answer(t("commands.subdomains.invalid_domain", lang), show_alert=True)
+        return
+
+    if not isinstance(query.message, Message):
+        return
+
+    display = from_punycode(normalized)
+    await query.message.answer(t("dns_report.searching", lang, domain=display))
+    await arq_redis.enqueue_job(
+        "check_dns_report",
+        normalized,
+        deliver_chat_id=query.message.chat.id,
+        deliver_lang=lang,
+    )
+    logger.info("DNS report triggered from whois card for %s (user %s)", normalized, user.id)
 
 
 __all__ = ["router"]

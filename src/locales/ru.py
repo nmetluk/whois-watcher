@@ -144,6 +144,8 @@ LOCALE: dict[str, str] = {
     "button.subdomains": "🛰 Поддомены",
     "button.deep_email": "✉️ Глубокий e-mail",
     "deep_email.searching": "⏳ Ищу глубокий e-mail для {domain}…",
+    "button.dns_report": "🧾 DNS-отчёт",
+    "dns_report.searching": "⏳ Собираю полный DNS-отчёт для {domain} — пришлю файлом…",
     "deep_email.header": "Глубокий e-mail для {domain}",
     "deep_email.no_data": "Нет данных deep email.",
     "deep_email.section_spf": "SPF (рекурсивный)",

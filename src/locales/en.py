@@ -456,6 +456,13 @@ LOCALE: dict[str, str] = {
     "commands.whois.source_just_now": "ℹ️ Fetched: just now",
     "commands.whois.source_cached": "ℹ️ From cache, updated {ago}",
     "commands.whois.free": "🌐 {domain} — not registered\n\nThe domain is available for registration.",
+    # TASK-0092: WHOIS says free, but RDAP confirmation could not be obtained
+    "commands.whois.free_unverified": (
+        "🌐 {domain} — no WHOIS record found\n\n"
+        "The domain appears to be available, but this could not be confirmed "
+        "via a second source (RDAP). If it was registered recently, registry "
+        "data may not have propagated yet. Re-check later: /check {domain}"
+    ),
     "commands.whois.subdomain_banner": "🔎 {subdomain} — subdomain of {parent}\n\nWHOIS is shown for the parent domain.",
     # ------------------------------------------------------------------
     # /list — row template

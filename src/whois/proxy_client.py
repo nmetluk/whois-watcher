@@ -30,7 +30,7 @@ import idna
 
 from src.config.settings import get_settings
 from src.utils.idn import normalize_domain
-from src.whois.parser import parse_rdap, parse_whois_text
+from src.whois.parser import looks_like_upstream_error, parse_rdap, parse_whois_text
 from src.whois.types import DataSource, WhoisData, WhoisError, WhoisResult
 
 logger = logging.getLogger(__name__)
@@ -156,6 +156,14 @@ def _parse_proxy_response(payload: dict[str, Any], domain: str) -> WhoisResult:
                 domain=domain,
                 error_type="parse_error",
                 message=f"Expected str for {source} source",
+            )
+        # TASK-0092: текст ошибки/рейтлимита/HTML от upstream — это сбой,
+        # а не «домен свободен» (класс «сбой ≠ свободен», ср. TASK-0079).
+        if looks_like_upstream_error(data):
+            return WhoisError(
+                domain=domain,
+                error_type="unavailable",
+                message=f"Upstream returned error-like text via {source}: {data[:120]!r}",
             )
         result = parse_whois_text(data, domain)
         result.source = _PROXY_TO_OUR_SOURCE[source]

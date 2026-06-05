@@ -58,8 +58,12 @@ def format_whois_response(
     moment = now if now is not None else datetime.now(tz=UTC)
     display = _display_domain(data.domain)
 
-    # Свободный домен — отдельный шаблон.
+    # Свободный домен — отдельный шаблон. TASK-0092: если «свободен» не
+    # подтверждён вторым источником (RDAP) — осторожная формулировка,
+    # а не уверенное «свободен» (инцидент discozavr.ru / TASK-0091).
     if not data.is_registered:
+        if data.raw_data.get("free_unverified"):
+            return t("commands.whois.free_unverified", lang, domain=display)
         return t("commands.whois.free", lang, domain=display)
 
     sections: list[str] = [f"🌐 <b>{display}</b>", ""]

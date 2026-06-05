@@ -24,7 +24,7 @@ import idna
 from src.config.limits import Limits, get_limits
 from src.config.settings import get_settings
 from src.utils.idn import normalize_domain
-from src.whois.parser import parse_rdap, parse_whois_text
+from src.whois.parser import looks_like_upstream_error, parse_rdap, parse_whois_text
 from src.whois.proxy_client import ProxyUnreachable, lookup_via_proxy
 from src.whois.rdap import query_rdap
 from src.whois.types import WhoisData, WhoisError, WhoisResult
@@ -47,9 +47,10 @@ async def lookup_domain(domain: str, *, limits: Limits | None = None) -> WhoisRe
     """
     settings = get_settings()
 
+    result: WhoisResult | None = None
     if settings.whois_proxy_enabled:
         try:
-            return await lookup_via_proxy(domain)
+            result = await lookup_via_proxy(domain)
         except ProxyUnreachable as exc:
             logger.warning(
                 "WHOIS proxy unreachable, falling back to direct lookup: %s " "(domain=%s)",
@@ -61,7 +62,68 @@ async def lookup_domain(domain: str, *, limits: Limits | None = None) -> WhoisRe
             # дедупликация AlertService отфильтрует первый алерт, и потом
             # любой direct-fallback подавится без записи.
 
-    return await lookup_direct(domain, limits=limits)
+    if result is None:
+        result = await lookup_direct(domain, limits=limits)
+
+    return await _verify_unregistered(result, limits=limits)
+
+
+#: Источники, где «свободен» = отсутствие записи в WHOIS-тексте (negative
+#: evidence). Для них перед утверждением «свободен» делаем RDAP-кросс-чек:
+#: positive evidence (RDAP 200) бьёт negative. Инцидент TASK-0091:
+#: relay/TCI отдавал «No entries found» для уже зарегистрированного домена
+#: 2+ суток — бот уверенно показывал «свободен».
+_TEXT_BASED_SOURCES = ("whois", "proxy_whois", "proxy_whois_ru", "proxy_none")
+
+
+async def _verify_unregistered(result: WhoisResult, *, limits: Limits | None) -> WhoisResult:
+    """RDAP-верификация ответа «домен свободен» (ADR 045, TASK-0092).
+
+    Применяется только когда «свободен» пришёл из WHOIS-текста (см.
+    ``_TEXT_BASED_SOURCES``) — RDAP-источники и так дают авторитетный 404.
+
+    - RDAP «found» и parse говорит registered → возвращаем RDAP-данные
+      (домен ЗАНЯТ; в raw_data — пометка о противоречии для алертов/отладки).
+    - RDAP «not_found» → «свободен» подтверждён (``free_verified``).
+    - RDAP unsupported/error → «свободен» НЕ подтверждён
+      (``free_unverified=True``) — UX покажет осторожную формулировку.
+    """
+    if not isinstance(result, WhoisData) or result.is_registered:
+        return result
+    if result.source not in _TEXT_BASED_SOURCES:
+        return result
+
+    cfg = limits if limits is not None else get_limits()
+    rdap_status, rdap_data = await query_rdap(
+        result.domain, timeout=float(cfg.whois_timeout_seconds)
+    )
+
+    if rdap_status == "found" and rdap_data is not None:
+        try:
+            parsed = parse_rdap(rdap_data, result.domain)
+        except Exception:
+            logger.exception("parse_rdap crashed verifying %s", result.domain)
+            result.raw_data["free_unverified"] = True
+            return result
+        if parsed.is_registered:
+            logger.warning(
+                "WHOIS said free but RDAP says REGISTERED for %s "
+                "(whois source=%s) — using RDAP data",
+                result.domain,
+                result.source,
+            )
+            parsed.raw_data["free_contradicted_whois_source"] = result.source
+            return parsed
+        result.raw_data["free_verified"] = "rdap"
+        return result
+
+    if rdap_status == "not_found":
+        result.raw_data["free_verified"] = "rdap"
+        return result
+
+    # unsupported / error — подтвердить не смогли
+    result.raw_data["free_unverified"] = True
+    return result
 
 
 async def lookup_direct(domain: str, *, limits: Limits | None = None) -> WhoisResult:
@@ -122,6 +184,15 @@ async def lookup_direct(domain: str, *, limits: Limits | None = None) -> WhoisRe
         if msg.startswith("No WHOIS server"):
             return WhoisError(domain=normalized, error_type="unsupported_tld", message=msg)
         return WhoisError(domain=normalized, error_type="network_error", message=msg)
+
+    # TASK-0092: текст ошибки/рейтлимита/HTML — это сбой, а не «свободен».
+    if looks_like_upstream_error(raw_text):
+        return WhoisError(
+            domain=normalized,
+            error_type="unavailable",
+            message=f"WHOIS:43 returned error-like text: {raw_text[:120]!r}",
+            raw_response=raw_text[:5000] if raw_text else None,
+        )
 
     try:
         return parse_whois_text(raw_text, normalized)

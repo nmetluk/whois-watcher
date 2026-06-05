@@ -182,6 +182,32 @@ NOT_FOUND_PATTERNS: tuple[str, ...] = (
     "available for registration",
 )
 
+# Признаки того, что «ответ» — на самом деле ошибка upstream'а (рейтлимит,
+# заглушка, HTML), а не WHOIS-данные. Такой текст НЕЛЬЗЯ трактовать как
+# «домен свободен» (TASK-0092, класс «сбой ≠ свободен», ср. TASK-0079).
+UPSTREAM_ERROR_PATTERNS: tuple[str, ...] = (
+    "exceeded allowed connection rate",
+    "rate limit",
+    "ratelimit",
+    "too many requests",
+    "try again later",
+    "quota exceeded",
+    "service unavailable",
+    "temporarily unavailable",
+    "connection refused",
+    "<html",
+    "<!doctype",
+    "502 bad gateway",
+    "504 gateway",
+)
+
+
+def looks_like_upstream_error(text: str) -> bool:
+    """Текст похож на ошибку/заглушку upstream'а, а не на WHOIS-ответ."""
+    lower = text.lower()
+    return any(pattern in lower for pattern in UPSTREAM_ERROR_PATTERNS)
+
+
 # Регулярка для строки ``key: value`` или ``key:value`` (с любым количеством
 # пробелов). Не используем split(":", 1), потому что некоторые сервера
 # отдают многострочные значения через продолжение строк — для таких полей

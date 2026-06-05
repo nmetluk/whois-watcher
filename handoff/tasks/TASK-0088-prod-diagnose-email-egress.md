@@ -4,7 +4,7 @@ title: 🔴 Прод-диагностика — email-intel/deep/поддоме�
 status: open
 milestone: v0.16.1
 adr: 040
-area: ops
+area: infra
 depends_on: []
 branch: — (диагностика на прод-машине; в git идёт только отчёт)
 owner: —

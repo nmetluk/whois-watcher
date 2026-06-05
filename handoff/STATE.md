@@ -471,9 +471,11 @@ ADR 029); subdomain enumeration вынесен в **v0.11** (источник �
 закрыт с обеих сторон. **При мерже отчёта удалены IP/SSH/имя ключа**
 (публичный репо). Отчёт: `docs/sessions/2026-06-07_task-0093-relay-stale-no-entries.md`.
 
-Открытый вопрос: whoisd живёт вне репо whois-watcher (на хостах + whoisd-repo
-на VDS) — патч NO_DATA_RE не версионируется в основном репо. Кандидат:
-вынести whoisd в отдельный git-проект с тестами/деплоем.
+✅ Хвост «whoisd вне git» закрыт: whoisd живёт в отдельном репо
+**nmetluk/whois-proxy** (был с самого начала). Хостовый патч перенесён
+туда — commit `2ae4442` (ADR 011 whois-proxy): `NO_DATA_RE` + `is_no_data`
++ `NO_DATA_TTL=600` для ru_upstream/local веток, systemd-юниты обновлены.
+При следующем апдейте whoisd берётся из репо — патч не потеряется.
 
 ---
 

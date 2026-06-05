@@ -73,3 +73,8 @@
 - ADR 028 (whoisd / proxy)
 - handoff/tasks/TASK-0093-relay-stale-no-entries.md
 - /opt/whoisd/server.py (оба хоста) + юниты
+
+
+## ОБНОВЛЕНИЕ (архитектор): патч перенесён в git whois-proxy
+
+Хостовый патч whoisd версионирован: **nmetluk/whois-proxy** commit `2ae4442` (ADR 011) — `NO_DATA_RE` + `is_no_data()` + `NO_DATA_TTL=600` для ru_upstream/local whois веток; systemd-юниты обновлены. Хвост «whoisd вне git» закрыт: при следующем апдейте whoisd берётся из репо, патч не потеряется.

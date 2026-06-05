@@ -57,3 +57,24 @@ AttributeError → generic except → `EmailIntelError("Unexpected error…")`
 Миграций нет. Бекап + стандартный `deploy.sh` (worker обязательно).
 После деплоя real-world: `/whois` домена с почтой → MX; «Глубокий
 e-mail» → непустой отчёт; кэш arbital.ru должен перейти в fail_count=0.
+
+## ДОПОЛНЕНИЕ (post-deploy): обязательная инвалидация кэша
+
+После деплоя фикса MX «сам» не появится: `email_intel_cache` хранит
+результаты старых упавших проверок (mx_records=NULL), а после фейла
+`next_check_at` отодвинут до +1 суток. Карточка /whois считает такой кэш
+свежим и не перепроверяет. **На проде выполнить один раз:**
+
+```bash
+docker compose exec postgres psql -U whoiswatcher -d whoiswatcher -c \
+  "UPDATE email_intel_cache SET next_check_at = now() WHERE mx_records IS NULL OR fail_count > 0;"
+```
+
+Scheduler (тик каждые 5 мин) перепроверит затронутые домены починенным
+кодом. Проверка: через ~10 минут `/whois` домена с почтой показывает MX;
+`select domain, fail_count, mx_records is not null as has_mx from
+email_intel_cache limit 5;` — fail_count=0, has_mx=t у доменов с почтой.
+
+**Урок в копилку:** фикс кода не лечит отравленный кэш — в чек-лист
+деплоя багфиксов кэш-слоёв добавить шаг «инвалидировать затронутые
+строки» (next_check_at = now()).

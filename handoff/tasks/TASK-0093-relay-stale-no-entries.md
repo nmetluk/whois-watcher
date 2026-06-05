@@ -1,14 +1,14 @@
 ---
 id: TASK-0093
 title: 🟡 RU-relay/VDS — выяснить, почему «No entries» для зарегистрированного домена (и кэш relay)
-status: open
+status: done
 milestone: v0.16.1
 adr: 028
 area: infra
 depends_on: [TASK-0091]
 branch: — (диагностика на VDS; в git идёт только отчёт)
 owner: —
-session: docs/sessions/<дата>_task-0093-relay-stale-no-entries.md
+session: docs/sessions/2026-06-07_task-0093-relay-stale-no-entries.md
 pr: —
 created: 2026-06-07
 ---

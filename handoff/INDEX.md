@@ -8,7 +8,6 @@
 |----|--------|-----------|-----|---------|------|-------|
 | TASK-0056 | open | v0.14.1 | — | code | v0.14 cleanup — подключить no_expiry_tlds + sweep getattr-на-ORM | — |
 | TASK-0065 | open | v0.15.1 | 042 | code | Бекапы — офсайт-копия + шифрование (durability) + мелочи аудита v0.15 | — |
-| TASK-0093 | open | v0.16.1 | 028 | infra | 🟡 RU-relay/VDS — выяснить, почему «No entries» для зарегистрированного домена (и кэш relay) | — (диагностика на VDS; в git идёт только отчёт) |
 | TASK-0001 | done | v0.8.1 | 034 | code | Багфикс wishlist ↔ tracked (авто-промоут) | task/0001-wishlist-tracked-fix |
 | TASK-0002 | done | v0.9.0 | 035 | code | PSL — зависимость tldextract + src/utils/domains.py | task/0002-psl-utils-domains |
 | TASK-0003 | done | v0.9.0 | 035 | code | Схема user_domains (registrable_domain, is_subdomain) + WHOIS-джойны | task/0003-subdomain-schema-whois-joins |
@@ -98,3 +97,4 @@
 | TASK-0090 | done | v0.17.0 | 044 | code | 🟢 DNS-отчёт — on-demand расширенный анализ всех DNS-записей файлом | main (прямой фикс архитектора, по решению владельца) |
 | TASK-0091 | done | v0.16.1 | 028 | infra | 🔴 Прод-диагностика — зарегистрированный домен 2 суток показывается «свободен» (discozavr.ru) | task/0091-prod-diagnose-stale-free |
 | TASK-0092 | done | v0.16.1 | 045 | code | 🔴 «Свободен» только после RDAP-верификации + «сбой ≠ свободен» (ADR 045) | main (прямой фикс архитектора, по решению владельца) |
+| TASK-0093 | done | v0.16.1 | 028 | infra | 🟡 RU-relay/VDS — выяснить, почему «No entries» для зарегистрированного домена (и кэш relay) | — (диагностика на VDS; в git идёт только отчёт) |

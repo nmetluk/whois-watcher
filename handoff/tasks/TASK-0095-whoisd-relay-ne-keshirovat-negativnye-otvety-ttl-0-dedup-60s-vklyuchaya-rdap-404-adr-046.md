@@ -1,12 +1,12 @@
 ---
 id: TASK-0095
 title: 🔴 whoisd/relay — не кешировать негативные ответы: TTL 0 + дедуп 60с, включая RDAP-404 (ADR 046)
-status: open
+status: done
 milestone: v0.17.0
 adr: 046
 area: infra
 depends_on: [TASK-0094]
-branch: ""
+branch: task/0095-whoisd-relay-ne-keshirovat-negativnye-otvety-ttl-0-dedup-60s-vklyuchaya-rdap-404-adr-046
 owner: ""
 session: ""
 pr: ""

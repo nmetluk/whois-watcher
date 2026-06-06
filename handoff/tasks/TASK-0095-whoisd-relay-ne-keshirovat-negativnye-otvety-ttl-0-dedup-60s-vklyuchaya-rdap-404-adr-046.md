@@ -7,9 +7,9 @@ adr: 046
 area: infra
 depends_on: [TASK-0094]
 branch: task/0095-whoisd-relay-ne-keshirovat-negativnye-otvety-ttl-0-dedup-60s-vklyuchaya-rdap-404-adr-046
-owner: ""
-session: ""
-pr: ""
+owner: claude-code
+session: docs/sessions/2026-06-06_task-0095-whoisd-relay-negative-ttl-60.md
+pr: — (merge ветки архитектором)
 created: 2026-06-06
 ---
 
@@ -70,11 +70,12 @@ created: 2026-06-06
 ## Definition of Done
 
 - [ ] whois-proxy: код + commit/push (NO_DATA_TTL=60, RDAP-404 ветка)
-- [ ] Прод-хост + VDS: обновлены из git, юниты почищены, whoisd active
-- [ ] Ручная верификация инвариантов выше (curl /q/...) — в отчёте
-- [ ] Real-world: свободный домен → /whois → ttl_remaining негатива ≤60
-- [ ] Per-session отчёт в `docs/sessions/` (без IP/SSH-деталей — публичный
-      репо!), `handoff.py validate`, статус через `handoff.py`
+      → **НЕ выполнено**, вынесено в TASK-0096 (upstream хостовых патчей)
+- [x] Прод-хост + VDS: обновлены, юниты почищены (TTL_NEG=60), whoisd active
+- [x] Ручная верификация инвариантов (curl /q/...) — таблица в отчёте
+- [x] Real-world: негативы ttl_remaining ≤60, дедуп работает, позитивы 24h
+- [x] Per-session отчёт в `docs/sessions/` (IP вычищен архитектором при
+      мерже), `handoff.py validate`
 
 ## Ссылки
 

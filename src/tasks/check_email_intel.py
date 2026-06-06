@@ -165,7 +165,7 @@ async def _handle_success(
     dkim_selectors = new_result.dkim.selectors if new_result.dkim else None
 
     fields: dict[str, Any] = {
-        "last_checked_at": now,
+        "fetched_at": now,
         "last_successful_check_at": now,
         "next_check_at": next_check,
         "is_reachable": True,

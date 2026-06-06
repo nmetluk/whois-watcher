@@ -53,13 +53,23 @@ class WhoisFacade:
         с пометкой (``is_stale=True``, ``stale_age_days``).
 
         ``sync_timeout=None`` — берём из ``limits.whois_sync_lookup_timeout_seconds``.
+
+        **ADR 046: «свободен» из кэша не отдаётся никогда.** Свободность —
+        это отсутствие записи у реестра на момент прошлой проверки; домен
+        могли зарегистрировать минуту назад. Если кэш-запись описывает
+        незарегистрированный домен (включая placeholder после ``/add``) —
+        идём в live независимо от свежести. Stale-fallback при ошибке live
+        тоже работает только для зарегистрированных записей.
         """
         del sync_timeout  # таймаут берётся внутри lookup_domain через limits
 
         cached = await self._cache_repo.get(domain)
 
         if not force_refresh and cached is not None and _is_fresh(cached.fetched_at, self._limits):
-            return FacadeResult(data=_cache_to_data(cached, domain), is_stale=False)
+            data = _cache_to_data(cached, domain)
+            if data.is_registered:
+                return FacadeResult(data=data, is_stale=False)
+            # «Свободен» в кэше — не доверяем, перепроверяем live (ADR 046).
 
         # Live-lookup.
         live = await lookup_domain(domain, limits=self._limits)
@@ -67,7 +77,9 @@ class WhoisFacade:
         if isinstance(live, WhoisData):
             return FacadeResult(data=live, is_stale=False)
 
-        # WhoisError → пробуем отдать stale-кэш.
+        # WhoisError → пробуем отдать stale-кэш. ``expires_at is not None``
+        # заодно гарантирует, что stale-«свободен» не отдадим (ADR 046):
+        # у free-записи expires_at пуст.
         if cached is not None and cached.fetched_at is not None and cached.expires_at is not None:
             age_days = _age_days(cached.fetched_at)
             return FacadeResult(

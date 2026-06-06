@@ -113,6 +113,68 @@ class TestGetOrFetch:
         assert result.data is None
 
 
+def _fresh_free_cache(domain: str = "example.com") -> WhoisCache:
+    """Свежая кэш-запись «домен свободен»: ни expires_at, ни registrar."""
+    return WhoisCache(
+        domain=domain,
+        expires_at=None,
+        registrar=None,
+        fetched_at=datetime.now(tz=UTC) - timedelta(minutes=5),
+    )
+
+
+class TestFreeNeverServedFromCache:
+    """ADR 046: «свободен» не отдаётся из кэша — всегда live-перепроверка."""
+
+    async def test_fresh_free_cache_triggers_live_lookup(self) -> None:
+        """Кэш свежий, но описывает свободный домен → live обязателен."""
+        cache_repo = AsyncMock()
+        cache_repo.get.return_value = _fresh_free_cache()
+        live = _whois_data()  # домен уже зарегистрировали
+        with patch(
+            "src.services.whois_facade.lookup_domain", new=AsyncMock(return_value=live)
+        ) as lookup:
+            result = await _facade(cache_repo, AsyncMock()).get_or_fetch("example.com")
+        lookup.assert_awaited_once()
+        assert result.data is not None
+        assert result.data.is_registered is True
+        assert result.data.registrar == "Example Inc."
+        assert result.is_stale is False
+
+    async def test_fresh_free_cache_live_confirms_free(self) -> None:
+        """Live подтвердил свободность → отдаём live-результат, не кэш."""
+        cache_repo = AsyncMock()
+        cache_repo.get.return_value = _fresh_free_cache()
+        live = WhoisData(domain="example.com", is_registered=False)
+        with patch(
+            "src.services.whois_facade.lookup_domain", new=AsyncMock(return_value=live)
+        ) as lookup:
+            result = await _facade(cache_repo, AsyncMock()).get_or_fetch("example.com")
+        lookup.assert_awaited_once()
+        assert result.data is live
+        assert result.is_stale is False
+
+    async def test_free_cache_not_served_as_stale_on_live_error(self) -> None:
+        """Live упал, в кэше «свободен» → ошибка, а не stale-«свободен»."""
+        cache_repo = AsyncMock()
+        cache_repo.get.return_value = _fresh_free_cache()
+        error = WhoisError(domain="example.com", error_type="timeout", message="timed out")
+        with patch("src.services.whois_facade.lookup_domain", new=AsyncMock(return_value=error)):
+            result = await _facade(cache_repo, AsyncMock()).get_or_fetch("example.com")
+        assert result.error is not None
+        assert result.data is None
+
+    async def test_registered_cache_still_served_fresh(self) -> None:
+        """Контроль: зарегистрированный домен из свежего кэша — без live."""
+        cache_repo = AsyncMock()
+        cache_repo.get.return_value = _fresh_cache()
+        with patch("src.services.whois_facade.lookup_domain") as lookup:
+            result = await _facade(cache_repo, AsyncMock()).get_or_fetch("example.com")
+        lookup.assert_not_awaited()
+        assert result.data is not None
+        assert result.data.is_registered is True
+
+
 class TestEnqueueCheck:
     async def test_enqueue_check_calls_arq(self) -> None:
         arq_redis = AsyncMock()

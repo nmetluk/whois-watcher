@@ -1,15 +1,15 @@
 ---
 id: TASK-0096
 title: 🟡 whois-proxy — upstream хостовых патчей 0095 (TTL_NEG=60, RDAP-404, BIND_ADDR_WHOIS)
-status: open
+status: done
 milestone: v0.17.0
 adr: 046
 area: infra
 depends_on: [TASK-0095]
-branch: ""
-owner: ""
-session: ""
-pr: ""
+branch: — (инфра: whois-proxy 34ec1b8/5d19325 + хосты; в whois-watcher только отчёт)
+owner: claude-code
+session: docs/sessions/2026-06-06_task-0096-whois-proxy-upstream.md
+pr: —
 created: 2026-06-06
 ---
 
@@ -48,15 +48,15 @@ TASK-0093/коммит `666af2a`.
 
 ## Definition of Done
 
-- [ ] whois-proxy HEAD содержит все хостовые правки 0095; на хостах —
-      файлы из git (хэши совпадают)
-- [ ] whoisd на обоих хостах active, инварианты 0095 перепроверены
-- [ ] Бот редеплоен (с бекапом БД до!): `/version` → `d1ae9e1`+
-- [ ] Real-world end-to-end: `/whois` на свободный домен → ответ live
-      (повторный запрос через >60с снова идёт в upstream); после
-      регистрации домена бот показывает «занят» в течение ~минуты
-- [ ] Per-session отчёт в `docs/sessions/` (без IP/SSH-деталей!),
-      `handoff.py validate`
+- [x] whois-proxy HEAD содержит все хостовые правки 0095 (`34ec1b8` +
+      `5d19325`); хосты перекатаны из git
+- [x] whoisd на обоих хостах active, инварианты 0095 перепроверены
+- [x] Бот редеплоен (бекап: manual-pre-0096): `1957328`
+- [ ] Real-world end-to-end (владелец): `/version` → `1957328`; после
+      регистрации свободного домена бот показывает «занят» в течение
+      ~минуты
+- [x] Per-session отчёт в `docs/sessions/` (создан архитектором —
+      исполнитель завершил сессию без push), `handoff.py validate`
 
 ## Ссылки
 

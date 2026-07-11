@@ -475,9 +475,9 @@ server {
 
     client_max_body_size 10M;
 
-    # Webhook — проксируем в бот
+    # Webhook — проксируем в бот (хостовый publish-порт = WEBHOOK_HOST_PORT, дефолт 8091)
     location / {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:8091;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -491,7 +491,7 @@ server {
 
     # Healthcheck — без записи в access_log
     location = /health {
-        proxy_pass http://127.0.0.1:8080/health;
+        proxy_pass http://127.0.0.1:8091/health;
         access_log off;
     }
 }
@@ -785,7 +785,8 @@ docker compose logs <service> --tail 80
 - Пустая строка в `int | None` поле (например, `ADMIN_CHANNEL_ID=` без значения
   и без комментирования) — pydantic-settings v2 пытается распарсить `""`
   как `int` и падает. Решение: закомментировать строку (`# ADMIN_CHANNEL_ID=`).
-- Конфликт порта (`8080` уже занят другим процессом) — проверьте `ss -tlnp`.
+- Конфликт хостового порта (публикуемый `WEBHOOK_HOST_PORT`, дефолт `8091`, занят
+  другим процессом) — проверьте `ss -tlnp`.
 
 ### Изменения `.env` не применяются
 
@@ -886,7 +887,8 @@ BOT_NAME="Whois Watcher"
    sudo apt update && sudo apt upgrade -y
    ```
 5. **Бот публикует webhook-порт только на localhost** — внешние подключения
-   только через nginx с TLS. В `docker-compose.yml` это `127.0.0.1:8080:8080`.
+   только через nginx с TLS. В `docker-compose.yml` это
+   `127.0.0.1:${WEBHOOK_HOST_PORT:-8091}:8080` (внутри контейнера — 8080).
 6. **WEBHOOK_PATH** — должен включать случайный сегмент (например,
    `/webhook/<32 hex символа>`). Это второй фактор аутентификации Telegram-апдейтов
    помимо `WEBHOOK_SECRET` в заголовке.

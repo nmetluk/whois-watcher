@@ -75,10 +75,15 @@ if [[ $ELAPSED -ge $TIMEOUT ]]; then
     exit 1
 fi
 
-# 9. Health check via bot endpoint
+# 9. Health check via bot endpoint.
+# Хостовый publish-порт бота вынесен в WEBHOOK_HOST_PORT (docker-compose.yml),
+# внутри контейнера бот слушает 8080. Читаем реальный published-порт из compose,
+# чтобы не хардкодить значение и не разъехаться с .env / docker-compose.yml.
 log "Health check via HTTP..."
-if ! curl -sf http://127.0.0.1:8080/health > /dev/null; then
-    err "Bot /health endpoint not responding 200"
+HEALTH_HOSTPORT=$(docker compose port bot 8080 2>/dev/null | tail -n1)
+HEALTH_HOSTPORT=${HEALTH_HOSTPORT:-127.0.0.1:8091}
+if ! curl -sf "http://${HEALTH_HOSTPORT}/health" > /dev/null; then
+    err "Bot /health endpoint not responding 200 (${HEALTH_HOSTPORT})"
     exit 1
 fi
 

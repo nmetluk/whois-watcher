@@ -63,7 +63,11 @@ services:
     extra_hosts:
       - "host.docker.internal:172.28.0.1"
     ports:
-      - "127.0.0.1:${WEBHOOK_PORT:-8080}:8080"
+      # Хостовый publish-порт вынесен в отдельную переменную WEBHOOK_HOST_PORT
+      # (внутренний бинд бота и healthcheck остаются на 8080 = WEBHOOK_PORT).
+      # На хостах-поллерах общеизвестный 8080 может быть занят другим проектом —
+      # тогда достаточно задать WEBHOOK_HOST_PORT в .env + поправить nginx upstream.
+      - "127.0.0.1:${WEBHOOK_HOST_PORT:-8091}:8080"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
       interval: 30s

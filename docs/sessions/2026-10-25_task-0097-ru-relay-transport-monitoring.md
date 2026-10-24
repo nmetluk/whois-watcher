@@ -133,7 +133,10 @@ RU host:
   and registry-negative semantics deserve a separate application-level task.
 - The Git HTTPS remote is preserved; publication uses an explicit SSH remote.
   The GitHub CLI still needs reauthentication for API/PR operations; browser
-  availability is checked separately. No direct push to main or merge.
+  session is signed out; gh on the main server is also unauthenticated.
+  Branch publication succeeded over SSH (`4413e6b` plus the final handoff update).
+  Opening a PR remains blocked on API/browser reauthentication; no direct push
+  to main or merge.
   No unrelated working-tree file (`AGENTS.md`) is included.
 
 ## Runbook, persistence and rollback

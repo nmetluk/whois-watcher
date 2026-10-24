@@ -477,8 +477,9 @@ ADR 029); subdomain enumeration вынесен в **v0.11** (источник �
 Runbook/конфиги: `scripts/ops/`. Копии заметок сохранены в ww.txt на основном
 сервере и текстовом файле на RU-relay. Ветка `task/0097-ru-relay-transport-monitoring`.
 Сохранённые GitHub PAT/gh credentials недействительны, но SSH-ключ локальной
-машины авторизуется как nmetluk; push возможен через SSH. Для gh/API нужны
-`gh auth login` / `gh auth setup-git`. PR создаётся без merge.
+машины авторизуется как nmetluk; push возможен через SSH. Ветка с исправлением и отчётом отправлена через SSH (`4413e6b` + финальный
+handoff). Для gh/API нужны `gh auth login` / `gh auth setup-git`; браузерная
+сессия GitHub отсутствует. Создание PR блокировано только авторизацией, merge не выполнялся.
 
 Открыто: причина сетевых потерь у провайдера; внешний watchdog для полного
 отказа хоста/Docker; разделение `no_data` и транспортного сбоя в приложении.

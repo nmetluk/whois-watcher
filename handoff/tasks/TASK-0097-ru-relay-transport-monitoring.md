@@ -1,7 +1,7 @@
 ---
 id: TASK-0097
 title: RU relay: restore stable transport and end-to-end alerts
-status: claimed
+status: blocked
 milestone: operations
 adr: ""
 area: infra
@@ -11,6 +11,7 @@ owner: Codex
 session: docs/sessions/2026-10-25_task-0097-ru-relay-transport-monitoring.md
 pr: ""
 created: 2026-10-25
+blocked_reason: Production fix and branch published over SSH; opening PR requires GitHub API or browser reauthentication
 ---
 
 # TASK-0097 — RU-relay: транспорт и алерты
@@ -49,4 +50,5 @@ Unit-тесты частичных сбоев, дедупликации, вос�
 
 Публичное чтение доступно. Сохранённые gh/PAT и Git HTTPS credentials получают
 401. Альтернатива: существующий SSH-ключ успешно авторизуется как nmetluk;
-push через SSH доступен, gh/API требуют повторной авторизации.
+ветка отправлена через SSH. Создание PR блокировано: gh/API требуют повторной
+авторизации, браузерная сессия GitHub отсутствует.

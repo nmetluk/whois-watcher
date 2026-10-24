@@ -1,0 +1,14 @@
+[Unit]
+Description=Whois Watcher end-to-end dependency checks and admin alerts
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/ww-ops/dependency_monitor.py --config /etc/ww-dependency-monitor.json
+TimeoutStartSec=100
+StateDirectory=ww-dependency-monitor
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes

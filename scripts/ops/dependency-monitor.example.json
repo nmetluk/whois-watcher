@@ -1,0 +1,13 @@
+{
+  "label": "Whois Watcher production dependencies",
+  "relay_host": "127.0.0.1",
+  "relay_port": 10443,
+  "sentinel": "yandex.ru",
+  "samples": 4,
+  "probe_timeout": 4,
+  "reminder_seconds": 1800,
+  "bot_health_url": "http://127.0.0.1:8091/health",
+  "proxy_health_url": "http://127.0.0.1:8043/healthz",
+  "proxy_lookup_url": "http://127.0.0.1:8043/q/yandex.ru",
+  "state_path": "/var/lib/ww-dependency-monitor/state.json"
+}

@@ -1,0 +1,22 @@
+[Unit]
+Description=Whois Watcher persistent SSH transport to RU relay
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=ww-ru-tunnel
+Group=ww-ru-tunnel
+EnvironmentFile=/etc/ww-ru-tunnel.conf
+ExecStart=/usr/bin/ssh -N -T -o BatchMode=yes -o IdentitiesOnly=yes -o ExitOnForwardFailure=yes -o ConnectTimeout=5 -o ConnectionAttempts=1 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o StrictHostKeyChecking=yes -o HostKeyAlias=ww-ru-relay -o UserKnownHostsFile=/var/lib/ww-ru-tunnel/known_hosts -i /var/lib/ww-ru-tunnel/id_ed25519 -L 127.0.0.1:10443:127.0.0.1:43 ww-ru-relay@${RU_RELAY_HOST}
+Restart=always
+RestartSec=5
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

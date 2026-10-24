@@ -1,0 +1,10 @@
+[Unit]
+Description=Check Whois Watcher dependencies every minute
+
+[Timer]
+OnBootSec=45s
+OnUnitActiveSec=60s
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target
